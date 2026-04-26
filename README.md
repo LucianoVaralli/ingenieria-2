@@ -9,7 +9,7 @@ descripción:
 ## Colaboradores
 
 - Luciano Varalli
-- Joaquin Ruiz
+- Joaquin Alejo Gimenez Ruiz
 - Luis Vilte
 - Nicole Chavez
 - Erik Nishimura
