@@ -92,8 +92,25 @@ Asegurate de tener Python 3.12 o posterior y `pip` instalados en tu sistema ante
 
 ### 5. Levantar la API
 
+Para abrir uvicorn asegurate de estar posicionado en la carpeta backend en una terminal y ejecuta:
+
 ```bash
+cd backend
 uvicorn main:app --reload
+```
+#### Una vez levantado el servidor, abrí tu navegador en:
+- `http://localhost:8000` — Bienvenida
+- `http://localhost:8000/docs` — Documentación interactiva
+- `http://localhost:8000/socios` — Lista de socios
+- `http://localhost:8000/estado` — Estado de la API
+
+### 6. Frontend 
+
+Para abrir (app) asegurate de estar posicionado en la carpeta frontend en una terminal y ejecuta:
+
+```bash
+cd frontend
+
 ```
 
 ## Estructura del Proyecto
