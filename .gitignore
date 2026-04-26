@@ -1,5 +1,9 @@
+# Python
 __pycache__/
 venv/
-node_modules/
 .env
+
+# JavaScript
+node_modules/
 dist/
+.DS_Store
