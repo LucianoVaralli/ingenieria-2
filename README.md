@@ -26,7 +26,15 @@ Es una plataforma web de gestión integral para el gimnasio Sportify y su objeti
 - Python
 - JavaScript
 
+### Lenguajes de Marcado y Estilos
+- HTML
+- CSS
+
 ### Backend
+
+- FastApi: Framework web para Python.
+- SQLAlchemy: ORM para la gestión de bases de datos.
+- SQLite: Base de datos.
 
 ### Frontend
 
