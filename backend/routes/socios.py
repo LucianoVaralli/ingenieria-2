@@ -14,8 +14,8 @@ router = APIRouter(
     tags=["Socios"]
 )
 
-@router.post("/")
-async def crear_socio(
+@router.post("/registrar")
+async def registrar_socio(
     # Recibimos el archivo (Escenario 4)
     apto_fisico: UploadFile = File(...),
     # Recibimos los datos como Form (porque enviamos archivo)
