@@ -11,6 +11,8 @@ class Socio(Base):
     apellido = Column(String)
     dni = Column(Integer, unique=True)
     email = Column(String, unique=True) # Para el login
+    telefono = Column(String)
     hashed_password = Column(String) # Contraseña protegida
     rol = Column(String, default=Rol.Miembro.value) # aca puede ser admin, profesor, miembro, no_miembro o no_usuario
     cuota_al_dia = Column(Boolean, default=True)
+    apto_fisico_path = Column(String, nullable=True) # Guardamos el nombre del archivo
