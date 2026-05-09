@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from models.enums import Rol
 
 from dependencies.database import get_db
 from models.socio import Socio
@@ -39,7 +40,7 @@ def crear_socio(
         dni=socio.dni,
         email=socio.email,
         hashed_password=password_encriptada,
-        rol=socio.rol
+        rol=socio.rol.value
     )
 
     db.add(nuevo_socio)

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from models.enums import Rol
 
 class SocioCreate(BaseModel):
     nombre: str
@@ -6,7 +7,7 @@ class SocioCreate(BaseModel):
     dni: int
     email: str
     password: str
-    rol: str = "alumno"
+    rol: Rol = Rol.Miembro # Por defecto, el rol es Miembro
 
 class EsquemaLogin(BaseModel):
     email: str

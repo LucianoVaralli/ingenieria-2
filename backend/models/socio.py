@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean
 from database import Base
+from models.enums import Rol
 
 # Definimos cómo es un Socio en la base de datos
 class Socio(Base):
@@ -11,5 +12,5 @@ class Socio(Base):
     dni = Column(Integer, unique=True)
     email = Column(String, unique=True) # Para el login
     hashed_password = Column(String) # Contraseña protegida
-    rol = Column(String, default="alumno") # "admin", "profesor" o "alumno"
+    rol = Column(String, default=Rol.Miembro.value) # aca puede ser admin, profesor, miembro, no_miembro o no_usuario
     cuota_al_dia = Column(Boolean, default=True)
