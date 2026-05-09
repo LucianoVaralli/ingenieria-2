@@ -1,56 +1,68 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
+import os
+import shutil # Para guardar el archivo en el disco
 from models.enums import Rol
 
 from dependencies.database import get_db
 from models.socio import Socio
-from schemas.socio import SocioCreate, EsquemaLogin
-from services.auth import (
-    verificar_password,
-    get_password_hash
-)
+from schemas.socio import SocioCreate
+from services.auth import get_password_hash
 
 router = APIRouter(
     prefix="/socios",
     tags=["Socios"]
 )
 
-@router.post("/")
-def crear_socio(
-    socio: SocioCreate,
+@router.post("/registrar")
+async def registrar_socio(
+    # Recibimos el archivo (Escenario 4)
+    apto_fisico: UploadFile = File(...),
+    # Recibimos los datos como Form (porque enviamos archivo)
+    nombre: str = Form(...),
+    apellido: str = Form(...),
+    dni: str = Form(...),
+    email: str = Form(...),
+    telefono: str = Form(...),
+    password: str = Form(...),
+    confirmar_password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    socio_existente = db.query(Socio).filter(
-        Socio.dni == socio.dni
-    ).first()
+    # 1. Validaciones de existencia (DNI y Email)
+    if db.query(Socio).filter(Socio.dni == dni).first():
+        raise HTTPException(status_code=400, detail="DNI ya registrado")
+    
+    if db.query(Socio).filter(Socio.email == email).first():
+        raise HTTPException(status_code=400, detail="correo ya registrado")
 
-    if socio_existente:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe un socio"
-        )
+    # 2. Guardar el archivo físicamente en una carpeta 'uploads'
+    # 3. Crear la carpeta si no existe
+    os.makedirs("uploads", exist_ok=True) 
 
-    password_encriptada = get_password_hash(
-        socio.password
-    )
+    # 4. Guardar
+    file_location = f"uploads/{dni}_{apto_fisico.filename}"
+    with open(file_location, "wb") as buffer:
+        shutil.copyfileobj(apto_fisico.file, buffer)
 
+    # 3. Encriptar y Guardar en DB
+    hashed_pass = get_password_hash(password)
+    
     nuevo_socio = Socio(
-        nombre=socio.nombre,
-        apellido=socio.apellido,
-        dni=socio.dni,
-        email=socio.email,
-        hashed_password=password_encriptada,
-        rol=socio.rol.value
+        nombre=nombre,
+        apellido=apellido,
+        dni=dni,
+        email=email,
+        telefono=telefono,
+        hashed_password=hashed_pass,
+        apto_fisico_path=file_location, # Guardamos donde quedó la foto
+        rol=Rol.Miembro.value # Por defecto según tu Enum
     )
 
     db.add(nuevo_socio)
     db.commit()
     db.refresh(nuevo_socio)
-
-    return nuevo_socio
+    return {"mensaje": "registro exitoso", "socio_id": nuevo_socio.id}
 
 @router.get("/")
-def obtener_socios(
-    db: Session = Depends(get_db)
-):
+def obtener_socios(db: Session = Depends(get_db)):
     return db.query(Socio).all()

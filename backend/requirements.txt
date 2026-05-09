@@ -8,7 +8,9 @@ cffi==2.0.0
 click==8.3.3
 colorama==0.4.6
 cryptography==47.0.0
+dnspython==2.8.0
 ecdsa==0.19.2
+email-validator==2.3.0
 fastapi==0.136.1
 greenlet==3.4.0
 h11==0.16.0
