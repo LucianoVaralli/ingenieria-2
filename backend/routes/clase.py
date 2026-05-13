@@ -5,6 +5,7 @@ from models.enums import Rol
 from models.clase import Clase
 from models.gimnasio import Gimnasio
 from models.socio import Socio
+from schemas.clase import ClaseCreate
 
 from dependencies.database import get_db
 
