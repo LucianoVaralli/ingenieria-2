@@ -1,7 +1,12 @@
+from http.client import HTTPException
+
 from pwdlib import PasswordHash
 
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
+from models.socio import Socio
 
 # CONFIGURACIÓN (En producción esto iría en un archivo .env)
 SECRET_KEY = "tu_clave_secreta_super_segura_para_sportify"
@@ -32,3 +37,26 @@ def verificar_password(plain_password, hashed_password):
 
 def get_password_hash(password):
     return password_hasher.hash(password)
+
+
+# Esto le dice a FastAPI que busque el token en el encabezado "Authorization"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+def obtener_usuario_actual(db: Session, token: str):
+    try:
+        # 1. Abrimos el token con la llave secreta
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        
+        if email is None:
+            raise HTTPException(status_code=401, detail="Token inválido")
+            
+    except JWTError:
+        raise HTTPException(status_code=401, detail="No se pudo validar la sesión")
+
+    # 2. Buscamos al dueño del token en la DB
+    usuario = db.query(Socio).filter(Socio.email == email).first()
+    if usuario is None:
+        raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    
+    return usuario

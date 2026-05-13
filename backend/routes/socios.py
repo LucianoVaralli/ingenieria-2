@@ -7,7 +7,7 @@ from models.enums import Rol
 from dependencies.database import get_db
 from models.socio import Socio
 from schemas.socio import SocioCreate
-from services.auth import get_password_hash
+from services.auth import get_password_hash, oauth2_scheme, obtener_usuario_actual
 
 router = APIRouter(
     prefix="/socios",
@@ -64,5 +64,18 @@ async def registrar_socio(
     return {"mensaje": "registro exitoso", "socio_id": nuevo_socio.id}
 
 @router.get("/")
-def obtener_socios(db: Session = Depends(get_db)):
+def obtener_socios(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme) # FastAPI pide el token automáticamente
+):
+    # Validamos el token y obtenemos quién es el que pregunta
+    usuario_peticion = obtener_usuario_actual(db, token)
+    
+    # REGLA DE ROL: Solo Admin o Profesor (usando tu Enum)
+    if usuario_peticion.rol not in [Rol.Admin, Rol.Profesor]:
+        raise HTTPException(
+            status_code=403, 
+            detail="No tienes permisos para ver esta lista"
+        )
+
     return db.query(Socio).all()
