@@ -6,3 +6,8 @@ class Rol(str, Enum):
     Miembro = "miembro"
     NoMiembro = "no_miembro"
     NoUsuario = "no_usuario"
+
+class TipoActividad(str, Enum):
+    Yoga = "yoga"
+    Pilates = "pilates"
+    Funcional = "funcional"
