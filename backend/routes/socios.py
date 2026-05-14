@@ -63,6 +63,23 @@ async def registrar_socio(
     db.refresh(nuevo_socio)
     return {"mensaje": "registro exitoso", "socio_id": nuevo_socio.id}
 
+@router.get("/me")
+def obtener_mi_perfil(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    # La magia ocurre acá: la función decodifica el token y busca al socio
+    usuario = obtener_usuario_actual(db, token)
+    
+    return {
+        "nombre": usuario.nombre,
+        "apellido": usuario.apellido,
+        "email": usuario.email,
+        "rol": usuario.rol,
+        "cuota_al_dia": usuario.cuota_al_dia,
+        "apto_fisico": usuario.apto_fisico_path
+    }
+
 @router.get("/")
 def obtener_socios(
     db: Session = Depends(get_db),
