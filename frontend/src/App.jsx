@@ -1,39 +1,27 @@
-import { useState } from 'react'
-import axios from 'axios'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Login from './pages/Login'; // Ajustá la ruta según cómo llamaste a las carpetas
+import Home from './pages/Home'; 
+import Registro from './pages/Registro';
+import Navbar from './components/Navbar';
+import Landing from './pages/Landing';
 
 function App() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-
-  const login = async (e) => {
-  e.preventDefault(); // IMPORTANTE: Esto evita que el navegador haga el GET por defecto
-  
-  try {
-    const data = new URLSearchParams();
-    data.append('username', email);
-    data.append('password', password);
-
-    // Verificá que diga .post y que la URL sea la correcta
-    const res = await axios.post('http://127.0.0.1:8000/auth/login', data);
-    
-    localStorage.setItem('token', res.data.access_token);
-    alert("¡Entraste! Token guardado.");
-  } catch (err) {
-    console.error("Error completo:", err);
-    alert("Error al loguear");
-  }
-};
-
   return (
-    <div style={{ textAlign: 'center', marginTop: '50px' }}>
-      <h1>Sportify Login</h1>
-      <form onSubmit={login}>
-        <input type="text" placeholder="Email" onChange={e => setEmail(e.target.value)} /><br/>
-        <input type="password" placeholder="Pass" onChange={e => setPassword(e.target.value)} /><br/>
-        <button type="submit">Probar Conexión</button>
-      </form>
-    </div>
-  )
+    <Router>
+      <Navbar /> {/* Se muestra siempre, arriba de cualquier ruta */}
+      <Routes>
+        
+        {/* Aquí irán agregando las demás pantallas del gimnasio */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/registro" element={<Registro />} />
+        <Route path="/home" element={<Home />} />
+        
+        {/* Ruta para cuando alguien escribe cualquier cosa que no existe */}
+        <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;

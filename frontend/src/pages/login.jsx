@@ -1,32 +1,35 @@
 import React, { useState } from 'react';
-import api from '../../api/api'; // Importás la configuración de axios que centralizamos
-import './Login.css';           // Importás el diseño
-import api from '../../api/api'; // Importás tu nueva configuración
+import api from '../api/api.js'; // Importás la configuración de axios que centralizamos
+import '../assets/css/Login.css';           // Importás el diseño
+import { useNavigate } from 'react-router-dom'; 
+import { Link } from 'react-router-dom';
 
 const Login = () => {
-const [email, setEmail] = useState('');
-const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const navigate = useNavigate(); 
 
 const handleLogin = async (e) => {
     e.preventDefault();
     try {
-    const data = new URLSearchParams();
-    data.append('username', email);
-    data.append('password', password);
+        const data = new URLSearchParams();
+        data.append('username', email);
+        data.append('password', password);
 
-    // Ya no ponés toda la URL, solo el endpoint
-    const res = await api.post('/auth/login', data);
+        const res = await api.post('/auth/login', data);
+        localStorage.setItem('token', res.data.access_token);
     
-    localStorage.setItem('token', res.data.access_token);
-    alert("¡Entraste!");
+        // manda al inicio
+        navigate('/home'); 
+    
     } catch (err) {
-        console.error(err);
+        alert("Error en las credenciales");
     }
 };
 
 //html
 return (
-    <div className="login-container">
+<div className="login-container">
     <form onSubmit={handleLogin} className="login-form">
     <h1>Sportify</h1>
     <input 
@@ -41,6 +44,7 @@ return (
     />
     <button type="submit">Entrar</button>
     </form>
+    <p>¿Sos nuevo? <Link to="/registro">Registrate acá</Link></p>
 </div>
 );
 };
