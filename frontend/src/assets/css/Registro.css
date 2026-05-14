@@ -1,0 +1,77 @@
+/* Contenedor principal */
+.registro-container {
+    padding: 40px;
+    max-width: 500px;
+    margin: auto;
+    font-family: Arial, sans-serif;
+    color: white; /* Texto general en blanco */
+}
+
+/* Estilo de los labels */
+.registro-label {
+    font-weight: bold;
+    margin-top: 15px;
+    display: block;
+    color: #ddd; /* Un blanco apenas grisáceo para que no canse la vista */
+}
+
+/* Estilo base de los inputs */
+.registro-input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 5px;
+    border: 1px solid #444; /* Borde oscuro sutil */
+    background-color: #2a2d37; /* El fondo oscuro de tus capturas */
+    color: white;
+    box-sizing: border-box; /* Para que el padding no agrande el input */
+}
+
+/* Cuando el input tiene un error */
+.registro-input.error {
+    border: 1px solid red;
+    background-color: #3a1f1f; /* Un fondo rojizo muy oscuro */
+}
+
+/* Mensajes de error */
+.error-message {
+    color: red;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.registro-titulo {
+    text-align: center;
+    color: white;
+    margin-bottom: 20px;
+}
+
+.boton-registrar {
+    width: 100%;
+    margin-top: 25px;
+    background-color: #fbaf32; /* El naranja de tus botones */
+    color: black;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.boton-registrar:hover {
+    background-color: #e59a1f;
+}
+
+.login-link-container {
+    text-align: center;
+    margin-top: 20px;
+    color: white;
+}
+
+.login-link {
+    color: #fbaf32;
+    font-weight: bold;
+    text-decoration: none;
+}

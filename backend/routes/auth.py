@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from dependencies.database import get_db
 from models.socio import Socio
@@ -12,24 +13,24 @@ router = APIRouter(
 )
 
 @router.post("/login")
-def login(credenciales: EsquemaLogin, db: Session = Depends(get_db)):
-    usuario = db.query(Socio).filter(Socio.email == credenciales.email).first()
+def login(
+    # Cambiamos EsquemaLogin por esto para que Swagger sea compatible
+    credenciales: OAuth2PasswordRequestForm = Depends(), 
+    db: Session = Depends(get_db)
+):
+    # Ojo: OAuth2PasswordRequestForm usa .username (aunque sea el email)
+    usuario = db.query(Socio).filter(Socio.email == credenciales.username).first()
     
     error_msg = "Nombre de usuario y/o contraseña incorrecta"
 
     if not usuario or not verificar_password(credenciales.password, usuario.hashed_password):
         raise HTTPException(status_code=401, detail=error_msg)
 
-    # CREAMOS EL TOKEN REAL
-    # Guardamos el email (sub) y el rol dentro del token
-    token_real = crear_token_acceso(
-        data={"sub": usuario.email, "rol": usuario.rol}
-    )
+    token_real = crear_token_acceso(data={"sub": usuario.email, "rol": usuario.rol})
 
     return {
-        "access_token": token_real,
-        "token_type": "bearer",
-        "rol": usuario.rol
+        "access_token": token_real, 
+        "token_type": "bearer"
     }
     
 @router.post("/logout")
