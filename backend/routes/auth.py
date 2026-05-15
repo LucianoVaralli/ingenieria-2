@@ -36,3 +36,7 @@ def login(
 @router.post("/logout")
 def logout():
     return {"mensaje": "Cierre de sesión exitoso"}
+
+@router.post("/forgot-password")
+def forgot_password():
+    return {"message": "Recuperación de contraseña"}
