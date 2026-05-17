@@ -117,23 +117,23 @@ uvicorn main:app --reload
 Para ejecutar la aplicación, asegurate de estar posicionado en la carpeta `frontend` en una terminal y seguí estos pasos:
 
 1. **Instalar las dependencias** (solo la primera vez):
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+ ```
 
 2. **Ejecutar el proyecto:**
 ```bash
-  npm run dev
+npm run dev
  ```
 
 3. **Acceder a la app**
 ```bash
-  Una vez corriendo, abrí tu navegador en: http://localhost:5173.
+Una vez corriendo, abrí tu navegador en: http://localhost:5173.
 
-  Nota: Recordá que para que el login y el registro funcionen, el servidor del backend también debe estar encendido.
- ```
+Nota: Recordá que para que el login y el registro funcionen, el servidor del backend también debe estar encendido.
+```
 
- ```
+
 ## Estructura del Proyecto
 ```
 Sportify_App/
