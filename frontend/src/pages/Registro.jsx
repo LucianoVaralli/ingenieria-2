@@ -117,7 +117,7 @@ return (
         <form onSubmit={handleRegistro}>
         
         {/* Campo Nombre */}
-        <label className="registro-label">DNI:</label>
+        <label className="registro-label">Nombre:</label>
         <input 
             name="nombre" 
                 className="registro-input"
