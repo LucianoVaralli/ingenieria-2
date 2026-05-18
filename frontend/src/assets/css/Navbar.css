@@ -1,0 +1,152 @@
+/* Contenedor principal de la barra de navegación */
+.navbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background-color: #121212; /* Mismo fondo oscuro que el login */
+    border-bottom: 1px solid #1e1e24; /* Linea sutil para separar del resto de la página */
+}
+
+/* Estilos para el texto del Logo */
+.navbar-brand {
+    color: white;
+    font-weight: bold;
+    font-size: 24px;
+    text-decoration: none;
+    letter-spacing: 1px;
+}
+
+/* Contenedor de los links del menú */
+.navbar-menu {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Links normales (Clases, Gimnasio, Iniciar Sesión) */
+.navbar-link {
+    color: #ddd;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+/* Efecto hover con el verde de Sportify */
+.navbar-link:hover {
+    color: #5DBB46; 
+}
+
+/* Link destacado para "cerrar sesion" adaptado a botón */
+.navbar-link-highlight {
+    background: none !important;
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    cursor: pointer;
+    
+    /* Copiamos exacto lo de .navbar-link pero en CSS limpio */
+    color: #ddd; 
+    font-size: 16px;
+    font-weight: 500;
+    font-family: inherit;
+    transition: color 0.2s ease;
+}
+
+/* Para que al pasar el mouse haga el mismo efecto verde que los otros */
+.navbar-link-highlight:hover {
+    color: #5DBB46;
+}
+
+/* Contenedor para alinear los botones de la derecha */
+.navbar-auth {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Botón sólido para "Registrarse" */
+.navbar-btn {
+    background-color: #5DBB46;
+    color: #121212;
+    padding: 8px 16px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+}
+
+.navbar-btn:hover {
+    background-color: #4ca138;
+}
+
+
+/* ==========================================================================
+   2. ESTILOS DE LA PÁGINA DE INICIO (Efecto Desplazamiento y Contenido)
+   ========================================================================== */
+
+/* Comportamiento global de scroll fluido */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Contenedor principal de la página de inicio */
+.landing-container {
+    background-color: #121212;
+    color: #ffffff;
+    min-height: 100vh;
+}
+
+/* Estilo para las secciones de información que van abajo */
+.landing-section {
+    padding: 80px 40px;
+    background-color: #141418;
+    border-top: 1px solid #1e1e24;
+    min-height: 60vh; /* Altura generosa para permitir el recorrido del scroll */
+}
+
+/* Fondo alternativo para romper la monotonía entre bloques */
+.landing-section.alt-bg {
+    background-color: #1a1a1f;
+}
+
+.landing-section-content {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.landing-section h2 {
+    color: #5DBB46;
+    font-size: 32px;
+    margin-bottom: 15px;
+}
+
+.landing-section p {
+    color: #ccc;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Tarjeta contenedora para estructurar bloques secundarios */
+.landing-card {
+    margin-top: 40px;
+    background-color: #1a1a1f;
+    padding: 30px;
+    border-radius: 12px;
+    border: 1px solid #2e2e38;
+}
+
+.landing-card.alt-card-bg {
+    background-color: #141418;
+}
+
+.landing-card h3 {
+    color: #5DBB46;
+    margin-bottom: 10px;
+}
+
+.landing-card p {
+    color: #aaa;
+    font-size: 15px;
+}
