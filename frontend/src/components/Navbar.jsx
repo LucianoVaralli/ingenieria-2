@@ -4,8 +4,6 @@ import '../assets/css/Navbar.css';
 
 const Navbar = ({ setToken }) => {
     const navigate = useNavigate();
-    
-    // Leemos el token directamente para que no falle al refrescar
     const token = localStorage.getItem('token'); 
 
     const handleLogout = () => {
@@ -14,29 +12,32 @@ const Navbar = ({ setToken }) => {
         navigate('/login');
     };
 
-    // Función interna para scrolear suave en la Landing
+    // 🌟 LA FUNCIÓN CLAVE: Mueve la pantalla al contenedor que tenga ese ID
     const scrollToSection = (idSeccion) => {
-        navigate('/'); // Nos aseguramos de estar en la raíz
-        setTimeout(() => {
-            const elemento = document.getElementById(idSeccion);
-            if (elemento) {
-                elemento.scrollIntoView({ behavior: 'smooth' });
-            }
-        }, 80); // Mini delay para que React monte la Landing antes de mover el scroll
+        const elemento = document.getElementById(idSeccion);
+        if (elemento) {
+            elemento.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            // Si por alguna razón estás en otra ruta (/perfil o /login), primero va al inicio
+            navigate('/');
+            setTimeout(() => {
+                const el = document.getElementById(idSeccion);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
     };
 
     return (
         <nav className="navbar-container">
             <div className="navbar-logo">
-                {/* Al clickear el logo, te lleva arriba de todo en la Landing */}
-                <span onClick={() => scrollToSection('landing-top')} className="navbar-brand" style={{ cursor: 'pointer' }}>
+                <Link to={token ? "/home" : "/"} className="navbar-brand">
                     SPORTIFY 🏋️‍♂️
-                </span>
+                </Link>
             </div>
             
             <div className="navbar-menu">
-                {/* 🌟 Ahora estos botones llaman a la función de scroll suave */}
-                <span onClick={() => scrollToSection('seccion-horarios')} className="navbar-link" style={{ cursor: 'pointer' }}>
+                {/* 🌟 Ahora estos botones mueven la pantalla hacia abajo en la misma página */}
+                <span onClick={() => scrollToSection('seccion-clases')} className="navbar-link" style={{ cursor: 'pointer' }}>
                     Clases
                 </span>
                 <span onClick={() => scrollToSection('seccion-gimnasio')} className="navbar-link" style={{ cursor: 'pointer' }}>
@@ -62,4 +63,3 @@ const Navbar = ({ setToken }) => {
 };
 
 export default Navbar;
-
