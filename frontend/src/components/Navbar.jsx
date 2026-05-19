@@ -1,30 +1,65 @@
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import '../assets/css/Navbar.css'; 
 
-const Navbar = () => {
-  const token = localStorage.getItem('token'); // Verificamos si ya inició sesión
+const Navbar = ({ setToken }) => {
+    const navigate = useNavigate();
+    const token = localStorage.getItem('token'); 
 
-return (
-    <nav style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 20px', background: '#222', color: 'white' }}>
-    <div className="logo">
-        <Link to="/" style={{ color: 'white', fontWeight: 'bold', textDecoration: 'none' }}>SPORTIFY 🏋️‍♂️</Link>
-    </div>
-    
-    <div className="menu" style={{ display: 'flex', gap: '15px' }}>
-        <Link to="/clases" style={{ color: 'white' }}>Clases</Link>
-        <Link to="/nosotros" style={{ color: 'white' }}>El Gimnasio</Link>
-        
-        {/* Si hay token, mostramos "Mi Perfil", si no, Login/Registro */}
-        {token ? (
-            <Link to="/home" style={{ color: '#fbaf32' }}>Mi Perfil</Link>
-        ) : (
-        <div>
-            <Link to="/login" style={{ marginRight: '10px', color: 'white' }}>Iniciar Sesión</Link>
-            <Link to="/registro" style={{ background: '#fbaf32', padding: '5px 10px', borderRadius: '5px', color: 'black' }}>Registrarse</Link>
-        </div>
-        )}
-    </div>
-    </nav>
-);
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        if (setToken) setToken(null); 
+        navigate('/login');
+    };
+
+    // 🌟 LA FUNCIÓN CLAVE: Mueve la pantalla al contenedor que tenga ese ID
+    const scrollToSection = (idSeccion) => {
+        const elemento = document.getElementById(idSeccion);
+        if (elemento) {
+            elemento.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            // Si por alguna razón estás en otra ruta (/perfil o /login), primero va al inicio
+            navigate('/');
+            setTimeout(() => {
+                const el = document.getElementById(idSeccion);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+    };
+
+    return (
+        <nav className="navbar-container">
+            <div className="navbar-logo">
+                <Link to={token ? "/home" : "/"} className="navbar-brand">
+                    SPORTIFY 🏋️‍♂️
+                </Link>
+            </div>
+            
+            <div className="navbar-menu">
+                {/* 🌟 Ahora estos botones mueven la pantalla hacia abajo en la misma página */}
+                <span onClick={() => scrollToSection('seccion-clases')} className="navbar-link" style={{ cursor: 'pointer' }}>
+                    Clases
+                </span>
+                <span onClick={() => scrollToSection('seccion-gimnasio')} className="navbar-link" style={{ cursor: 'pointer' }}>
+                    El Gimnasio
+                </span>
+                
+                {token ? (
+                    <div className="navbar-auth">
+                        <Link to="/perfil" className="navbar-link">Mi Perfil</Link>
+                        <button onClick={handleLogout} className="navbar-link-highlight">
+                            Cerrar Sesión
+                        </button>
+                    </div>
+                ) : (
+                    <div className="navbar-auth">
+                        <Link to="/login" className="navbar-link">Iniciar Sesión</Link>
+                        <Link to="/registro" className="navbar-link">Registrarse</Link>
+                    </div>
+                )}
+            </div>
+        </nav>
+    );
 };
 
 export default Navbar;

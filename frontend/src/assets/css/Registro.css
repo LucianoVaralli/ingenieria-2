@@ -25,17 +25,24 @@
     background-color: #2a2d37; /* El fondo oscuro de tus capturas */
     color: white;
     box-sizing: border-box; /* Para que el padding no agrande el input */
+    transition: border-color 0.2s ease;
+}
+
+/* Efecto cuando hacés clic en el input para escribir */
+.registro-input:focus {
+    outline: none;
+    border-color: #5DBB46; /* Verde Sportify del logo */
 }
 
 /* Cuando el input tiene un error */
 .registro-input.error {
-    border: 1px solid red;
+    border: 1px solid #ff4a4a;
     background-color: #3a1f1f; /* Un fondo rojizo muy oscuro */
 }
 
 /* Mensajes de error */
 .error-message {
-    color: red;
+    color: #ff4a4a;
     font-size: 12px;
     margin-top: 5px;
 }
@@ -49,8 +56,8 @@
 .boton-registrar {
     width: 100%;
     margin-top: 25px;
-    background-color: #fbaf32; /* El naranja de tus botones */
-    color: black;
+    background-color: #5DBB46; /* El verde de tu logo */
+    color: #121212; /* Texto casi negro para que contraste perfecto con el verde */
     padding: 12px;
     border: none;
     border-radius: 5px;
@@ -61,7 +68,7 @@
 }
 
 .boton-registrar:hover {
-    background-color: #e59a1f;
+    background-color: #4ca138; /* Un verde apenitas más oscuro para el hover */
 }
 
 .login-link-container {
@@ -71,7 +78,11 @@
 }
 
 .login-link {
-    color: #fbaf32;
+    color: #5DBB46; /* Verde Sportify */
     font-weight: bold;
     text-decoration: none;
+}
+
+.login-link:hover {
+    text-decoration: underline;
 }

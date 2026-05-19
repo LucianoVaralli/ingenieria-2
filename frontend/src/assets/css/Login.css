@@ -1,1 +1,105 @@
-/* css */
+/* Contenedor que centra todo en la pantalla */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #121212; /* Fondo general bien oscuro */
+}
+
+/* La tarjeta del formulario */
+.login-box {
+    background-color: #1e1e24; /* Un gris sutilmente más claro que el fondo */
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); /* Sombra para darle profundidad */
+    width: 100%;
+    max-width: 400px;
+    color: white;
+}
+
+/* Cabecera con logo y título */
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-logo {
+    width: 80px; /* Ajustalo según el tamaño de tu imagen */
+    margin-bottom: 10px;
+}
+
+.login-titulo {
+    font-size: 26px;
+    margin: 0;
+    color: white; 
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Etiquetas de los inputs */
+.login-label {
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    color: #ddd;
+    font-size: 14px;
+}
+
+/* Inputs oscuros con borde dinámico */
+.login-input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    background-color: #2a2d37;
+    color: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+/* Efecto cuando se hace clic en el input */
+.login-input:focus {
+    outline: none;
+    border-color: #5DBB46; /* Verde Sportify */
+}
+
+/* Botón principal */
+.boton-login {
+    width: 100%;
+    margin-top: 30px;
+    background-color: #5DBB46;
+    color: #121212; /* Texto oscuro para contrastar */
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+.boton-login:hover {
+    background-color: #4ca138;
+}
+
+/* Link inferior */
+.registro-link-container {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #aaa;
+}
+
+.registro-link {
+    color: #5DBB46;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.registro-link:hover {
+    text-decoration: underline;
+}
