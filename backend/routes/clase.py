@@ -36,13 +36,13 @@ async def crear_clase(
     
     #validar que la clase no exista ya con el mismo dia, horario y actividad
     if db.query(Clase).filter(Clase.actividad == clase.actividad,
-                              Clase.dia == clase.dia,
-                              Clase.horario == clase.horario).first():
+                            Clase.dia == clase.dia,
+                            Clase.horario == clase.horario).first():
         raise HTTPException(status_code=400, detail="Creación de clase fallido por duplicar la misma clase")
     
     #validar que el profesor exista y tenga el rol de profesor
     if not db.query(Socio).filter(Socio.id == clase.profesor_id,
-                                  Socio.rol == Rol.PROFESOR.value).first():
+                                Socio.rol == Rol.PROFESOR.value).first():
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
 
     #ver si se pone como un escenario?
