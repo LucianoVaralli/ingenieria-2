@@ -69,7 +69,7 @@ def obtener_mi_perfil(
     db: Session = Depends(get_db)
 ):
     # La magia ocurre acá: la función decodifica el token y busca al socio
-    usuario = obtener_usuario_actual(db, token)
+    usuario = obtener_usuario_actual(token, db)
     
     return {
         "nombre": usuario.nombre,

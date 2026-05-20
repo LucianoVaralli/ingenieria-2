@@ -1,20 +1,51 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import engine, Base
+from sqlalchemy.orm import Session
+
+from database import engine, Base, SessionLocal
+
+from models.gimnasio import Gimnasio
+
 from routes.socios import router as socios_router
 from routes.auth import router as auth_router
 from routes.gimnasio import router as gimnasio_router
 from routes.clase import router as clase_router
+
 Base.metadata.create_all(bind=engine)
-
-
 
 app = FastAPI(
     title="Sportify API"
 )
 
-# Configuración de CORS
-# Configuración de CORS
+# =========================================
+# CREAR GIMNASIO POR DEFECTO
+# =========================================
+
+def crear_gimnasio_por_defecto():
+
+    db: Session = SessionLocal()
+
+    gimnasio = db.query(Gimnasio).first()
+
+    if not gimnasio:
+
+        nuevo_gimnasio = Gimnasio(
+            capacidad_total=50,
+            capacidad_disponible=50
+        )
+
+        db.add(nuevo_gimnasio)
+        db.commit()
+
+    db.close()
+
+# Ejecutar al iniciar la app
+crear_gimnasio_por_defecto()
+
+# =========================================
+# CORS
+# =========================================
+
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -22,16 +53,24 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,           # Permite que tu React entre
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],             # Permite POST, GET, etc.
-    allow_headers=["*"],             # Permite Authorization y otros headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+# =========================================
+# ROUTERS
+# =========================================
 
 app.include_router(socios_router)
 app.include_router(auth_router)
 app.include_router(gimnasio_router)
 app.include_router(clase_router)
+
+# =========================================
+# ROOT
+# =========================================
 
 @app.get("/")
 def read_root():
