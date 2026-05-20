@@ -12,7 +12,6 @@ const Navbar = ({ setToken }) => {
         navigate('/login');
     };
 
-    // 🌟 LA FUNCIÓN CLAVE: Mueve la pantalla al contenedor que tenga ese ID
     const scrollToSection = (idSeccion) => {
         const elemento = document.getElementById(idSeccion);
         if (elemento) {
@@ -36,7 +35,6 @@ const Navbar = ({ setToken }) => {
             </div>
             
             <div className="navbar-menu">
-                {/* 🌟 Ahora estos botones mueven la pantalla hacia abajo en la misma página */}
                 <span onClick={() => scrollToSection('seccion-clases')} className="navbar-link" style={{ cursor: 'pointer' }}>
                     Clases
                 </span>
