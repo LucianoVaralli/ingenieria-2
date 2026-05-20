@@ -44,7 +44,7 @@ async def crear_clase(
     
     #validar que el profesor exista y tenga el rol de profesor
     if not db.query(Socio).filter(Socio.id == clase.profesor_id,
-                                Socio.rol == Rol.PROFESOR.value).first():
+                                Socio.rol == Rol.Profesor.value).first():
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
 
     #ver si se pone como un escenario?
