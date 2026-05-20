@@ -77,7 +77,9 @@ def obtener_mi_perfil(
         "email": usuario.email,
         "rol": usuario.rol,
         "cuota_al_dia": usuario.cuota_al_dia,
-        "apto_fisico": usuario.apto_fisico_path
+        "apto_fisico": usuario.apto_fisico_path,
+        "telefono": usuario.telefono,
+        "dni": usuario.dni
     }
 
 @router.get("/")
