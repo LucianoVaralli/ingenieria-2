@@ -35,7 +35,6 @@ const Perfil = ({ token, setToken }) => {
             {user ? (
                 <div className="perfil-grid">
                     
-                    {/* COLUMNA IZQUIERDA: Credencial */}
                     <div className="perfil-card">
                         <div className="perfil-avatar">
                             {user.nombre ? user.nombre.charAt(0).toUpperCase() : 'S'}
@@ -43,15 +42,14 @@ const Perfil = ({ token, setToken }) => {
                         <h3 className="perfil-nombre">{user.nombre}</h3>
                         
                         <div className={`badge-cuota ${user.cuota_al_dia ? 'badge-al-dia' : 'badge-pendiente'}`}>
-                            Estado: {user.cuota_al_dia ? 'Cuota al Día ✅' : 'Matrícula Pendiente ❌'}
+                            Estado: {user.cuota_al_dia ? 'Cuota al Día' : 'Matrícula Pendiente'}
                         </div>
 
                         <p className="perfil-id">ID Socio: #2026{user.id || '01'}</p>
                     </div>
 
-                    {/* COLUMNA DERECHA: Paneles Dinámicos */}
                     <div className="perfil-info-column">
-                        
+
                         {/* Bloque Permanente: Reservas Activas */}
                         <div className="perfil-info-block">
                             <h4>📅 Mis Reservas Activas</h4>

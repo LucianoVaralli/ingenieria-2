@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 const Login = ({ setToken }) => { 
     const navigate = useNavigate();
     
-    // ¡ESTO ERA LO QUE FALTABA! Declarar los estados de los inputs
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -22,7 +21,7 @@ const Login = ({ setToken }) => {
             const res = await api.post('/auth/login', data);
             
             localStorage.setItem('token', res.data.access_token);
-            setToken(res.data.access_token); // Ahora funciona perfecto sin trabarse
+            setToken(res.data.access_token); 
 
             navigate('/home'); 
             

@@ -68,7 +68,7 @@ e.preventDefault();
     // 1. Limpiamos errores previos antes de empezar
 setErrors({});
 
-  // 2. Ejecutamos las validaciones de las reglas de negocio (Punto 2)
+  // 2. Ejecutamos las validaciones 
 if (!validate()) return; 
 
 const data = new FormData();
@@ -84,7 +84,6 @@ if (file) {
     data.append('apto_fisico', file); // Coincide con tu backend
 }
 
-  // --- AQUÍ EMPIEZA EL PUNTO 3 ---
 try {
     await api.post('/socios/registrar', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -107,7 +106,7 @@ try {
         alert("Ocurrió un error inesperado. Intentalo más tarde.");
     }
 }
-// --- AQUÍ TERMINA EL PUNTO 3 ---
+
 };
 
 return (
@@ -202,7 +201,7 @@ return (
         <input 
             type="file" 
                 accept=".pdf" 
-                className="registro-input" // Reutilizamos el estilo oscuro
+                className="registro-input" 
                 onChange={handleFileChange} 
                 required
         />
