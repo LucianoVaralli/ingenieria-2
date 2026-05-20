@@ -5,7 +5,7 @@ from models.enums import Rol
 from models.clase import Clase
 from models.gimnasio import Gimnasio
 from models.socio import Socio
-from schemas.clase import ClaseCreate
+from schemas.clase import ClaseCreate, ClaseResponse
 from dependencies.auth import verificar_admin
 
 from dependencies.database import get_db
@@ -110,6 +110,6 @@ async def eliminar_clase(
 
     return {"mensaje": "Eliminacion Completada"}
 
-@router.get("/")
+@router.get("/", response_model=list[ClaseResponse])
 def obtener_clases(db: Session = Depends(get_db)):
     return db.query(Clase).all()

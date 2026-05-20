@@ -7,5 +7,16 @@ class ClaseCreate(BaseModel):
     actividad: TipoActividad
     dia: DiaSemana
     horario: time
-    profesor_id: EmailStr
+    profesor_email: EmailStr
     cupo: int
+
+class ClaseResponse(BaseModel):
+    id: int
+    actividad: str
+    dia: DiaSemana
+    horario: time
+    profesor_id: int
+    cupo: int
+
+    class Config:
+        from_attributes = True
