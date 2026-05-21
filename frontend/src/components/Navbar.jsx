@@ -30,7 +30,8 @@ const Navbar = ({ setToken }) => {
         <nav className="navbar-container">
             <div className="navbar-logo">
                 <Link to={token ? "/home" : "/"} className="navbar-brand">
-                    SPORTIFY 🏋️‍♂️
+                    <span className="navbar-brand-icon">🏋️</span>
+                    <span className="navbar-brand-text">SPORTIFY</span>
                 </Link>
             </div>
             
@@ -52,7 +53,7 @@ const Navbar = ({ setToken }) => {
                 ) : (
                     <div className="navbar-auth">
                         <Link to="/login" className="navbar-link">Iniciar Sesión</Link>
-                        <Link to="/registro" className="navbar-link">Registrarse</Link>
+                        <Link to="/registro" className="navbar-btn">Registrarse</Link>
                     </div>
                 )}
             </div>

@@ -1,88 +1,338 @@
-/* Contenedor principal */
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+ 
+/* ── ROOT ── */
 .registro-container {
-    padding: 40px;
-    max-width: 500px;
-    margin: auto;
-    font-family: Arial, sans-serif;
-    color: white; /* Texto general en blanco */
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    font-family: 'Lora', serif;
+    background: #000;
+    overflow: hidden;
 }
-
-/* Estilo de los labels */
-.registro-label {
-    font-weight: bold;
-    margin-top: 15px;
+ 
+/* ── LEFT PANEL ── */
+.registro-left {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 56px;
+    overflow: hidden;
+    background: #000;
+}
+ 
+.registro-left-bg {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 70% 55% at 55% 25%, rgba(92,184,77,0.22) 0%, transparent 70%),
+        radial-gradient(ellipse 45% 70% at 15% 85%, rgba(92,184,77,0.10) 0%, transparent 60%);
+    z-index: 0;
+}
+ 
+.registro-left-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(92,184,77,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(92,184,77,0.07) 1px, transparent 1px);
+    background-size: 48px 48px;
+    z-index: 0;
+}
+ 
+.registro-deco-circle {
+    position: absolute;
+    top: 50%;
+    left: 55%;
+    transform: translate(-20%, -50%);
+    width: 460px;
+    height: 460px;
+    border-radius: 50%;
+    border: 1px solid rgba(92,184,77,0.15);
+    z-index: 1;
+    pointer-events: none;
+}
+ 
+.registro-deco-circle::before {
+    content: '';
+    position: absolute;
+    inset: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(92,184,77,0.08);
+}
+ 
+.registro-left-content {
+    position: relative;
+    z-index: 2;
+}
+ 
+.registro-tagline {
+    font-family: 'Lora', serif;
+    font-size: clamp(40px, 5vw, 66px);
+    font-weight: 700;
+    line-height: 1.05;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin-bottom: 18px;
+}
+ 
+.registro-tagline span {
+    color: #5CB84D;
+    font-style: italic;
+}
+ 
+.registro-sub {
+    font-size: 15px;
+    font-style: italic;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 40px;
+}
+ 
+.registro-stats {
+    display: flex;
+    gap: 32px;
+}
+ 
+.registro-stat-num {
     display: block;
-    color: #ddd; /* Un blanco apenas grisáceo para que no canse la vista */
+    font-family: 'Lora', serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: #5CB84D;
 }
-
-/* Estilo base de los inputs */
-.registro-input {
+ 
+.registro-stat-label {
+    display: block;
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 2px;
+}
+ 
+/* ── RIGHT PANEL ── */
+.registro-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 40px;
+    background: #000;
+    position: relative;
+    overflow-y: auto;
+}
+ 
+.registro-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(to bottom, transparent, rgba(92,184,77,0.4), transparent);
+}
+ 
+.registro-header {
+    text-align: center;
+    margin-bottom: 28px;
     width: 100%;
-    padding: 10px;
-    margin-top: 5px;
-    border-radius: 5px;
-    border: 1px solid #444; /* Borde oscuro sutil */
-    background-color: #2a2d37; /* El fondo oscuro de tus capturas */
-    color: white;
-    box-sizing: border-box; /* Para que el padding no agrande el input */
-    transition: border-color 0.2s ease;
+    max-width: 500px;
 }
-
-/* Efecto cuando hacés clic en el input para escribir */
-.registro-input:focus {
+ 
+.registro-titulo {
+    font-family: 'Lora', serif;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+    margin: 0 0 6px;
+}
+ 
+.registro-subtitle {
+    font-size: 13px;
+    font-style: italic;
+    color: rgba(255,255,255,0.35);
+}
+ 
+/* ── FORM ── */
+.registro-form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 500px;
+    gap: 14px;
+}
+ 
+.registro-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+ 
+.registro-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+ 
+.registro-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.38);
+}
+ 
+.registro-input {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-family: 'Lora', serif;
+    color: #fff;
     outline: none;
-    border-color: #5DBB46; /* Verde Sportify del logo */
+    transition: all 0.25s;
+    caret-color: #5CB84D;
+    box-sizing: border-box;
+    width: 100%;
 }
-
-/* Cuando el input tiene un error */
+ 
+.registro-input::placeholder {
+    color: rgba(255,255,255,0.18);
+}
+ 
+.registro-input:focus {
+    border-color: rgba(92,184,77,0.65);
+    background: rgba(92,184,77,0.05);
+    box-shadow: 0 0 0 3px rgba(92,184,77,0.10);
+}
+ 
 .registro-input.error {
-    border: 1px solid #ff4a4a;
-    background-color: #3a1f1f; /* Un fondo rojizo muy oscuro */
+    border-color: rgba(255,74,74,0.7);
+    background: rgba(255,74,74,0.05);
 }
-
+ 
+/* File input personalizado */
+.registro-file-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(92,184,77,0.35);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+ 
+.registro-file-label:hover {
+    border-color: rgba(92,184,77,0.65);
+    background: rgba(92,184,77,0.05);
+}
+ 
+.registro-file-icon {
+    font-size: 16px;
+}
+ 
+.registro-file-text {
+    font-size: 13px;
+    font-family: 'Lora', serif;
+    color: rgba(255,255,255,0.4);
+}
+ 
+.registro-file-input {
+    display: none;
+}
+ 
 /* Mensajes de error */
 .error-message {
     color: #ff4a4a;
-    font-size: 12px;
-    margin-top: 5px;
+    font-size: 11px;
+    font-style: italic;
 }
-
-.registro-titulo {
-    text-align: center;
-    color: white;
-    margin-bottom: 20px;
-}
-
+ 
+/* Botón */
 .boton-registrar {
     width: 100%;
-    margin-top: 25px;
-    background-color: #5DBB46; /* El verde de tu logo */
-    color: #121212; /* Texto casi negro para que contraste perfecto con el verde */
-    padding: 12px;
+    padding: 15px;
+    background: #5CB84D;
+    color: #000;
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
     border: none;
-    border-radius: 5px;
-    font-weight: bold;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.2s;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+    box-shadow: 0 4px 24px rgba(92,184,77,0.25);
+    margin-top: 6px;
 }
-
+ 
+.boton-registrar::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 2.5s infinite;
+}
+ 
+@keyframes shimmer {
+    0%   { left: -60%; }
+    100% { left: 160%; }
+}
+ 
 .boton-registrar:hover {
-    background-color: #4ca138; /* Un verde apenitas más oscuro para el hover */
+    background: #6dd15d;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(92,184,77,0.40);
 }
-
+ 
+/* Link login */
 .login-link-container {
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-style: italic;
+    color: rgba(255,255,255,0.3);
     text-align: center;
     margin-top: 20px;
-    color: white;
+    width: 100%;
+    max-width: 500px;
 }
-
+ 
 .login-link {
-    color: #5DBB46; /* Verde Sportify */
-    font-weight: bold;
+    color: #5CB84D;
     text-decoration: none;
+    font-weight: 600;
+    font-style: normal;
+    transition: opacity 0.2s;
 }
-
+ 
 .login-link:hover {
-    text-decoration: underline;
+    opacity: 0.75;
+}
+ 
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+    .registro-container {
+        grid-template-columns: 1fr;
+    }
+    .registro-left {
+        display: none;
+    }
+    .registro-box::before {
+        display: none;
+    }
+    .registro-box {
+        padding: 40px 24px;
+    }
+    .registro-row {
+        grid-template-columns: 1fr;
+    }
 }

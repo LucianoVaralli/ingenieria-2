@@ -111,110 +111,141 @@ try {
 
 return (
     <div className="registro-container">
-        <h2 style={{ textAlign: 'center' }}>Crear tu cuenta en Sportify</h2>
-    
-        <form onSubmit={handleRegistro}>
-        
-        {/* Campo Nombre */}
-        <label className="registro-label">Nombre:</label>
-        <input 
-            name="nombre" 
-                className="registro-input"
-                placeholder="Ej: Luciano" 
-                onChange={handleChange} 
-                required
-        />
 
-        {/* Campo Apellido */}
-        <label className="registro-label">Apellido:</label>
-        <input 
-            name="apellido" 
-                className="registro-input"
-                placeholder="Ej: Pérez" 
-                onChange={handleChange} 
-                required
-        />
+            {/* Panel izquierdo decorativo */}
+            <div className="registro-left">
+                <div className="registro-left-bg" />
+                <div className="registro-left-grid" />
+                <div className="registro-deco-circle" />
+                <div className="registro-left-content">
+                    <h2 className="registro-tagline">
+                        UNITE A<br />LA <span>COMUNIDAD</span><br />SPORTIFY
+                    </h2>
+                    <p className="registro-sub">Creá tu cuenta y empezá hoy.</p>
+                    <div className="registro-stats">
+                        <div className="registro-stat">
+                            <span className="registro-stat-num">+2K</span>
+                            <span className="registro-stat-label">Miembros</span>
+                        </div>
+                        <div className="registro-stat">
+                            <span className="registro-stat-num">30+</span>
+                            <span className="registro-stat-label">Clases</span>
+                        </div>
+                        <div className="registro-stat">
+                            <span className="registro-stat-num">5★</span>
+                            <span className="registro-stat-label">Rating</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        {/* Campo DNI con Error del Backend */}
-        <label className="registro-label">DNI:</label>
-        <input 
-            name="dni" 
-            type="text"
-            inputMode="numeric" // Esto hace que en celulares se abra el teclado numérico
-            className={`registro-input ${errors.dni ? 'error' : ''}`}
-            placeholder="Ej: 12345678 (sin puntos)" 
-            onChange={handleChange} 
-            maxLength="8" // No deja escribir más de 8
-            required
-        />
-        {errors.dni && <span className="error-message">{errors.dni}</span>}
+            {/* Panel derecho: formulario */}
+            <div className="registro-box">
+                <div className="registro-header">
+                    <h2 className="registro-titulo">Crear tu cuenta</h2>
+                    <p className="registro-subtitle">Completá los datos para registrarte</p>
+                </div>
 
-        {/* Campo Email con Error del Backend */}
-        <label className="registro-label">Correo Electrónico:</label>
-        <input 
-            name="email" 
-            type="email"
-            className={`registro-input ${errors.email ? 'error' : ''}`}
-            placeholder="usuario@email.com" 
-            onChange={handleChange} 
-            required
-        />
-        {errors.email && <span className="error-message">{errors.email}</span>}
+                <form onSubmit={handleRegistro} className="registro-form">
 
-        {/* Campo Teléfono con Validación de 10 dígitos */}
-        <label className="registro-label">Teléfono (Argentina):</label>
-        <input 
-            name="telefono" 
-                className={`registro-input ${errors.telefono ? 'error' : ''}`}
-                placeholder="Cod. Area + Numero (ej: 2215556677)" 
-                onChange={handleChange} 
-                required
-        />
-        {errors.telefono && <span className="error-message">{errors.telefono}</span>}
+                    <div className="registro-row">
+                        <div className="registro-field">
+                            <label className="registro-label">Nombre</label>
+                            <input name="nombre" className="registro-input" placeholder="Ej: Luciano" onChange={handleChange} required />
+                        </div>
+                        <div className="registro-field">
+                            <label className="registro-label">Apellido</label>
+                            <input name="apellido" className="registro-input" placeholder="Ej: Pérez" onChange={handleChange} required />
+                        </div>
+                    </div>
 
-        {/* Campo Password con Validación de Complejidad */}
-        <label className="registro-label">Contraseña:</label>
-        <input 
-            name="password" 
-                type="password"
-                className={`registro-input ${errors.password ? 'error' : ''}`}
-                placeholder="Mínimo 6 caracteres, 1 mayúscula y 1 especial" 
-                onChange={handleChange} 
-                required
-        />
-        {errors.password && <span className="error-message">{errors.password}</span>}
+                    <div className="registro-row">
+                        <div className="registro-field">
+                            <label className="registro-label">DNI</label>
+                            <input
+                                name="dni"
+                                type="text"
+                                inputMode="numeric"
+                                className={`registro-input ${errors.dni ? 'error' : ''}`}
+                                placeholder="Ej: 12345678"
+                                onChange={handleChange}
+                                maxLength="8"
+                                required
+                            />
+                            {errors.dni && <span className="error-message">{errors.dni}</span>}
+                        </div>
+                        <div className="registro-field">
+                            <label className="registro-label">Teléfono (Argentina)</label>
+                            <input
+                                name="telefono"
+                                className={`registro-input ${errors.telefono ? 'error' : ''}`}
+                                placeholder="Ej: 2215556677"
+                                onChange={handleChange}
+                                required
+                            />
+                            {errors.telefono && <span className="error-message">{errors.telefono}</span>}
+                        </div>
+                    </div>
 
-        {/* Confirmar Password */}
-        <label className="registro-label">Confirmar Contraseña:</label>
-        <input 
-            name="confirmar_password" 
-                type="password"
-                className={`registro-input ${errors.confirmar_password ? 'error' : ''}`}
-                placeholder="Repetí tu contraseña" 
-                onChange={handleChange} 
-                required
-        />
-        {errors.confirmar_password && <span className="error-message">{errors.confirmar_password}</span>}
+                    <div className="registro-field">
+                        <label className="registro-label">Correo Electrónico</label>
+                        <input
+                            name="email"
+                            type="email"
+                            className={`registro-input ${errors.email ? 'error' : ''}`}
+                            placeholder="usuario@email.com"
+                            onChange={handleChange}
+                            required
+                        />
+                        {errors.email && <span className="error-message">{errors.email}</span>}
+                    </div>
 
-        {/* Apto Físico */}
-        <label className="registro-label">Apto Físico (PDF):</label>
-        <input 
-            type="file" 
-                accept=".pdf" 
-                className="registro-input" 
-                onChange={handleFileChange} 
-                required
-        />
+                    <div className="registro-row">
+                        <div className="registro-field">
+                            <label className="registro-label">Contraseña</label>
+                            <input
+                                name="password"
+                                type="password"
+                                className={`registro-input ${errors.password ? 'error' : ''}`}
+                                placeholder="Mín. 6 car., 1 mayúscula y 1 especial"
+                                onChange={handleChange}
+                                required
+                            />
+                            {errors.password && <span className="error-message">{errors.password}</span>}
+                        </div>
+                        <div className="registro-field">
+                            <label className="registro-label">Confirmar Contraseña</label>
+                            <input
+                                name="confirmar_password"
+                                type="password"
+                                className={`registro-input ${errors.confirmar_password ? 'error' : ''}`}
+                                placeholder="Repetí tu contraseña"
+                                onChange={handleChange}
+                                required
+                            />
+                            {errors.confirmar_password && <span className="error-message">{errors.confirmar_password}</span>}
+                        </div>
+                    </div>
 
-        <button type="submit" className="boton-registrar">
-            REGISTRARME
-        </button>
-    </form>
+                    <div className="registro-field">
+                        <label className="registro-label">Apto Físico (PDF)</label>
+                        <label className="registro-file-label">
+                            <span className="registro-file-icon">📎</span>
+                            <span className="registro-file-text">Seleccionar archivo PDF</span>
+                            <input type="file" accept=".pdf" className="registro-file-input" onChange={handleFileChange} required />
+                        </label>
+                    </div>
 
-    <p className="login-link-container">
-            ¿Ya tenés cuenta? <Link to="/login" className="login-link">Iniciá sesión acá</Link>
-        </p>
-    </div>
+                    <button type="submit" className="boton-registrar">
+                        REGISTRARME
+                    </button>
+                </form>
+
+                <p className="login-link-container">
+                    ¿Ya tenés cuenta? <Link to="/login" className="login-link">Iniciá sesión acá</Link>
+                </p>
+            </div>
+        </div>
 );
 };
 
