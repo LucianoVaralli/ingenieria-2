@@ -11,3 +11,12 @@ class TipoActividad(str, Enum):
     Yoga = "yoga"
     Pilates = "pilates"
     Funcional = "funcional"
+
+class DiaSemana(str, Enum):
+    Lunes = "lunes"
+    Martes = "martes"
+    Miercoles = "miercoles"
+    Jueves = "jueves"
+    Viernes = "viernes"
+    Sabado = "sabado"
+    Domingo = "domingo"
