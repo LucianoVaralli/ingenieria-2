@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Registro from './pages/Registro';
 import Navbar from './components/Navbar';
 import Perfil from './pages/Perfil';
+import ForgotPassword from './pages/ForgotPassword';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
