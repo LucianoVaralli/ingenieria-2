@@ -63,9 +63,10 @@ const Login = ({ setToken }) => {
                         INICIAR SESIÓN
                     </button>
                 </form>
-
-                <p className="registro-link-container">
-                    ¿Sos nuevo? <Link to="/registro" className="registro-link">Registrate acá</Link>
+                <p className="forgot-password-container">
+                    <Link to="/forgot-password" className="forgot-password-link">
+                        ¿Olvidaste tu contraseña?
+                    </Link>
                 </p>
             </div>
         </div>

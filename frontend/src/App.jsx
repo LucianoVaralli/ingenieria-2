@@ -19,8 +19,8 @@ function App() {
         <Route path="/login" element={<Login setToken={setToken} />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
-        <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
       </Routes>
     </Router>
   );
