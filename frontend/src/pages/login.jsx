@@ -4,6 +4,7 @@ import '../assets/css/Login.css';
 import logoSportify from '../assets/logo.png';
 import { useNavigate } from 'react-router-dom'; 
 import { Link } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 
 const Login = ({ setToken }) => { 
     const navigate = useNavigate();
@@ -23,7 +24,14 @@ const Login = ({ setToken }) => {
             localStorage.setItem('token', res.data.access_token);
             setToken(res.data.access_token); 
 
-            navigate('/home'); 
+            const tokenRecibido = res.data.access_token;
+            const decoded = jwtDecode(tokenRecibido);
+            
+            if (decoded.rol === 'admin') {
+                navigate('/admin'); // Si es admin, al panel de control
+            } else {
+                navigate('/home');  // Si es socio/profesor, al home común
+            }
             
         } catch (err) {
             console.error(err);
