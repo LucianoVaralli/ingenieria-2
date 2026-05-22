@@ -1,64 +1,61 @@
-import { Link, useNavigate } from 'react-router-dom';
 
-const Navbar = () => {
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import '../assets/css/Navbar.css'; 
+
+const Navbar = ({ setToken }) => {
     const navigate = useNavigate();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token'); 
 
     const handleLogout = () => {
         localStorage.removeItem('token');
-        navigate('/');
-        window.location.reload(); // fuerza que el navbar se actualice
+        if (setToken) setToken(null); 
+        navigate('/login');
+    };
+
+    const scrollToSection = (idSeccion) => {
+        const elemento = document.getElementById(idSeccion);
+        if (elemento) {
+            elemento.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            // Si por alguna razón estás en otra ruta (/perfil o /login), primero va al inicio
+            navigate('/');
+            setTimeout(() => {
+                const el = document.getElementById(idSeccion);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
     };
 
     return (
-        <nav style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            padding: '10px 20px',
-            background: '#222',
-            color: 'white'
-        }}>
-            <div>
-                <Link to="/" style={{ color: 'white', fontWeight: 'bold', textDecoration: 'none' }}>
-                    SPORTIFY 🏋️‍♂️
+        <nav className="navbar-container">
+            <div className="navbar-logo">
+                <Link to={token ? "/home" : "/"} className="navbar-brand">
+                    <span className="navbar-brand-icon">🏋️</span>
+                    <span className="navbar-brand-text">SPORTIFY</span>
                 </Link>
             </div>
-
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <Link to="/nosotros" style={{ color: 'white' }}>El Gimnasio</Link>
-
+            
+            <div className="navbar-menu">
+                <span onClick={() => scrollToSection('seccion-clases')} className="navbar-link" style={{ cursor: 'pointer' }}>
+                    Clases
+                </span>
+                <span onClick={() => scrollToSection('seccion-gimnasio')} className="navbar-link" style={{ cursor: 'pointer' }}>
+                    El Gimnasio
+                </span>
+                
                 {token ? (
-                    // Socio registrado y logueado
-                    <>
-                        <Link to="/home" style={{ color: '#fbaf32' }}>Mi Perfil</Link>
-                        <button
-                            onClick={handleLogout}
-                            style={{
-                                background: '#ff4444',
-                                color: 'white',
-                                border: 'none',
-                                padding: '5px 12px',
-                                borderRadius: '5px',
-                                cursor: 'pointer'
-                            }}
-                        >
+                    <div className="navbar-auth">
+                        <Link to="/perfil" className="navbar-link">Mi Perfil</Link>
+                        <button onClick={handleLogout} className="navbar-link-highlight">
                             Cerrar Sesión
                         </button>
-                    </>
+                    </div>
                 ) : (
-                    // Usuario no registrado / no logueado
-                    <>
-                        <Link to="/login" style={{ color: 'white' }}>Iniciar Sesión</Link>
-                        <Link to="/registro" style={{
-                            background: '#fbaf32',
-                            padding: '5px 10px',
-                            borderRadius: '5px',
-                            color: 'black',
-                            textDecoration: 'none'
-                        }}>
-                            Registrarse
-                        </Link>
-                    </>
+                    <div className="navbar-auth">
+                        <Link to="/login" className="navbar-link">Iniciar Sesión</Link>
+                        <Link to="/registro" className="navbar-btn">Registrarse</Link>
+                    </div>
                 )}
             </div>
         </nav>

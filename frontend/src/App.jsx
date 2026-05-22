@@ -1,29 +1,32 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Login from './pages/Login'; // Ajustá la ruta según cómo llamaste a las carpetas
+import React, { useState } from 'react';
+import Login from './pages/Login'; 
 import Home from './pages/Home'; 
 import Registro from './pages/Registro';
 import Navbar from './components/Navbar';
 import Landing from './pages/Landing';
-import ReservaMembresia from './pages/ReservaMembresia';   // NUEVO
-import MisReservas from './pages/MisReservas';             // NUEVO
-import Clases from './pages/Clases';       // ← AGREGAR
-import Pago from './pages/Pago';           // ← AGREGAR
+import ReservaMembresia from './pages/ReservaMembresia';   
+import MisReservas from './pages/MisReservas';             
+import Clases from './pages/Clases';       
+import Pago from './pages/Pago';           
+import Perfil from './pages/Perfil';
+
 function App() {
+  const [token, setToken] = useState(localStorage.getItem('token'));
+
   return (
     <Router>
-      <Navbar /> {/* Se muestra siempre, arriba de cualquier ruta */}
+      <Navbar token={token} setToken={setToken} /> 
       <Routes>
-        
-        {/* Aquí irán agregando las demás pantallas del gimnasio */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/registro" element={<Registro />} />
+        <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
         <Route path="/clases" element={<Clases />} />    
-        <Route path="/reservar/membresia" element={<ReservaMembresia />} />  {/* NUEVO */}
+        <Route path="/reservar/membresia" element={<ReservaMembresia />} />  
         <Route path="/pago" element={<Pago />} /> 
-        <Route path="/mis-reservas" element={<MisReservas />} />        {/* NUEVO */}
-        {/* Ruta para cuando alguien escribe cualquier cosa que no existe */}
+        <Route path="/mis-reservas" element={<MisReservas />} />        
+        <Route path="/login" element={<Login setToken={setToken} />} />
+        <Route path="/registro" element={<Registro />} />
+        <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
       </Routes>
     </Router>

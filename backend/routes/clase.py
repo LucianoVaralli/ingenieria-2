@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Form
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from models.enums import Rol
 from models.clase import Clase
 from models.gimnasio import Gimnasio
 from models.socio import Socio
-from schemas.clase import ClaseCreate
+from schemas.clase import ClaseCreate, ClaseResponse
+from dependencies.auth import verificar_admin
 
 from dependencies.database import get_db
 
@@ -17,6 +18,7 @@ router = APIRouter(
 @router.post("/crear")
 async def crear_clase(
     clase: ClaseCreate,
+    usuario_actual: Socio = Depends(verificar_admin),
     db: Session = Depends(get_db)
 ):
     
@@ -36,20 +38,26 @@ async def crear_clase(
     
     #validar que la clase no exista ya con el mismo dia, horario y actividad
     if db.query(Clase).filter(Clase.actividad == clase.actividad,
-                              Clase.dia == clase.dia,
-                              Clase.horario == clase.horario).first():
+                            Clase.dia == clase.dia,
+                            Clase.horario == clase.horario).first():
         raise HTTPException(status_code=400, detail="Creación de clase fallido por duplicar la misma clase")
     
     #validar que el profesor exista y tenga el rol de profesor
     if not db.query(Socio).filter(Socio.id == clase.profesor_id,
                                   Socio.rol == Rol.Profesor.value).first():
+     Profesor = db.query(Socio).filter(
+                            Socio.email == clase.profesor_email,
+                            Socio.rol == Rol.Profesor.value).first()
+    
+    if not Profesor:
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
 
     #ver si se pone como un escenario?
-    if db.query(Clase).filter(Clase.profesor_id == clase.profesor_id,
-                              Clase.dia == clase.dia,
-                              Clase.horario == clase.horario).first():
+    if db.query(Clase).filter(Clase.profesor_id == Profesor.id,
+                            Clase.dia == clase.dia,
+                            Clase.horario == clase.horario).first():
         raise HTTPException(status_code=400, detail="Creación de clase fallida por el profesor ya tiene una clase en ese horario")
+    
     # Crear la clase en la base de datos, paso las condiciones necesarias para crear la clase
     nueva_clase = Clase(
         actividad=clase.actividad,
@@ -57,7 +65,9 @@ async def crear_clase(
         horario=clase.horario,
         profesor_id=clase.profesor_id,
         cupo=clase.cupo,
-        precio_individual=clase.precio_individual
+        precio_individual=clase.precio_individual,
+        profesor_id=Profesor.id,
+        cupo=clase.cupo
     )
 
     db.add(nueva_clase)
@@ -69,7 +79,8 @@ async def crear_clase(
 @router.delete("/{clase_id}")
 async def eliminar_clase(
     clase_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    usuario_actual: Socio = Depends(verificar_admin)
 ):
 
     gimnasio = db.query(Gimnasio).first()
@@ -104,7 +115,7 @@ async def eliminar_clase(
 
     return {"mensaje": "Eliminacion Completada"}
 
-@router.get("/")
+@router.get("/", response_model=list[ClaseResponse])
 def obtener_clases(db: Session = Depends(get_db)):
     clases = db.query(Clase).all()
     resultado = []
