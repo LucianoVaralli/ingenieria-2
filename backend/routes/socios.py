@@ -68,7 +68,7 @@ def obtener_mi_perfil(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-
+    # La magia ocurre acá: la función decodifica el token y busca al socio
     usuario = obtener_usuario_actual(token, db)
     
     return {
@@ -81,6 +81,8 @@ def obtener_mi_perfil(
         "telefono": usuario.telefono,
         "dni": usuario.dni
     }
+
+
 
 @router.get("/")
 def obtener_socios(

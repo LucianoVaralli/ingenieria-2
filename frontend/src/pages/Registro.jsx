@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Registro.css';
 
@@ -18,8 +18,7 @@ const [formData, setFormData] = useState({
 });
 const [file, setFile] = useState(null);
 const navigate = useNavigate();
-const location = useLocation();
-const mensajeRedireccion = location.state?.mensaje;
+
 const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 };
@@ -112,6 +111,7 @@ try {
 
 return (
     <div className="registro-container">
+
             {/* Panel izquierdo decorativo */}
             <div className="registro-left">
                 <div className="registro-left-bg" />
@@ -147,7 +147,7 @@ return (
                 </div>
 
                 <form onSubmit={handleRegistro} className="registro-form">
-
+                    {/* nombre y apellido */}
                     <div className="registro-row">
                         <div className="registro-field">
                             <label className="registro-label">Nombre</label>
@@ -158,7 +158,7 @@ return (
                             <input name="apellido" className="registro-input" placeholder="Ej: Pérez" onChange={handleChange} required />
                         </div>
                     </div>
-
+                    {/* dni */}
                     <div className="registro-row">
                         <div className="registro-field">
                             <label className="registro-label">DNI</label>
@@ -186,7 +186,7 @@ return (
                             {errors.telefono && <span className="error-message">{errors.telefono}</span>}
                         </div>
                     </div>
-
+                    {/* email */}
                     <div className="registro-field">
                         <label className="registro-label">Correo Electrónico</label>
                         <input
@@ -199,7 +199,7 @@ return (
                         />
                         {errors.email && <span className="error-message">{errors.email}</span>}
                     </div>
-
+                    {/* contraseña */}
                     <div className="registro-row">
                         <div className="registro-field">
                             <label className="registro-label">Contraseña</label>
@@ -226,12 +226,13 @@ return (
                             {errors.confirmar_password && <span className="error-message">{errors.confirmar_password}</span>}
                         </div>
                     </div>
-
+                    {/* apto fisico */}
                     <div className="registro-field">
-                        <label className="registro-label">Apto Físico (PDF)</label>
-                        <label className="registro-file-label">
-                            <span className="registro-file-icon">📎</span>
-                            <span className="registro-file-text">Seleccionar archivo PDF</span>
+                        <label className={`registro-file-label ${file ? 'registro-file-label--ok' : ''}`}>
+                            <span className="registro-file-icon">{file ? '✓' : '📎'}</span>
+                            <span className="registro-file-text">
+                                {file ? file.name : 'Seleccionar archivo PDF'}
+                            </span>
                             <input type="file" accept=".pdf" className="registro-file-input" onChange={handleFileChange} required />
                         </label>
                     </div>
