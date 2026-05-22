@@ -18,6 +18,7 @@ class SocioCreate(SocioBase):
     @field_validator("password")
     @classmethod
     def validar_complejidad_password(cls, v: str) -> str:
+        # Escenario 6: Validación de mayúscula y carácter especial
         if not re.search(r"[A-Z]", v):
             raise ValueError("contraseña invalida, debe incluir una mayuscula")
         if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
@@ -26,6 +27,7 @@ class SocioCreate(SocioBase):
 
     @model_validator(mode="after")
     def verificar_claves_coinciden(self) -> "SocioCreate":
+        # Escenario 8: Las contraseñas deben coincidir
         if self.password != self.confirmar_password:
             raise ValueError("Las contraseñas deben coincidir")
         return self
