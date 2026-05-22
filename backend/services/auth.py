@@ -1,4 +1,4 @@
-from http.client import HTTPException
+from fastapi import HTTPException
 
 from pwdlib import PasswordHash
 
@@ -11,7 +11,7 @@ from models.socio import Socio
 # CONFIGURACIÓN (En producción esto iría en un archivo .env)
 SECRET_KEY = "tu_clave_secreta_super_segura_para_sportify"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 def crear_token_acceso(data: dict):
     """Genera un token JWT firmado"""

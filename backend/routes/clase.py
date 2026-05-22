@@ -42,7 +42,7 @@ async def crear_clase(
     
     #validar que el profesor exista y tenga el rol de profesor
     if not db.query(Socio).filter(Socio.id == clase.profesor_id,
-                                  Socio.rol == Rol.PROFESOR.value).first():
+                                  Socio.rol == Rol.Profesor.value).first():
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
 
     #ver si se pone como un escenario?
@@ -56,7 +56,8 @@ async def crear_clase(
         dia=clase.dia,
         horario=clase.horario,
         profesor_id=clase.profesor_id,
-        cupo=clase.cupo
+        cupo=clase.cupo,
+        precio_individual=clase.precio_individual
     )
 
     db.add(nueva_clase)
@@ -105,4 +106,27 @@ async def eliminar_clase(
 
 @router.get("/")
 def obtener_clases(db: Session = Depends(get_db)):
-    return db.query(Clase).all()
+    clases = db.query(Clase).all()
+    resultado = []
+    for c in clases:
+        profesor = db.query(Socio).filter(Socio.id == c.profesor_id).first()
+        resultado.append({
+            "id": c.id,
+            "actividad": c.actividad,
+            "dia": c.dia,
+            "horario": c.horario,
+            "cupo": c.cupo,
+            "precio_individual": c.precio_individual,
+            "profesor_id": c.profesor_id,
+            "profesor_nombre": f"{profesor.nombre} {profesor.apellido}" if profesor else "Sin asignar"
+        })
+    return resultado
+
+@router.put("/cambiar-rol/{socio_id}")
+def cambiar_rol(socio_id: int, rol: str, db: Session = Depends(get_db)):
+    socio = db.query(Socio).filter(Socio.id == socio_id).first()
+    if not socio:
+        raise HTTPException(status_code=404, detail="Socio no encontrado")
+    socio.rol = rol
+    db.commit()
+    return {"mensaje": f"Rol cambiado a {rol}"}

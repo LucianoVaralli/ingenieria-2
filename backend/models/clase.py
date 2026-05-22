@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -13,5 +13,5 @@ class Clase(Base):
     dia = Column(String)
     horario = Column(String)
     profesor_id = Column(Integer, ForeignKey("socios.id")) #esta columna apunta al id de la tabla socios, esta clase pertenece a este profesor
-
+    precio_individual = Column(Float, nullable=False, default=0.0)
     cupo = Column(Integer)

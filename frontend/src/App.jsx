@@ -4,7 +4,10 @@ import Home from './pages/Home';
 import Registro from './pages/Registro';
 import Navbar from './components/Navbar';
 import Landing from './pages/Landing';
-
+import ReservaMembresia from './pages/ReservaMembresia';   // NUEVO
+import MisReservas from './pages/MisReservas';             // NUEVO
+import Clases from './pages/Clases';       // ← AGREGAR
+import Pago from './pages/Pago';           // ← AGREGAR
 function App() {
   return (
     <Router>
@@ -16,7 +19,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/home" element={<Home />} />
-        
+        <Route path="/clases" element={<Clases />} />    
+        <Route path="/reservar/membresia" element={<ReservaMembresia />} />  {/* NUEVO */}
+        <Route path="/pago" element={<Pago />} /> 
+        <Route path="/mis-reservas" element={<MisReservas />} />        {/* NUEVO */}
         {/* Ruta para cuando alguien escribe cualquier cosa que no existe */}
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
       </Routes>

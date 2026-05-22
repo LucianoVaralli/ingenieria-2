@@ -1,0 +1,343 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ── BASE ── */
+.perfil-container {
+    max-width: 1000px;
+    margin: 48px auto;
+    padding: 0 32px 100px;
+    font-family: 'Lora', serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ── HERO ── */
+.perfil-hero {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(92,184,77,0.18);
+}
+
+.perfil-hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 55% 140% at 0% 50%, rgba(92,184,77,0.11) 0%, transparent 55%),
+        #0d0d0d;
+    z-index: 0;
+}
+
+.perfil-hero::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0;
+    width: 3px; height: 100%;
+    background: linear-gradient(to bottom, #5CB84D 40%, transparent);
+    z-index: 1;
+}
+
+.perfil-hero-inner {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px 36px;
+}
+
+.perfil-avatar {
+    width: 60px; height: 60px;
+    background: #5CB84D;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: #000;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(92,184,77,0.2), 0 0 20px rgba(92,184,77,0.1);
+}
+
+.perfil-hero-info { flex: 1; }
+
+.perfil-nombre {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 3px;
+    letter-spacing: -0.2px;
+}
+
+.perfil-id {
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0;
+}
+
+.badge-cuota {
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.badge-al-dia {
+    background: rgba(92,184,77,0.10);
+    color: #5CB84D;
+    border: 1px solid rgba(92,184,77,0.3);
+}
+
+.badge-pendiente {
+    background: rgba(255,68,68,0.08);
+    color: #ff5555;
+    border: 1px solid rgba(255,68,68,0.28);
+}
+
+/* ── DATOS PERSONALES ── */
+.perfil-datos-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    align-items: center;
+    background: #0d0d0d;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 20px 36px;
+    gap: 0;
+}
+
+.dato-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 20px 4px 0;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    margin-right: 20px;
+}
+
+.dato-item:last-of-type {
+    border-right: none;
+}
+
+.dato-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    color: rgba(255,255,255,0.25);
+    font-weight: 600;
+}
+
+.dato-valor {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dato-divider { display: none; } /* ya no lo usamos */
+
+.btn-cambiar-pass {
+    background: transparent;
+    color: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: not-allowed;
+    font-size: 11px;
+    font-family: 'Lora', serif;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    transition: none;
+}
+
+/* ── RESERVAS ── */
+.perfil-reservas-section {
+    background: #0d0d0d;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 28px 36px 32px;
+}
+
+.perfil-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.perfil-section-icon { font-size: 15px; }
+
+.perfil-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.7);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1.8px;
+}
+
+/* Scroll */
+.perfil-reservas-scroll {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(92,184,77,0.2) transparent;
+}
+
+.perfil-reservas-scroll::-webkit-scrollbar { height: 3px; }
+.perfil-reservas-scroll::-webkit-scrollbar-track { background: transparent; }
+.perfil-reservas-scroll::-webkit-scrollbar-thumb {
+    background: rgba(92,184,77,0.2);
+    border-radius: 99px;
+}
+
+/* Estado vacío */
+.reserva-empty {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 48px 20px;
+    border: 1px dashed rgba(255,255,255,0.07);
+    border-radius: 14px;
+    text-align: center;
+}
+
+.reserva-empty-icon {
+    font-size: 28px;
+    opacity: 0.25;
+    display: block;
+}
+
+.reserva-empty p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.25);
+    font-style: italic;
+    margin: 0;
+}
+
+.reserva-empty span {
+    font-size: 12px;
+    color: rgba(92,184,77,0.4);
+    font-style: normal;
+    letter-spacing: 0.2px;
+}
+
+/* Cards reales */
+.reserva-card {
+    flex-shrink: 0;
+    width: 190px;
+    background: #141414;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.reserva-card:hover {
+    border-color: rgba(92,184,77,0.35);
+    transform: translateY(-2px);
+}
+
+.reserva-card-day {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #5CB84D;
+    font-weight: 700;
+}
+
+.reserva-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.reserva-card-clase {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.reserva-card-horario {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+}
+
+.reserva-card-profe {
+    font-size: 11px;
+    font-style: italic;
+    color: rgba(255,255,255,0.25);
+    margin-top: 4px;
+}
+
+.reserva-card-cancel {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid rgba(255,68,68,0.2);
+    border-radius: 7px;
+    color: rgba(255,85,85,0.6);
+    font-family: 'Lora', serif;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.reserva-card-cancel:hover {
+    background: rgba(255,68,68,0.08);
+    border-color: rgba(255,68,68,0.4);
+    color: #ff5555;
+}
+
+/* ── LOADING ── */
+.perfil-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: 16px;
+    color: rgba(255,255,255,0.25);
+    font-style: italic;
+    font-size: 13px;
+}
+
+.perfil-loading-spinner {
+    width: 32px; height: 32px;
+    border: 2px solid rgba(92,184,77,0.12);
+    border-top-color: #5CB84D;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 700px) {
+    .perfil-container { padding: 0 16px 60px; }
+    .perfil-hero-inner { padding: 20px 24px; }
+    .perfil-datos-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        padding: 20px 24px;
+    }
+    .dato-item { border-right: none; margin-right: 0; padding-right: 0; }
+    .perfil-reservas-section { padding: 24px 20px; }
+}

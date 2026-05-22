@@ -1,3 +1,5 @@
+import Clases from './Clases'; 
+
 const Landing = () => {
 return (
     <div>
@@ -6,9 +8,9 @@ return (
         <h1>ENTRENÁ EN SERIO, ENTRENÁ EN SPORTIFY</h1>
     </header>
 
-    <section style={{ padding: '40px' }}>
+    <section style={{ padding: '40px', textAlign: 'center' }}>
         <h2>Nuestros Horarios</h2>
-        <p>Aquí podés poner el cronograma de clases </p>
+        <Clases /> 
     </section>
     </div>
 );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Registro.css';
 
@@ -18,7 +18,8 @@ const [formData, setFormData] = useState({
 });
 const [file, setFile] = useState(null);
 const navigate = useNavigate();
-
+const location = useLocation();
+const mensajeRedireccion = location.state?.mensaje;
 const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 };
@@ -113,7 +114,20 @@ try {
 return (
     <div className="registro-container">
         <h2 style={{ textAlign: 'center' }}>Crear tu cuenta en Sportify</h2>
-    
+        {/* Mensaje cuando viene redirigido desde el calendario */}
+{mensajeRedireccion && (
+    <div style={{
+        background: '#2e2600',
+        border: '1px solid #fbaf32',
+        borderRadius: '8px',
+        padding: '10px 16px',
+        marginBottom: '1rem',
+        color: '#fbaf32',
+        textAlign: 'center'
+    }}>
+        {mensajeRedireccion}
+    </div>
+)}
         <form onSubmit={handleRegistro}>
         
         {/* Campo Nombre */}

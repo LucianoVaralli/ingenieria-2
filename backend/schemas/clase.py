@@ -7,3 +7,4 @@ class ClaseCreate(BaseModel):
     horario: str
     profesor_id: int
     cupo: int
+    precio_individual: float  # NUEVO

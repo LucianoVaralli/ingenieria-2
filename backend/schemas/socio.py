@@ -32,8 +32,15 @@ class SocioCreate(SocioBase):
             raise ValueError("Las contraseñas deben coincidir")
         return self
 
-class SocioResponse(SocioBase):
+class SocioResponse(BaseModel):  # O el nombre de la clase que use tu endpoint
     id: int
+    nombre: str
+    apellido: str
+    email: str
+    cuota_al_dia: bool
+    rol: str
+    dni: int
+    telefono: str  
 
     class Config:
         from_attributes = True

@@ -1,0 +1,182 @@
+/* ── Layout general ────────────────────────────────────────── */
+.clases-wrapper {
+    display: flex;
+    gap: 2rem;
+    padding: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    font-family: Arial, sans-serif;
+    color: white;
+    justify-content: center;
+}
+ 
+/* ── Calendario ────────────────────────────────────────────── */
+.cal-contenedor {
+    flex: 0 0 auto;
+}
+ 
+.cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+ 
+.cal-header h2 {
+    color: #fbaf32;
+    margin: 0;
+    font-size: 1.3rem;
+}
+ 
+.cal-nav {
+    background: #2a2d37;
+    color: #fbaf32;
+    border: 1px solid #fbaf32;
+    border-radius: 6px;
+    padding: 4px 14px;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.cal-nav:hover { background: #fbaf32; color: black; }
+ 
+.cal-tabla {
+    border-collapse: collapse;
+    width: 100%;
+}
+ 
+.cal-th {
+    background: #2a2d37;
+    color: #fbaf32;
+    padding: 8px 12px;
+    text-align: center;
+    font-size: 0.85rem;
+    border: 1px solid #3a3d47;
+}
+ 
+.cal-celda {
+    padding: 10px 14px;
+    text-align: center;
+    border: 1px solid #3a3d47;
+    cursor: pointer;
+    background: #1a1c23;
+    transition: background 0.15s;
+    min-width: 40px;
+}
+ 
+.cal-celda:hover:not(.vacio) { background: #2a2d37; }
+ 
+.cal-celda.hoy {
+    background: #2e2600;
+    color: #fbaf32;
+    font-weight: bold;
+}
+ 
+.cal-celda.seleccionado {
+    background: #fbaf32;
+    color: black;
+    font-weight: bold;
+}
+ 
+.cal-celda.vacio {
+    background: #111;
+    cursor: default;
+}
+ 
+/* ── Panel lateral ─────────────────────────────────────────── */
+.panel-clases {
+    flex: 1;
+    min-width: 280px;
+    max-width: 420px;
+    background: #1a1c23;
+    border-radius: 10px;
+    padding: 1.2rem;
+    border: 1px solid #3a3d47;
+}
+ 
+.panel-clases h3 {
+    color: #fbaf32;
+    margin-top: 0;
+    border-bottom: 1px solid #3a3d47;
+    padding-bottom: 0.5rem;
+}
+ 
+.sin-clases { color: #888; }
+ 
+/* ── Tarjeta de cada clase ─────────────────────────────────── */
+.clase-card {
+    background: #2a2d37;
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.8rem;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border 0.2s;
+    line-height: 1.7;
+}
+ 
+.clase-card:hover { border-color: #fbaf32; }
+.clase-card.elegida { border-color: #fbaf32; background: #2e2600; }
+ 
+.clase-nombre {
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: #fbaf32;
+    margin: 0 0 4px;
+    text-transform: capitalize;
+}
+ 
+.cupo-ok   { color: #4caf50; font-weight: bold; }
+.cupo-lleno { color: #f44336; font-weight: bold; }
+ 
+/* ── Opciones de reserva ───────────────────────────────────── */
+.reserva-opciones {
+    margin-top: 1rem;
+    border-top: 1px solid #3a3d47;
+    padding-top: 1rem;
+}
+ 
+.reserva-titulo {
+    margin-bottom: 0.8rem;
+    color: #ddd;
+}
+ 
+.reserva-modos {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+ 
+.modo-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #2a2d37;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border 0.2s;
+    color: white;
+}
+ 
+.modo-btn.activo { border-color: #fbaf32; color: #fbaf32; }
+.modo-btn input  { accent-color: #fbaf32; }
+ 
+.boton-reservar-cal {
+    width: 100%;
+    background: #fbaf32;
+    color: black;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+ 
+.boton-reservar-cal:hover:not(:disabled) { background: #e59a1f; }
+.boton-reservar-cal:disabled { background: #555; cursor: not-allowed; color: #999; }
+ 
