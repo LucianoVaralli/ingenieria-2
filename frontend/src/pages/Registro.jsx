@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Registro.css';
 
@@ -18,7 +18,8 @@ const [formData, setFormData] = useState({
 });
 const [file, setFile] = useState(null);
 const navigate = useNavigate();
-
+const location = useLocation();
+const mensajeRedireccion = location.state?.mensaje;
 const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 };
@@ -111,7 +112,6 @@ try {
 
 return (
     <div className="registro-container">
-
             {/* Panel izquierdo decorativo */}
             <div className="registro-left">
                 <div className="registro-left-bg" />

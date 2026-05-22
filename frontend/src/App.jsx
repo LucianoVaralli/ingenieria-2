@@ -4,6 +4,11 @@ import Login from './pages/Login';
 import Home from './pages/Home'; 
 import Registro from './pages/Registro';
 import Navbar from './components/Navbar';
+import Landing from './pages/Landing';
+import ReservaMembresia from './pages/ReservaMembresia';   
+import MisReservas from './pages/MisReservas';             
+import Clases from './pages/Clases';       
+import Pago from './pages/Pago';           
 import Perfil from './pages/Perfil';
 
 function App() {
@@ -15,6 +20,10 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
+        <Route path="/clases" element={<Clases />} />    
+        <Route path="/reservar/membresia" element={<ReservaMembresia />} />  
+        <Route path="/pago" element={<Pago />} /> 
+        <Route path="/mis-reservas" element={<MisReservas />} />        
         <Route path="/login" element={<Login setToken={setToken} />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
