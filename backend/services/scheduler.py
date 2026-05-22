@@ -43,8 +43,6 @@ def procesar_lista_espera():
                 db.delete(entrada)
                 continue
 
-            # ── Caso 1: verificar si hay cupo disponible ──────────────────
-            # Contar cuántas reservas confirmadas hay para esa clase y fecha
             confirmadas = db.query(Reserva).filter(
                 Reserva.clase_id    == entrada.clase_id,
                 Reserva.fecha_clase == entrada.fecha_clase,
@@ -52,8 +50,7 @@ def procesar_lista_espera():
             ).count()
 
             if confirmadas < clase.cupo:
-                # Hay cupo → buscar al primero con más prioridad para ESTA clase y fecha
-                # membresía antes que individual, y dentro del mismo tipo el más antiguo
+
                 primero = db.query(ListaEspera).filter(
                     ListaEspera.clase_id    == entrada.clase_id,
                     ListaEspera.fecha_clase == entrada.fecha_clase
@@ -63,7 +60,7 @@ def procesar_lista_espera():
                 ).first()
 
                 if primero:
-                    # Crear la reserva confirmada directamente (ya pagó)
+  
                     nueva_reserva = Reserva(
                         socio_id    = primero.socio_id,
                         clase_id    = primero.clase_id,

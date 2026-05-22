@@ -14,7 +14,7 @@ class Clase(Base):
 
     actividad = Column(Enum(TipoActividad))
     dia = Column(Enum(DiaSemana))
-    horario = Column(Time)
+    horario = Column(String)
     profesor_id = Column(Integer, ForeignKey("socios.id")) #esta columna apunta al id de la tabla socios, esta clase pertenece a este profesor
     precio_individual = Column(Float, nullable=False, default=0.0)
     cupo = Column(Integer)

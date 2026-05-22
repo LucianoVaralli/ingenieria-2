@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Clases.css';
 
-// Nombres de los días y meses en español
+
 const DIAS_SEMANA  = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MESES        = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                       'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-// Dado un día de semana en español (como lo guarda la DB), devuelve el número 0-6
+
 const DIA_A_NUM = {
     'domingo': 0, 'lunes': 1, 'martes': 2, 'miercoles': 3,
     'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6
@@ -40,15 +40,12 @@ const Clases = () => {
         fetchClases();
     }, []);
 
-    // ── Helpers del calendario ────────────────────────────────────────────
+    
 
-    // Primer día de la semana del mes (0=Dom ... 6=Sáb)
     const primerDiaSemana = new Date(anio, mes, 1).getDay();
 
-    // Cuántos días tiene el mes
     const diasEnMes = new Date(anio, mes + 1, 0).getDate();
 
-    // Todas las fechas del mes para una clase según su día de semana
     const calcularFechasDelMes = (diaClase) => {
         const numDia  = DIA_A_NUM[diaClase.toLowerCase()] ?? -1;
         const fechas  = [];
@@ -63,13 +60,11 @@ const Clases = () => {
         return fechas;
     };
 
-    // Formatear fecha "YYYY-MM-DD" a "DD/MM/YYYY"
     const formatearFecha = (str) => {
         const [y, m, d] = str.split('-');
         return `${d}/${m}/${y}`;
     };
 
-    // ── Al hacer click en un día del calendario ───────────────────────────
     const handleClickDia = (numDia) => {
         setDiaSelec(numDia);
         setClaseElegida(null);
@@ -77,14 +72,13 @@ const Clases = () => {
 
         const nombreDia = DIAS_SEMANA[new Date(anio, mes, numDia).getDay()].toLowerCase();
 
-        // Normalizar para comparar con lo que guarda la DB
         const mapaNombre = {
             'dom': 'domingo', 'lun': 'lunes', 'mar': 'martes',
             'mié': 'miercoles', 'jue': 'jueves', 'vie': 'viernes', 'sáb': 'sabado'
         };
         const diaDB = mapaNombre[nombreDia] ?? nombreDia;
 
-        // Filtrar clases de ese día y ordenar por horario
+        
         const clasesFiltradas = todasClases
             .filter(c => c.dia.toLowerCase() === diaDB)
             .sort((a, b) => a.horario.localeCompare(b.horario));
@@ -92,17 +86,17 @@ const Clases = () => {
         setClasesDelDia(clasesFiltradas);
     };
 
-    // ── Al elegir una clase del panel ────────────────────────────────────
+    
     const handleElegirClase = (clase) => {
         setClaseElegida(clase);
         setModoReserva(null);
     };
 
-    // ── Al presionar "Reservar" ───────────────────────────────────────────
+    
     const handleReservar = () => {
         if (!claseElegida || !modoReserva) return;
 
-        //si no hay token, redirigir a registro. Cuando RESERVA y no es SOCIO
+        
         const token = localStorage.getItem('token');
         if (!token) {
         navigate('/registro', {
@@ -117,7 +111,7 @@ const Clases = () => {
                 state: { clase: claseElegida, fechasDelMes }
             });
         } else {
-            // Fecha exacta del día seleccionado
+           
             const mm      = String(mes + 1).padStart(2, '0');
             const dd      = String(diaSelec).padStart(2, '0');
             const fechaDia = `${anio}-${mm}-${dd}`;
@@ -127,7 +121,7 @@ const Clases = () => {
         }
     };
 
-    // ── Navegación del mes actual hacia adelante────────────────────────────────────────────
+    
     const irMesAnterior = () => {
     const esMesActual = mes === hoy.getMonth() && anio === hoy.getFullYear();
     if (esMesActual) return; // no permite ir atrás
@@ -142,13 +136,13 @@ const Clases = () => {
         setDiaSelec(null); setClasesDelDia([]);
     };
 
-    // ── Construir las celdas del calendario ───────────────────────────────
+    
     const celdas = [];
-    // Espacios en blanco antes del día 1
+    
     for (let i = 0; i < primerDiaSemana; i++) {
         celdas.push(<td key={`v-${i}`} className="cal-celda vacio"></td>);
     }
-    // Días del mes
+    
     for (let d = 1; d <= diasEnMes; d++) {
         const esHoy     = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
         const esSelec   = d === diaSelec;
@@ -163,7 +157,7 @@ const Clases = () => {
         );
     }
 
-    // Agrupar en filas de 7
+    
     const filas = [];
     for (let i = 0; i < celdas.length; i += 7) {
         filas.push(<tr key={i}>{celdas.slice(i, i + 7)}</tr>);
@@ -172,7 +166,7 @@ const Clases = () => {
     return (
         <div className="clases-wrapper">
 
-            {/* ── Calendario ─────────────────────────────────────────── */}
+            {}
             <div className="cal-contenedor">
                 <div className="cal-header">
                     <button

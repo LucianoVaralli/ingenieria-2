@@ -15,10 +15,7 @@ router = APIRouter(
     tags=["Reservas"]
 )
  
-# ──────────────────────────────────────────────────────────────
-# Helpers internos
-# ──────────────────────────────────────────────────────────────
- 
+
 def _ya_tiene_reserva_en_horario(
     db: Session,
     socio_id: int,
@@ -111,7 +108,7 @@ def crear_reserva_membresia(
         "monto_total":        round(monto_total, 2),
         "hay_lista_espera":   True,
         "mensaje_espera": (
-            f"¿Desea estar en lista de espera para la clase de {clase.actividad} "
+            f"¿Desea estar en lista de espera para la clase de {clase.actividad.capitalize()} "
             f"del día {', '.join(datos.fechas_clase)}?"
         )
         }
@@ -157,8 +154,6 @@ def crear_reserva_membresia(
  
 # ──────────────────────────────────────────────────────────────
 # Endpoint 2: confirmar pago
-# Cubre: escenarios 1, 2, 3 (éxito) y escenario 4 (fallo de pago)
-# y escenario 6 (rechaza lista de espera)
 # ──────────────────────────────────────────────────────────────
  
 @router.post("/membresia/confirmar-pago")
@@ -175,7 +170,6 @@ def confirmar_pago_membresia(
         Reserva.estado   == "pendiente_pago"
     ).all()
 
-    # ── Caso especial: todas las fechas sin cupo (reservas_ids viene vacío) ──
     if not reservas and datos.fechas_sin_cupo and datos.acepta_lista_espera and datos.clase_id:
         if datos.pago_exitoso:
             for fecha in datos.fechas_sin_cupo:
@@ -199,18 +193,16 @@ def confirmar_pago_membresia(
                 detail="no se ha realizado el pago correctamente, no se puede llevar a cabo la reserva"
             )
 
-    # ── Si no hay reservas y no es caso especial → error ─────────────────
     if not reservas:
         raise HTTPException(status_code=404, detail="Reservas no encontradas")
 
-    # ── Escenario 6: rechazó la lista de espera ───────────────────────────
+
     if not datos.acepta_lista_espera:
         for r in reservas:
             db.delete(r)
         db.commit()
         raise HTTPException(status_code=400, detail="reserva cancelada")
 
-    # ── Escenario 4: pago fallido ─────────────────────────────────────────
     if not datos.pago_exitoso:
         clases_ya_devueltas = set()
         for r in reservas:
@@ -226,7 +218,6 @@ def confirmar_pago_membresia(
             detail="no se ha realizado el pago correctamente, no se puede llevar a cabo la reserva"
         )
 
-    # cubre los escenarios 1,2,3: pago exitoso ─────────────────────────────────
     detalle = []
     clases_ya_descontadas = set()
 

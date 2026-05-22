@@ -12,7 +12,6 @@ class Reserva(Base):
     # "membresia" o "individual"
     tipo         = Column(String, nullable=False)
 
-    # esta va? ya que siempre esta esperando
     estado       = Column(String, default="pendiente_pago")
 
     # Fecha concreta de esa clase, ej: "2026-03-09"

@@ -3,28 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import '../assets/css/Pago.css';
 import api from '../api/api.js';
 
-/**
- * Pago.jsx
- * Recibe por location.state:
- *   - monto:       número a pagar
- *   - reservasIds: lista de IDs de reservas pendientes
- *   - fechasSinCupo: fechas que van a lista de espera (puede ser [])
- *   - aceptaListaEspera: bool
- *   - onConfirmar: función callback (no aplica con navigate, se maneja con API)
- *
- * Cubre los 5 escenarios de la HU "Pagar membresía con tarjeta":
- *   E1: tarjeta crédito con fondos → pago exitoso
- *   E2: tarjeta débito con fondos → pago exitoso
- *   E3: tarjeta crédito sin fondos → "la cuenta no tiene saldo suficiente"
- *   E4: tarjeta débito sin fondos → "la cuenta no tiene saldo suficiente"
- *   E5: fallo de conexión → "hay inconvenientes con la conexión al banco"
- *
- * NOTA: La lógica real de validación la hace el backend al llamar a
- * POST /reservas/membresia/confirmar-pago. Acá simulamos los escenarios
- * hasta integrar el gateway de pago real.
- */
 
-// Tarjetas de prueba según la HU
 const TARJETAS = {
     '123456': { tipo: 'crédito', fondos: true },
     '456789': { tipo: 'débito',  fondos: true },
@@ -73,7 +52,7 @@ const Pago = () => {
     try {
         const tarjeta = TARJETAS[nroTarjeta];
 
-        // E5: fallo de conexión
+        //  fallo de conexión
         if (tarjeta?.tipo === 'error') {
             throw new Error('CONNECTION_ERROR');
         }
@@ -86,7 +65,7 @@ const Pago = () => {
             return;
         }
 
-        // E1 y E2: pago exitoso
+        // pago exitoso
         const res = await api.post('/reservas/membresia/confirmar-pago', {
             reservas_ids:        reservasIds,
             fechas_sin_cupo:     fechasSinCupo,
@@ -94,8 +73,11 @@ const Pago = () => {
             pago_exitoso:        true,
             clase_id:             claseId, 
         });
-
-        setMensaje('el pago se realizó');
+        console.log('Respuesta del backend:', res.data);
+        const mensajePago = res.data.mensaje === 'registrado en lista de espera'
+            ? 'Reserva exitosa con lista de espera'
+            : 'Reserva exitosa';
+        setMensaje(mensajePago);
         setEstado('exito');
 
     } catch (err) {
@@ -117,7 +99,7 @@ const Pago = () => {
         <div className="pago-container">
             <h2>Pago de Membresía</h2>
 
-            {/* ── Resumen ──────────────────────────────────────────── */}
+            {}
             {claseInfo && (
                 <div className="pago-resumen">
                     <p><strong>Clase:</strong> {claseInfo.actividad}</p>
@@ -128,7 +110,7 @@ const Pago = () => {
                 Total a pagar: <strong>${monto.toFixed(2)}</strong>
             </div>
 
-            {/* ── Formulario ───────────────────────────────────────── */}
+            {}
             {estado === 'inicial' && (
                 <div className="pago-form">
                     <label className="pago-label">Número de tarjeta</label>
@@ -154,7 +136,7 @@ const Pago = () => {
                 </div>
             )}
 
-            {/* ── Éxito ────────────────────────────────────────────── */}
+            {}
             {estado === 'exito' && (
                 <div className="pago-exito">
                     <h3> {mensaje}</h3>
@@ -165,7 +147,7 @@ const Pago = () => {
                 </div>
             )}
 
-            {/* ── Error ────────────────────────────────────────────── */}
+            {}
             {estado === 'error' && (
                 <div className="pago-error-box">
                     <h3> {mensaje}</h3>
