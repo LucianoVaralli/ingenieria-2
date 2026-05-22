@@ -66,19 +66,8 @@ router = APIRouter(
 # ---------------------------------------------------
 # RECUPERAR CONTRASEÑA
 # ---------------------------------------------------
-
-# Endpoint:
-# POST /auth/forgot-password
-
 @router.post("/forgot-password")
 def forgot_password(data: ForgotPasswordRequest):
-
-    # data.email viene del schema
-    # Ejemplo:
-    # {
-    #   "email": "usuario@gmail.com"
-    # }
-
     # Llamamos al service
     # Acá se podría:
     # - buscar usuario
@@ -105,14 +94,10 @@ def validate_code(data: ValidateCodeRequest):
 
     # Validamos el código
     valid = validate_recovery_code(data.code)
-
-    # Si el código no sirve
     if not valid:
         return {
             "message": "Código inválido o expirado"
         }
-
-    # Si el código es correcto
     return {
         "message": "Código válido"
     }
