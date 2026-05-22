@@ -37,6 +37,104 @@ def login(
 def logout():
     return {"mensaje": "Cierre de sesión exitoso"}
 
+# Importamos los schemas
+# Estos validan los datos que llegan desde el frontend
+from schemas.password_recovery import (
+    ForgotPasswordRequest,
+    ValidateCodeRequest,
+    ResetPasswordRequest
+)
+
+
+# Importamos funciones del service
+# Acá vive la lógica importante
+from services.password_recovery_service import (
+    send_recovery_code,
+    validate_recovery_code,
+    change_password
+)
+
+
+# Creamos el router
+# prefix="/auth" hace que todas las rutas empiecen con /auth
+router = APIRouter(
+    prefix="/auth",
+    tags=["Auth"]
+)
+
+
+# ---------------------------------------------------
+# RECUPERAR CONTRASEÑA
+# ---------------------------------------------------
+
+# Endpoint:
+# POST /auth/forgot-password
+
 @router.post("/forgot-password")
-def forgot_password():
-    return {"message": "Recuperación de contraseña"}
+def forgot_password(data: ForgotPasswordRequest):
+
+    # data.email viene del schema
+    # Ejemplo:
+    # {
+    #   "email": "usuario@gmail.com"
+    # }
+
+    # Llamamos al service
+    # Acá se podría:
+    # - buscar usuario
+    # - generar código
+    # - guardar código en DB
+    # - enviar mail
+    send_recovery_code(data.email)
+
+    # Respuesta al frontend
+    return {
+        "message": "Código enviado correctamente"
+    }
+
+
+# ---------------------------------------------------
+# VALIDAR CÓDIGO
+# ---------------------------------------------------
+
+# Endpoint:
+# POST /auth/validate-code
+
+@router.post("/validate-code")
+def validate_code(data: ValidateCodeRequest):
+
+    # Validamos el código
+    valid = validate_recovery_code(data.code)
+
+    # Si el código no sirve
+    if not valid:
+        return {
+            "message": "Código inválido o expirado"
+        }
+
+    # Si el código es correcto
+    return {
+        "message": "Código válido"
+    }
+
+
+# ---------------------------------------------------
+# CAMBIAR CONTRASEÑA
+# ---------------------------------------------------
+
+# Endpoint:
+# POST /auth/reset-password
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordRequest):
+
+    # Cambiamos contraseña
+    # usando el código y la nueva password
+    change_password(
+        data.code,
+        data.new_password
+    )
+
+    return {
+        "message": "Contraseña actualizada"
+    }
