@@ -61,7 +61,7 @@ def crear_reserva_membresia(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    socio = obtener_usuario_actual(db, token)
+    socio = obtener_usuario_actual(db=db, token=token)
  
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
     if not clase:
@@ -162,7 +162,7 @@ def confirmar_pago_membresia(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    socio = obtener_usuario_actual(db, token)
+    socio = obtener_usuario_actual(db=db, token=token)
 
     reservas = db.query(Reserva).filter(
         Reserva.id.in_(datos.reservas_ids),
@@ -306,7 +306,7 @@ def mis_reservas(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    socio = obtener_usuario_actual(db, token)
+    socio = obtener_usuario_actual(db=db, token=token)
     reservas = db.query(Reserva).filter(
         Reserva.socio_id == socio.id
     ).all()
@@ -319,7 +319,7 @@ def ver_lista_espera(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    socio = obtener_usuario_actual(db, token)
+    socio = obtener_usuario_actual(db=db, token=token)
     
     entradas = db.query(ListaEspera).all()
     resultado = []
