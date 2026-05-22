@@ -25,7 +25,10 @@ const Navbar = ({ setToken }) => {
             }, 100);
         }
     };
+    
+    const rol = localStorage.getItem("rol"); //recupero el rol del localStorage
 
+    const esAdmin = rol === "ADMIN"; //verifico si el rol es ADMIN
     return (
         <nav className="navbar-container">
             <div className="navbar-logo">
@@ -42,7 +45,11 @@ const Navbar = ({ setToken }) => {
                 <span onClick={() => scrollToSection('seccion-gimnasio')} className="navbar-link" style={{ cursor: 'pointer' }}>
                     El Gimnasio
                 </span>
-                
+                {esAdmin && ( //lo muestra solo si el usuario es admin
+                    <Link to="/admin" className="navbar-link">
+                        Panel Admin
+                    </Link>
+                )}
                 {token ? (
                     <div className="navbar-auth">
                         <Link to="/perfil" className="navbar-link">Mi Perfil</Link>

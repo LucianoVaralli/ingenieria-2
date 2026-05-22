@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Registro from './pages/Registro';
 import Navbar from './components/Navbar';
 import Perfil from './pages/Perfil';
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -18,6 +19,7 @@ function App() {
         <Route path="/login" element={<Login setToken={setToken} />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
       </Routes>
     </Router>
