@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
- 
+
 /* ── ROOT ── */
 .registro-container {
     min-height: 100vh;
@@ -9,7 +9,7 @@
     background: #000;
     overflow: hidden;
 }
- 
+
 /* ── LEFT PANEL ── */
 .registro-left {
     position: relative;
@@ -20,7 +20,7 @@
     overflow: hidden;
     background: #000;
 }
- 
+
 .registro-left-bg {
     position: absolute;
     inset: 0;
@@ -29,7 +29,7 @@
         radial-gradient(ellipse 45% 70% at 15% 85%, rgba(92,184,77,0.10) 0%, transparent 60%);
     z-index: 0;
 }
- 
+
 .registro-left-grid {
     position: absolute;
     inset: 0;
@@ -39,7 +39,7 @@
     background-size: 48px 48px;
     z-index: 0;
 }
- 
+
 .registro-deco-circle {
     position: absolute;
     top: 50%;
@@ -52,7 +52,7 @@
     z-index: 1;
     pointer-events: none;
 }
- 
+
 .registro-deco-circle::before {
     content: '';
     position: absolute;
@@ -60,12 +60,12 @@
     border-radius: 50%;
     border: 1px solid rgba(92,184,77,0.08);
 }
- 
+
 .registro-left-content {
     position: relative;
     z-index: 2;
 }
- 
+
 .registro-tagline {
     font-family: 'Lora', serif;
     font-size: clamp(40px, 5vw, 66px);
@@ -75,24 +75,24 @@
     letter-spacing: -0.5px;
     margin-bottom: 18px;
 }
- 
+
 .registro-tagline span {
     color: #5CB84D;
     font-style: italic;
 }
- 
+
 .registro-sub {
     font-size: 15px;
     font-style: italic;
     color: rgba(255,255,255,0.4);
     margin-bottom: 40px;
 }
- 
+
 .registro-stats {
     display: flex;
     gap: 32px;
 }
- 
+
 .registro-stat-num {
     display: block;
     font-family: 'Lora', serif;
@@ -100,7 +100,7 @@
     font-weight: 700;
     color: #5CB84D;
 }
- 
+
 .registro-stat-label {
     display: block;
     font-size: 11px;
@@ -109,7 +109,7 @@
     letter-spacing: 1.5px;
     margin-top: 2px;
 }
- 
+
 /* ── RIGHT PANEL ── */
 .registro-box {
     display: flex;
@@ -121,7 +121,7 @@
     position: relative;
     overflow-y: auto;
 }
- 
+
 .registro-box::before {
     content: '';
     position: absolute;
@@ -130,14 +130,14 @@
     height: 100%;
     background: linear-gradient(to bottom, transparent, rgba(92,184,77,0.4), transparent);
 }
- 
+
 .registro-header {
     text-align: center;
     margin-bottom: 28px;
     width: 100%;
     max-width: 500px;
 }
- 
+
 .registro-titulo {
     font-family: 'Lora', serif;
     font-size: 30px;
@@ -147,13 +147,13 @@
     color: #fff;
     margin: 0 0 6px;
 }
- 
+
 .registro-subtitle {
     font-size: 13px;
     font-style: italic;
     color: rgba(255,255,255,0.35);
 }
- 
+
 /* ── FORM ── */
 .registro-form {
     display: flex;
@@ -162,19 +162,19 @@
     max-width: 500px;
     gap: 14px;
 }
- 
+
 .registro-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 14px;
 }
- 
+
 .registro-field {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
- 
+
 .registro-label {
     font-size: 11px;
     font-weight: 600;
@@ -182,7 +182,7 @@
     letter-spacing: 1.5px;
     color: rgba(255,255,255,0.38);
 }
- 
+
 .registro-input {
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.08);
@@ -197,22 +197,22 @@
     box-sizing: border-box;
     width: 100%;
 }
- 
+
 .registro-input::placeholder {
     color: rgba(255,255,255,0.18);
 }
- 
+
 .registro-input:focus {
     border-color: rgba(92,184,77,0.65);
     background: rgba(92,184,77,0.05);
     box-shadow: 0 0 0 3px rgba(92,184,77,0.10);
 }
- 
+
 .registro-input.error {
     border-color: rgba(255,74,74,0.7);
     background: rgba(255,74,74,0.05);
 }
- 
+
 /* File input personalizado */
 .registro-file-label {
     display: flex;
@@ -225,33 +225,33 @@
     cursor: pointer;
     transition: all 0.25s;
 }
- 
+
 .registro-file-label:hover {
     border-color: rgba(92,184,77,0.65);
     background: rgba(92,184,77,0.05);
 }
- 
+
 .registro-file-icon {
     font-size: 16px;
 }
- 
+
 .registro-file-text {
     font-size: 13px;
     font-family: 'Lora', serif;
     color: rgba(255,255,255,0.4);
 }
- 
+
 .registro-file-input {
     display: none;
 }
- 
+
 /* Mensajes de error */
 .error-message {
     color: #ff4a4a;
     font-size: 11px;
     font-style: italic;
 }
- 
+
 /* Botón */
 .boton-registrar {
     width: 100%;
@@ -272,7 +272,7 @@
     box-shadow: 0 4px 24px rgba(92,184,77,0.25);
     margin-top: 6px;
 }
- 
+
 .boton-registrar::after {
     content: '';
     position: absolute;
@@ -282,18 +282,18 @@
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
     animation: shimmer 2.5s infinite;
 }
- 
+
 @keyframes shimmer {
     0%   { left: -60%; }
     100% { left: 160%; }
 }
- 
+
 .boton-registrar:hover {
     background: #6dd15d;
     transform: translateY(-1px);
     box-shadow: 0 8px 32px rgba(92,184,77,0.40);
 }
- 
+
 /* Link login */
 .login-link-container {
     font-family: 'Lora', serif;
@@ -305,7 +305,7 @@
     width: 100%;
     max-width: 500px;
 }
- 
+
 .login-link {
     color: #5CB84D;
     text-decoration: none;
@@ -313,11 +313,28 @@
     font-style: normal;
     transition: opacity 0.2s;
 }
- 
+
 .login-link:hover {
     opacity: 0.75;
 }
- 
+
+.registro-file-label--ok {
+    border-color: rgba(92,184,77,0.65);
+    background: rgba(92,184,77,0.06);
+}
+
+.registro-file-label--ok .registro-file-icon {
+    color: #5CB84D;
+}
+
+.registro-file-label--ok .registro-file-text {
+    color: rgba(255,255,255,0.75);
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+}
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
     .registro-container {
