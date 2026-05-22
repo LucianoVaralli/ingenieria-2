@@ -68,7 +68,7 @@ def obtener_mi_perfil(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    # La magia ocurre acá: la función decodifica el token y busca al socio
+
     usuario = obtener_usuario_actual(token, db)
     
     return {
@@ -82,6 +82,8 @@ def obtener_mi_perfil(
         "dni": usuario.dni
     }
 
+
+
 @router.get("/")
 def obtener_socios(
     db: Session = Depends(get_db),
@@ -90,7 +92,7 @@ def obtener_socios(
     # Validamos el token y obtenemos quién es el que pregunta
     usuario_peticion = obtener_usuario_actual(db, token)
     
-    # REGLA DE ROL: Solo Admin o Profesor (usando tu Enum)
+  
     if usuario_peticion.rol not in [Rol.Admin, Rol.Profesor]:
         raise HTTPException(
             status_code=403, 

@@ -39,11 +39,11 @@ class SocioResponse(BaseModel):  # O el nombre de la clase que use tu endpoint
     email: str
     cuota_al_dia: bool
     rol: str
-    
-
     dni: int
     telefono: str  
-    
+    dni: int
+    telefono: str  
+
     class Config:
         from_attributes = True
 

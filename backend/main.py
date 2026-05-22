@@ -10,6 +10,12 @@ from routes.socios import router as socios_router
 from routes.auth import router as auth_router
 from routes.gimnasio import router as gimnasio_router
 from routes.clase import router as clase_router
+from routes.reserva  import router as reserva_router   
+
+# Importar los modelos nuevos para que SQLAlchemy cree las tablas
+from models.reserva_MIO      import Reserva      
+from models.lista_espera import ListaEspera   
+from services.scheduler  import scheduler
 
 Base.metadata.create_all(bind=engine)
 
@@ -49,6 +55,8 @@ crear_gimnasio_por_defecto()
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
 app.add_middleware(
@@ -67,6 +75,7 @@ app.include_router(socios_router)
 app.include_router(auth_router)
 app.include_router(gimnasio_router)
 app.include_router(clase_router)
+app.include_router(reserva_router)   
 
 # =========================================
 # ROOT
