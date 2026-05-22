@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean
 from database import Base
 from models.enums import Rol
+from sqlalchemy.orm import relationship  
 
 # Definimos cómo es un Socio en la base de datos
 class Socio(Base):

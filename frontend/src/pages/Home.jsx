@@ -1,7 +1,7 @@
 import React, { useState, useEffect  } from 'react';
 import { Link } from 'react-router-dom';
 import '../assets/css/Home.css';
-
+import Clases from './Clases';
 // ─────────────────────────────────────────────
 // DATOS DEL SLIDESHOW
 // Reemplazá las URLs por fotos propias del gimnasio cuando las tengas
@@ -194,7 +194,10 @@ const Home = ({ token }) => {
                 </div>
             </section>
 
-        <div id="seccion-clases"> Calendario </div>
+        <section id="seccion-clases" className="home-section">
+        <div className="home-section-label">Reservá tu lugar</div>
+        <Clases />
+        </section>
             {/* ════════════════════════════════════════
                 SECCIÓN: DISCIPLINAS
                 Cards con descripción y beneficios

@@ -10,6 +10,7 @@ router = APIRouter(
     tags=["Gimnasio"]
 )
 
+# Esta funcion es para modificar la capacidad de un gimnasio que YA fue creado 
 @router.put("/capacidad")
 def actualizar_capacidad(
     datos: CapacidadUpdate,
@@ -64,6 +65,20 @@ def actualizar_capacidad(
         "capacidad_disponible": gimnasio.capacidad_disponible
     }
 
+# Para crear un gimnasio 
+@router.post("/inicializar")
+def inicializar_gimnasio(datos: CapacidadUpdate, db: Session = Depends(get_db)):
+    # Si ya existe, no crear otro
+    if db.query(Gimnasio).first():
+        raise HTTPException(status_code=400, detail="El gimnasio ya fue inicializado")
+    
+    gimnasio = Gimnasio(
+        capacidad_total=datos.capacidad_total,
+        capacidad_disponible=datos.capacidad_total
+    )
+    db.add(gimnasio)
+    db.commit()
+    return {"mensaje": "Gimnasio inicializado", "capacidad_total": datos.capacidad_total}
 @router.get("/")
 def obtener_gimnasio(db: Session = Depends(get_db)):
 
