@@ -30,63 +30,77 @@ const Perfil = ({ token, setToken }) => {
 
     return (
         <div className="perfil-container">
-            <h2 className="perfil-title">Mi Perfil de Socio 🪪</h2>
-
             {user ? (
-                <div className="perfil-grid">
-                    
-                    {/* COLUMNA IZQUIERDA: Credencial */}
-                    <div className="perfil-card">
-                        <div className="perfil-avatar">
-                            {user.nombre ? user.nombre.charAt(0).toUpperCase() : 'S'}
-                        </div>
-                        <h3 className="perfil-nombre">{user.nombre}</h3>
-                        
-                        <div className={`badge-cuota ${user.cuota_al_dia ? 'badge-al-dia' : 'badge-pendiente'}`}>
-                            Estado: {user.cuota_al_dia ? 'Cuota al Día ✅' : 'Matrícula Pendiente ❌'}
-                        </div>
-
-                        <p className="perfil-id">ID Socio: #2026{user.id || '01'}</p>
-                    </div>
-
-                    {/* COLUMNA DERECHA: Paneles Dinámicos */}
-                    <div className="perfil-info-column">
-                        
-                        {/* Bloque Permanente: Reservas Activas */}
-                        <div className="perfil-info-block">
-                            <h4>📅 Mis Reservas Activas</h4>
-                            <p>Actualmente no tenés turnos reservados para esta semana. ¡Andá al inicio para agendar una clase!</p>
-                        </div>
-
-                        {/* DESPLEGABLE: Información Personal */}
-                        <details className="perfil-desplegable">
-                            <summary>👤 Mis Datos Personales</summary>
-                            <div className="perfil-desplegable-content">
-                                <div className="dato-fila">
-                                    <span className="dato-label">Email:</span>
-                                    <span className="dato-valor">{user.email || 'No registrado'}</span>
-                                </div>
-                                <div className="dato-fila">
-                                    <span className="dato-label">DNI / Documento:</span>
-                                    <span className="dato-valor">{user.dni || '38.442.123'}</span> {/* Placeholder por si no está en el modelo */}
-                                </div>
-                                <div className="dato-fila">
-                                    <span className="dato-label">Teléfono de Contacto:</span>
-                                    <span className="dato-valor">{user.telefono || '221-555-4321'}</span> {/* Placeholder por si no está en el modelo */}
-                                </div>
-
-                                {/* Botón de seguridad adentro del mismo bloque */}
-                                <button className="btn-cambiar-pass" disabled>
-                                    🔒 Cambiar Contraseña (Próximamente)
-                                </button>
+                <>
+                    {/* ── HERO ── */}
+                    <div className="perfil-hero">
+                        <div className="perfil-hero-bg" />
+                        <div className="perfil-hero-inner">
+                            <div className="perfil-avatar">
+                                {user.nombre ? user.nombre.charAt(0).toUpperCase() : 'S'}
                             </div>
-                        </details>
-
+                            <div className="perfil-hero-info">
+                                <h2 className="perfil-nombre">{user.nombre}</h2>
+                                <p className="perfil-id">ID Socio · #2026{user.id || '01'}</p>
+                            </div>
+                            <div className={`badge-cuota ${user.cuota_al_dia ? 'badge-al-dia' : 'badge-pendiente'}`}>
+                                {user.cuota_al_dia ? '✓ Cuota al Día' : '⚠ Matrícula Pendiente'}
+                            </div>
+                        </div>
                     </div>
 
-                </div>
+                    {/* ── DATOS PERSONALES ── */}
+                    <div className="perfil-datos-row">
+                        <div className="dato-item">
+                            <span className="dato-label">Email</span>
+                            <span className="dato-valor">{user.email || 'No registrado'}</span>
+                        </div>
+                        <div className="dato-item">
+                            <span className="dato-label">DNI</span>
+                            <span className="dato-valor">{user.dni || '—'}</span>
+                        </div>
+                        <div className="dato-item">
+                            <span className="dato-label">Teléfono</span>
+                            <span className="dato-valor">{user.telefono || '—'}</span>
+                        </div>
+                        <button className="btn-cambiar-pass" disabled>
+                            🔒 Cambiar Contraseña
+                        </button>
+                    </div>
+
+                    {/* ── RESERVAS ── */}
+                    <div className="perfil-reservas-section">
+                        <div className="perfil-section-header">
+                            <span className="perfil-section-icon">📅</span>
+                            <h3 className="perfil-section-title">Mis Reservas Activas</h3>
+                        </div>
+
+                        <div className="perfil-reservas-scroll">
+                            {/* Estado vacío — reemplazá con tu map cuando tengas datos */}
+                            <div className="reserva-empty">
+                                <span className="reserva-empty-icon">🏋️</span>
+                                <p>No tenés turnos reservados para esta semana.</p>
+                                <span>Andá al inicio para agendar una clase</span>
+                            </div>
+
+                            {/* Cuando tengas reservas:
+                            {reservas.map(r => (
+                                <div className="reserva-card" key={r.id}>
+                                    <div className="reserva-card-day">{r.dia}</div>
+                                    <div className="reserva-card-body">
+                                        <span className="reserva-card-clase">{r.nombre_clase}</span>
+                                        <span className="reserva-card-horario">{r.horario}</span>
+                                        <span className="reserva-card-profe">Prof. {r.profesor}</span>
+                                    </div>
+                                    <button className="reserva-card-cancel">Cancelar</button>
+                                </div>
+                            ))} */}
+                        </div>
+                    </div>
+                </>
             ) : (
-                <div style={{ textAlign: 'center', marginTop: '50px', color: '#aaa' }}>
+                <div className="perfil-loading">
+                    <div className="perfil-loading-spinner" />
                     <p>Cargando panel de socio...</p>
                 </div>
             )}

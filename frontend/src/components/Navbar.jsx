@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../assets/css/Navbar.css'; 
@@ -12,7 +13,6 @@ const Navbar = ({ setToken }) => {
         navigate('/login');
     };
 
-    // 🌟 LA FUNCIÓN CLAVE: Mueve la pantalla al contenedor que tenga ese ID
     const scrollToSection = (idSeccion) => {
         const elemento = document.getElementById(idSeccion);
         if (elemento) {
@@ -26,24 +26,31 @@ const Navbar = ({ setToken }) => {
             }, 100);
         }
     };
+    
+    const rol = localStorage.getItem("rol"); //recupero el rol del localStorage
 
+    const esAdmin = rol === "ADMIN"; //verifico si el rol es ADMIN
     return (
         <nav className="navbar-container">
             <div className="navbar-logo">
                 <Link to={token ? "/home" : "/"} className="navbar-brand">
-                    SPORTIFY 🏋️‍♂️
+                    <span className="navbar-brand-icon">🏋️</span>
+                    <span className="navbar-brand-text">SPORTIFY</span>
                 </Link>
             </div>
             
             <div className="navbar-menu">
-                {/* 🌟 Ahora estos botones mueven la pantalla hacia abajo en la misma página */}
                 <span onClick={() => scrollToSection('seccion-clases')} className="navbar-link" style={{ cursor: 'pointer' }}>
                     Clases
                 </span>
                 <span onClick={() => scrollToSection('seccion-gimnasio')} className="navbar-link" style={{ cursor: 'pointer' }}>
                     El Gimnasio
                 </span>
-                
+                {esAdmin && ( //lo muestra solo si el usuario es admin
+                    <Link to="/admin" className="navbar-link">
+                        Panel Admin
+                    </Link>
+                )}
                 {token ? (
                     <div className="navbar-auth">
                         <Link to="/perfil" className="navbar-link">Mi Perfil</Link>
@@ -54,7 +61,7 @@ const Navbar = ({ setToken }) => {
                 ) : (
                     <div className="navbar-auth">
                         <Link to="/login" className="navbar-link">Iniciar Sesión</Link>
-                        <Link to="/registro" className="navbar-link">Registrarse</Link>
+                        <Link to="/registro" className="navbar-btn">Registrarse</Link>
                     </div>
                 )}
             </div>

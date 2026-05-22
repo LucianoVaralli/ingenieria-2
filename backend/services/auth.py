@@ -1,17 +1,19 @@
-from http.client import HTTPException
+from fastapi import HTTPException
 
 from pwdlib import PasswordHash
 
 from datetime import datetime, timedelta, timezone
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from fastapi import Depends
 from sqlalchemy.orm import Session
+from dependencies.database import get_db
 from models.socio import Socio
 
 # CONFIGURACIÓN (En producción esto iría en un archivo .env)
 SECRET_KEY = "tu_clave_secreta_super_segura_para_sportify"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 480
 
 def crear_token_acceso(data: dict):
     """Genera un token JWT firmado"""
@@ -29,12 +31,14 @@ def crear_token_acceso(data: dict):
 
 password_hasher = PasswordHash.recommended()
 
+#verificar que la contraseña sin encriptar coincida con la encriptada
 def verificar_password(plain_password, hashed_password):
     return password_hasher.verify(
         plain_password,
         hashed_password
     )
 
+#encriptar contraseña para guardarla en la base de datos
 def get_password_hash(password):
     return password_hasher.hash(password)
 
@@ -42,7 +46,12 @@ def get_password_hash(password):
 # Esto le dice a FastAPI que busque el token en el encabezado "Authorization"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-def obtener_usuario_actual(db: Session, token: str):
+from fastapi import Depends
+
+def obtener_usuario_actual(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
     try:
         # 1. Abrimos el token con la llave secreta
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
