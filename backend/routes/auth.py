@@ -54,15 +54,6 @@ from services.password_recovery_service import (
     change_password
 )
 
-
-# Creamos el router
-# prefix="/auth" hace que todas las rutas empiecen con /auth
-router = APIRouter(
-    prefix="/auth",
-    tags=["Auth"]
-)
-
-
 # ---------------------------------------------------
 # RECUPERAR CONTRASEÑA
 # ---------------------------------------------------
