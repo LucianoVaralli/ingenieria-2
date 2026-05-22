@@ -36,12 +36,14 @@ async def crear_clase(
     ).first():
         raise HTTPException(status_code=400, detail="Creación de clase fallido por duplicar la misma clase")
 
+
     # Buscar profesor por email
     profesor = db.query(Socio).filter(
         Socio.email == clase.profesor_email,
         Socio.rol == Rol.Profesor.value
     ).first()
 
+    
     if not profesor:
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
 

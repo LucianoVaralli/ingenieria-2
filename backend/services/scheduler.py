@@ -1,5 +1,5 @@
 # services/scheduler.py
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler 
 from datetime import datetime
 from database import SessionLocal
 from models.lista_espera import ListaEspera
