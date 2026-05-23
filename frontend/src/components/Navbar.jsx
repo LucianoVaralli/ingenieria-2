@@ -29,7 +29,7 @@ const Navbar = ({ setToken }) => {
     
     const rol = localStorage.getItem("rol"); //recupero el rol del localStorage
 
-    const esAdmin = rol === "ADMIN"; //verifico si el rol es ADMIN
+    const esAdmin = rol === "Admin"; //verifico si el rol es ADMIN
     return (
         <nav className="navbar-container">
             <div className="navbar-logo">

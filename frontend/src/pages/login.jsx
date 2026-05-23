@@ -22,6 +22,7 @@ const Login = ({ setToken }) => {
             const res = await api.post('/auth/login', data);
             
             localStorage.setItem('token', res.data.access_token);
+            localStorage.setItem("rol", res.data.rol);
             setToken(res.data.access_token); 
 
             const tokenRecibido = res.data.access_token;

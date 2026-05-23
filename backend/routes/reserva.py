@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import date, datetime
- 
+from datetime import date, datetime, time
 from dependencies.database import get_db
 from models.reserva_MIO      import Reserva
 from models.lista_espera import ListaEspera
@@ -20,7 +19,7 @@ def _ya_tiene_reserva_en_horario(
     db: Session,
     socio_id: int,
     dia: str,
-    horario: str,
+    horario: time,
     fechas: list[str]
 ) -> bool:
     """

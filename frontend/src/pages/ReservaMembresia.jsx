@@ -3,6 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
 
+const formatearHora = (hora) => {
+    return hora?.slice(0, 5);
+};
 
 const ReservaMembresia = () => {
     const location = useLocation();
@@ -111,7 +114,7 @@ const ReservaMembresia = () => {
             <div className="reserva-card">
                 <p><strong>Actividad:</strong> {clase.actividad}</p>
                 <p><strong>Día:</strong> {clase.dia}</p>
-                <p><strong>Horario:</strong> {clase.horario}</p>
+                <p><strong>Horario:</strong> {formatearHora(clase.horario)}</p>
                 <p><strong>Clases del mes:</strong> {fechasDelMes.length}</p>
                 <p><strong>Precio por clase:</strong> ${clase.precio_individual}</p>
                 {(descuentoEstimado > 0 || descuento > 0) && (

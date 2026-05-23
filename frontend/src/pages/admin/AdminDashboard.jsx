@@ -1,4 +1,7 @@
 import AdminNavbar from "../../components/AdminNavbar";
+import CrearClase from "./CrearClase";
+import ListaClasesAdmin from "./ListaClasesAdmin";
+import EditarCapacidad from "./EditarCapacidad";
 
 function AdminDashboard() {
 
