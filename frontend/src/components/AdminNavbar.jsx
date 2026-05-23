@@ -31,6 +31,14 @@ function AdminNavbar({ setToken }) {
                 <Link to="/admin/crear-clase" className="admin-link">
                     Crear Clase
                 </Link>
+                
+                <Link to="/admin/eliminar-clase" className="admin-link">
+                    Eliminar Clase
+                </Link>
+
+                <Link to="/admin/editar-capacidad" className="admin-link">
+                    Editar Capacidad
+                </Link>
 
                 <Link to="/admin/ver-clases" className="admin-link">
                     Ver Clases

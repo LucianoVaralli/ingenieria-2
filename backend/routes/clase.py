@@ -19,16 +19,25 @@ async def crear_clase(
     clase: ClaseCreate,
     db: Session = Depends(get_db)
 ):
+    # Validaciones
+    #validacion de que el gimnasio existe
     gimnasio = db.query(Gimnasio).first()
     if not gimnasio:
         raise HTTPException(status_code=404, detail="No existe configuración del gimnasio")
 
+    #validacion de que el cupo es mayor a 0
     if clase.cupo <= 0:
         raise HTTPException(status_code=400, detail="El cupo debe ser mayor a 0")
 
+    #validacion de que el gimnasio tiene capacidad disponible para esa clase
     if clase.cupo > gimnasio.capacidad_disponible:
         raise HTTPException(status_code=400, detail="Creación de clase fallido por falta de espacio en el gimnasio")
 
+    #validacion de que el precio es mayor a 0
+    if clase.precio_individual <= 0:
+        raise HTTPException(status_code=400, detail="El precio debe ser mayor a 0")
+
+    #validacion de que no exista una clase con la misma actividad, dia y horario
     if db.query(Clase).filter(
         Clase.actividad == clase.actividad,
         Clase.dia == clase.dia,
@@ -42,6 +51,7 @@ async def crear_clase(
         Socio.rol == Rol.Profesor.value
     ).first()
 
+    # Validar que el profesor exista y no tenga otra clase en el mismo horario
     if not profesor:
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
 
@@ -52,6 +62,7 @@ async def crear_clase(
     ).first():
         raise HTTPException(status_code=400, detail="Creación de clase fallida porque el profesor ya tiene una clase en ese horario")
 
+    # Crear la clase
     nueva_clase = Clase(
         actividad=clase.actividad,
         dia=clase.dia,
