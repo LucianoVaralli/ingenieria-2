@@ -1,3 +1,4 @@
+from models.socio import Socio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date, datetime, time
@@ -5,9 +6,8 @@ from dependencies.database import get_db
 from models.reserva_MIO      import Reserva
 from models.lista_espera import ListaEspera
 from models.clase        import Clase
-from models.enums        import Rol
 from services.auth       import oauth2_scheme, obtener_usuario_actual
-from schemas.reserva     import ReservaMembresiaCreate, ConfirmarPagoMembresia, AgregarListaEspera
+from schemas.reserva     import ReservaMembresiaCreate, ConfirmarPagoMembresia
  
 router = APIRouter(
     prefix="/reservas",
@@ -53,7 +53,7 @@ def _calcular_clases_perdidas(fechas: list[str]) -> int:
 # Endpoint 1: iniciar reserva con membresía
 # Cubre: escenarios 1, 2, 3, 5 y primer paso del 4
 # ──────────────────────────────────────────────────────────────
- 
+
 @router.post("/membresia/crear")
 def crear_reserva_membresia(
     datos: ReservaMembresiaCreate,
@@ -61,26 +61,31 @@ def crear_reserva_membresia(
     db: Session = Depends(get_db)
 ):
     socio = obtener_usuario_actual(db=db, token=token)
- 
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
-    if not clase:
+    
+    if not clase or not clase.activa:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
  
-    # ── Escenario 5: ya tiene reserva en ese día y horario ────────────────
+    hoy = date.today()
+    for fecha_str in datos.fechas_clase:
+        if datetime.strptime(fecha_str, "%Y-%m-%d").date() < hoy:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"No se pueden reservar clases en fechas pasadas ({fecha_str}). Proceso cancelado."
+            )
+
     if _ya_tiene_reserva_en_horario(db, socio.id, clase.dia, clase.horario, datos.fechas_clase):
         raise HTTPException(
             status_code=400,
-            detail="Ya tiene una reserva para las clases de ese horario"
+            detail="Ya tiene una reserva confirmada o pendiente para este horario en los días solicitados."
         )
  
-    # ── Escenario 2: calcular descuento por clases perdidas ───────────────
     clases_perdidas  = _calcular_clases_perdidas(datos.fechas_clase)
     precio_por_clase = clase.precio_individual
     total_clases     = len(datos.fechas_clase)
     descuento        = clases_perdidas * (precio_por_clase * 0.20)
     monto_total      = (precio_por_clase * total_clases) - descuento
  
-    # ── Escenario 3: separar fechas con y sin cupo ────────────────────────
     fechas_con_cupo = []
     fechas_sin_cupo = []
  
@@ -96,31 +101,33 @@ def crear_reserva_membresia(
         else:
             fechas_sin_cupo.append(fecha)
  
-    # Si TODAS las fechas están sin cupo no tiene sentido continuar
     if not fechas_con_cupo:
-        return  {
-        "reservas_ids":       [],
-        "fechas_con_cupo":    [],
-        "fechas_sin_cupo":    datos.fechas_clase,
-        "clases_perdidas":    clases_perdidas,
-        "descuento_aplicado": round(descuento, 2),
-        "monto_total":        round(monto_total, 2),
-        "hay_lista_espera":   True,
-        "mensaje_espera": (
-            f"¿Desea estar en lista de espera para la clase de {clase.actividad.capitalize()} "
-            f"del día {', '.join(datos.fechas_clase)}?"
-        )
+        return {
+            "reservas_ids":       [],
+            "fechas_con_cupo":    [],
+            "fechas_sin_cupo":    fechas_sin_cupo,
+            "clases_perdidas":    clases_perdidas,
+            "descuento_aplicado": round(descuento, 2),
+            "monto_total":        0.0, # Lista de espera pura siempre es costo 0
+            "hay_lista_espera":   len(fechas_sin_cupo) > 0,
+            "mensaje_espera": f"¿Desea estar en lista de espera para la clase de {clase.actividad.capitalize()} en las fechas sin cupo?"
         }
-    # ── Crear reservas pendiente_pago para fechas con cupo ────────────────
+    
+    # Si el usuario tiene créditos suficientes para cubrir las clases con cupo
+    cantidad_clases_a_reservar = len(fechas_con_cupo)
+    if socio.creditos_disponibles >= cantidad_clases_a_reservar:
+        monto_total = 0.0 # Se setea a cero porque el pago real se hará con créditos
+
+    # Crear reservas pendiente_pago
     reservas_creadas = []
     for fecha in fechas_con_cupo:
         r = Reserva(
-            socio_id    = socio.id,
-            clase_id    = datos.clase_id,
-            tipo        = "membresia",
-            estado      = "pendiente_pago",
+            socio_id = socio.id,
+            clase_id = datos.clase_id,
+            tipo = "membresia",
+            estado = "pendiente_pago",
             fecha_clase = fecha,
-            monto_total = monto_total,
+            monto_total = monto_total, 
         )
         db.add(r)
         reservas_creadas.append(r)
@@ -135,33 +142,22 @@ def crear_reserva_membresia(
         "fechas_sin_cupo":    fechas_sin_cupo,
         "clases_perdidas":    clases_perdidas,
         "descuento_aplicado": round(descuento, 2),
-        "monto_total":        round(monto_total, 2),
-        "hay_lista_espera":   len(fechas_sin_cupo) > 0
+        "monto_total":        round(monto_total, 2)
     }
  
-    # Escenario 3: agrega el mensaje de lista de espera
     if fechas_sin_cupo:
-        actividad   = clase.actividad
-        fechas_txt  = ", ".join(fechas_sin_cupo)
-        respuesta["mensaje_espera"] = (
-            f"¿Desea estar en lista de espera para la clase de {actividad} "
-            f"del día {fechas_txt}?"
-        )
+        respuesta["mensaje_espera"] = f"¿Desea estar en lista de espera para las fechas: {', '.join(fechas_sin_cupo)}?"
  
     return respuesta
- 
- 
-# ──────────────────────────────────────────────────────────────
-# Endpoint 2: confirmar pago
-# ──────────────────────────────────────────────────────────────
- 
+
+
 @router.post("/membresia/confirmar-pago")
 def confirmar_pago_membresia(
     datos: ConfirmarPagoMembresia,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    socio = obtener_usuario_actual(db=db, token=token)
+    socio = db.query(Socio).filter(Socio.id == obtener_usuario_actual(db=db, token=token).id).first()
 
     reservas = db.query(Reserva).filter(
         Reserva.id.in_(datos.reservas_ids),
@@ -169,8 +165,8 @@ def confirmar_pago_membresia(
         Reserva.estado   == "pendiente_pago"
     ).all()
 
-    if not reservas and datos.fechas_sin_cupo and datos.acepta_lista_espera and datos.clase_id:
-        if datos.pago_exitoso:
+    if not reservas and datos.fechas_sin_cupo and datos.clase_id:
+        if datos.acepta_lista_espera:
             for fecha in datos.fechas_sin_cupo:
                 entrada = ListaEspera(
                     socio_id    = socio.id,
@@ -184,59 +180,60 @@ def confirmar_pago_membresia(
             return {
                 "mensaje":      "registrado en lista de espera",
                 "clases":       [],
-                "monto_pagado": 0
+                "monto_pagado": 0.0
             }
         else:
-            raise HTTPException(
-                status_code=402,
-                detail="no se ha realizado el pago correctamente, no se puede llevar a cabo la reserva"
-            )
+            raise HTTPException(status_code=400, detail="Se rechazó la lista de espera.")
 
     if not reservas:
-        raise HTTPException(status_code=404, detail="Reservas no encontradas")
-
+        raise HTTPException(status_code=404, detail="Reservas pendientes no encontradas")
 
     if not datos.acepta_lista_espera:
         for r in reservas:
             db.delete(r)
         db.commit()
-        raise HTTPException(status_code=400, detail="reserva cancelada")
+        raise HTTPException(status_code=400, detail="Reserva cancelada por el usuario")
+    
+    # Evaluar si la reserva vino bonificada con créditos por el endpoint de creación
+    es_pago_con_creditos = reservas[0].monto_total == 0.0
 
-    if not datos.pago_exitoso:
-        clases_ya_devueltas = set()
+    # Si requería pago real monetario y la pasarela reportó un fallo genuino
+    if not es_pago_con_creditos and not datos.pago_exitoso:
         for r in reservas:
             r.estado = "cancelada"
-            if r.clase_id not in clases_ya_devueltas:
-                clase = db.query(Clase).filter(Clase.id == r.clase_id).first()
-                if clase:
-                    clase.cupo += 1
-                clases_ya_devueltas.add(r.clase_id)
         db.commit()
-        raise HTTPException(
-            status_code=402,
-            detail="no se ha realizado el pago correctamente, no se puede llevar a cabo la reserva"
-        )
+        raise HTTPException(status_code=402, detail="No se pudo procesar el pago. Reserva cancelada.")
+
+    # 🌟 REGLA DE NEGOCIO: Si es un pago con créditos, descontamos físicamente del socio
+    if es_pago_con_creditos:
+        cantidad_clases = len(reservas)
+        if socio.creditos_disponibles < cantidad_clases:
+            raise HTTPException(status_code=400, detail="No disponés de los créditos suficientes para realizar esta operación.")
+        
+        # Restamos los créditos de la bolsa del socio
+        socio.creditos_disponibles -= cantidad_clases
 
     detalle = []
-    clases_ya_descontadas = set()
+    monto_abonado = reservas[0].monto_total
 
     for r in reservas:
         clase = db.query(Clase).filter(Clase.id == r.clase_id).first()
-        if clase.id not in clases_ya_descontadas:
-            clase.cupo -= 1
-            clases_ya_descontadas.add(clase.id)
         r.estado       = "confirmada"
         r.monto_pagado = r.monto_total
+        
+        # Si pagó con créditos, dejamos constancia interna en la reserva
+        if es_pago_con_creditos:
+            r.credito_generado = False # Se consumió, no se generó
+            r.mensaje_admin = "Clase abonada exitosamente utilizando créditos pendientes."
+            
         detalle.append({
             "fecha":     r.fecha_clase,
-            "actividad": clase.actividad,
-            "horario":   clase.horario,
+            "actividad": clase.actividad if clase else "Actividad",
+            "horario":   clase.horario.strftime("%H:%M") if (clase and clase.horario) else None,
         })
-
-    db.commit()
-
-    if datos.acepta_lista_espera and datos.fechas_sin_cupo:
-        clase_id = reservas[0].clase_id
+        
+    if datos.fechas_sin_cupo:
+        clase_id = reservas[0].clase_id if reservas else datos.clase_id
         for fecha in datos.fechas_sin_cupo:
             entrada = ListaEspera(
                 socio_id    = socio.id,
@@ -246,14 +243,19 @@ def confirmar_pago_membresia(
                 estado      = "esperando"
             )
             db.add(entrada)
-        db.commit()
-
-    mensaje = "reserva exitosa con lista de espera" if datos.fechas_sin_cupo else "reserva exitosa"
+            
+    db.commit()
+    
+    # Mensaje adaptado según el canal de pago procesado
+    if es_pago_con_creditos:
+        mensaje = "reserva exitosa utilizando tus créditos"
+    else:
+        mensaje = "reserva exitosa con lista de espera" if datos.fechas_sin_cupo else "reserva exitosa"
 
     return {
         "mensaje":      mensaje,
         "clases":       detalle,
-        "monto_pagado": reservas[0].monto_total if reservas else 0
+        "monto_pagado": round(monto_abonado, 2)
     }
  
 # Endpoint 3: cancelar reserva y notificar al siguiente en lista de espera
@@ -276,7 +278,6 @@ def cancelar_reserva(
  
     # Liberar el cupo
     clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
-    clase.cupo   += 1
     reserva.estado = "cancelada"
     db.commit()
  
@@ -333,6 +334,6 @@ def ver_lista_espera(
             "fecha_clase":  e.fecha_clase,
             "tipo":         e.tipo,
             "estado":       e.estado,
-            "fecha_ingreso": e.fecha_ingreso,
+            "fecha_ingreso": e.fecha_ingreso,           
         })
     return resultado

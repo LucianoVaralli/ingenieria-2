@@ -44,6 +44,13 @@ def actualizar_capacidad(
     # Actualizar capacidad
     ocupado = gimnasio.capacidad_total - gimnasio.capacidad_disponible
 
+    # Validación: No podés poner una capacidad total menor a los cupos que ya repartiste entre tus clases
+    if datos.capacidad_total < ocupado:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"No podés reducir la capacidad total por debajo de los cupos ya repartidos ({ocupado} cupos repartidos)"
+        )
+
     nueva_disponible = datos.capacidad_total - ocupado
 
     # evitar negativos
@@ -79,9 +86,9 @@ def inicializar_gimnasio(datos: CapacidadUpdate, db: Session = Depends(get_db)):
     db.add(gimnasio)
     db.commit()
     return {"mensaje": "Gimnasio inicializado", "capacidad_total": datos.capacidad_total}
+
 @router.get("/")
 def obtener_gimnasio(db: Session = Depends(get_db)):
-
     gimnasio = db.query(Gimnasio).first()
 
     if not gimnasio:
@@ -90,4 +97,10 @@ def obtener_gimnasio(db: Session = Depends(get_db)):
             detail="No existe configuración del gimnasio"
         )
 
-    return gimnasio
+    # Devolver un diccionario limpio para evitar fallos de serialización en React
+    return {
+        "id": gimnasio.id,
+        "capacidad_total": gimnasio.capacidad_total,
+        "capacidad_disponible": gimnasio.capacidad_disponible
+    }
+

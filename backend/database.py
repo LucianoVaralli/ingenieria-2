@@ -1,9 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from pathlib import Path
 
-# Crea el archivo de la base de datos
-URL_DATABASE = "sqlite:///./sportify.db"
+BASE_DIR = Path(__file__).resolve().parent
+
+URL_DATABASE = f"sqlite:///{BASE_DIR / 'sportify.db'}"
 
 engine = create_engine(
     URL_DATABASE,
@@ -16,4 +18,4 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-Base = declarative_base()   
+Base = declarative_base()
