@@ -32,7 +32,7 @@ const CrearClase = () => {
         },
         {
             label: "Miércoles",
-            value: "miércoles"
+            value: "miercoles"
         },
         {
             label: "Jueves",
@@ -44,7 +44,7 @@ const CrearClase = () => {
         },
         {
             label: "Sábado",
-            value: "sábado"
+            value: "sabado"
         },
         {
             label: "Domingo",
@@ -61,11 +61,13 @@ const CrearClase = () => {
         horario: "",
         profesor_email: "",
         cupo: "",
+        duracion: "",
         precio_individual: ""
     });
 
     const [errores, setErrores] = useState({});
     const [errorBackend, setErrorBackend] = useState("");
+    const [mensajeExito, setMensajeExito] = useState("");
 /**  se agrega en el futuro para la lista desplegable de profesores, por ahora es un input de email
 useEffect(() => {
 
@@ -122,6 +124,35 @@ useEffect(() => {
             }
         }
 
+        // DURACION
+        if (name === "duracion") {
+
+            if (value === "") {
+
+                nuevosErrores.duracion =
+                    "Debe ingresar una duración";
+
+            } else if (isNaN(value)) {
+
+                nuevosErrores.duracion =
+                    "La duración debe ser numérica";
+
+            } else if (Number(value) < 30) {
+
+                nuevosErrores.duracion =
+                    "La duración mínima es de 30 minutos";
+
+            } else if (Number(value) > 240) {
+
+                nuevosErrores.duracion =
+                    "La duración máxima es de 4 horas";
+
+            } else {
+
+                delete nuevosErrores.duracion;
+            }
+        }        
+
         // PRECIO
         if (name === "precio_individual") {
 
@@ -171,12 +202,17 @@ useEffect(() => {
         e.preventDefault();
 
         setErrorBackend("");
+        setMensajeExito("");
 
         try {
 
             await api.post("/clases/crear", formData);
 
-            alert("Clase creada correctamente");
+            setMensajeExito("Creación de clase exitosa");
+
+            setTimeout(() => {
+                setMensajeExito("");
+            }, 3000);
 
             setFormData({
                 actividad: "",
@@ -184,6 +220,7 @@ useEffect(() => {
                 horario: "",
                 profesor_email: "",
                 cupo: "",
+                duracion: "",
                 precio_individual: ""
             });
 
@@ -204,6 +241,18 @@ useEffect(() => {
                 <div className="crear-clase-container">
 
                     <h2>Crear Clase</h2>
+
+                        {mensajeExito && (
+                            <p className="mensaje-exito">
+                                {mensajeExito}
+                            </p>
+                        )}
+
+                        {errorBackend && (
+                            <p className="input-error">
+                                {errorBackend}
+                            </p>
+                        )}                    
 
                     <form onSubmit={handleSubmit}>
 
@@ -305,6 +354,22 @@ useEffect(() => {
                             </p>
                         )}                
 
+                        {/* DURACION */}
+                        {/* mas adelante se deberia hacer como lista desplegable */}
+                        <input
+                            type="number"
+                            name="duracion"
+                            placeholder="Duración (minutos)"
+                            value={formData.duracion}
+                            onChange={handleChange}
+                        />
+
+                        {errores.duracion && (
+                            <p className="input-error">
+                                {errores.duracion}
+                            </p>
+                        )}
+
                         {/* PRECIO */}
                         <input
                             type="number"
@@ -320,13 +385,6 @@ useEffect(() => {
                             </p>
                         )}                        
 
-
-                        {/* ERROR BACK */}
-                        {errorBackend && (
-                            <p className="input-error">
-                                {errorBackend}
-                            </p>
-                        )}
                         <button
                             type="submit"
                             disabled={
@@ -336,6 +394,7 @@ useEffect(() => {
                                 !formData.horario ||
                                 !formData.profesor_email ||
                                 !formData.cupo ||
+                                !formData.duracion ||
                                 !formData.precio_individual
                             }
                         >

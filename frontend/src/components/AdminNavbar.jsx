@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import "../assets/css/AdminNavbar.css";
+import logoSportify from "../assets/logo.png";
 
 function AdminNavbar({ setToken }) {
 
@@ -19,13 +20,19 @@ function AdminNavbar({ setToken }) {
         <nav className="admin-navbar">
 
             <div className="admin-navbar-logo">
-                SPORTIFY ADMIN
+                <img
+                    src={logoSportify}
+                    alt="Sportify Logo"
+                    className="admin-navbar-logo-img"
+                />
+
+                <span>SPORTIFY ADMIN</span>
             </div>
 
             <div className="admin-navbar-links">
 
                 <Link to="/admin" className="admin-link">
-                    Dashboard
+                    Home
                 </Link>
 
                 <Link to="/admin/crear-clase" className="admin-link">
@@ -38,10 +45,6 @@ function AdminNavbar({ setToken }) {
 
                 <Link to="/admin/editar-capacidad" className="admin-link">
                     Editar Capacidad
-                </Link>
-
-                <Link to="/admin/ver-clases" className="admin-link">
-                    Ver Clases
                 </Link>
 
                 <button

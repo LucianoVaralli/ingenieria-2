@@ -43,9 +43,16 @@ function EditarCapacidad() {
                 setErrorBackend("La capacidad debe ser mayor a 0");
                 return;
             }
+
             const res = await api.put("/gimnasio/capacidad", {
                 capacidad_total: Number(nuevaCapacidad)
             });
+
+            setMensajeExito(res.data.mensaje);
+
+            setTimeout(() => {
+                setMensajeExito("");
+            }, 3000);
 
             setCapacidadTotal(res.data.capacidad_total);
             setCapacidadDisponible(res.data.capacidad_disponible);
@@ -56,7 +63,7 @@ function EditarCapacidad() {
 
             console.error(error);
 
-            alert(
+            setErrorBackend(
                 error.response?.data?.detail ||
                 "Error actualizando capacidad"
             );

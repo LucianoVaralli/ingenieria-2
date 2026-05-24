@@ -11,9 +11,13 @@ const Login = ({ setToken }) => {
     
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
 
     const handleLogin = async (e) => {
         e.preventDefault();
+
+        setError(''); // limpia errores anteriores
+
         try {
             const data = new URLSearchParams();
             data.append('username', email);
@@ -36,7 +40,8 @@ const Login = ({ setToken }) => {
             
         } catch (err) {
             console.error(err);
-            alert("Error en las credenciales");
+
+            setError('Correo o contraseña incorrectos');
         }
     };
 
@@ -48,11 +53,6 @@ const Login = ({ setToken }) => {
                 <div className="login-left-bg" />
                 <div className="login-left-grid" />
                 <div className="login-deco-circle" />
-
-                <div className="login-badge">
-                    <div className="login-badge-icon">🏋️</div>
-                    <span className="login-badge-name">Sportify</span>
-                </div>
 
                 <div className="login-left-content">
                     <h2 className="login-tagline">
@@ -106,6 +106,12 @@ const Login = ({ setToken }) => {
                     <button type="submit" className="boton-login">
                         INICIAR SESIÓN
                     </button>
+                    
+                    {error && (
+                        <p className="login-error">
+                            {error}
+                        </p>
+                    )}                    
                 </form>
 
                 <p className="registro-link-container">

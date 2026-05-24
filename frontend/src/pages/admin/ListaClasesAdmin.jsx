@@ -8,6 +8,8 @@ function ListaClasesAdmin() {
     const [clases, setClases] = useState([]);
     const [errorBackend, setErrorBackend] = useState("");
     const [mensajeExito, setMensajeExito] = useState("");
+    const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+    const [claseAEliminar, setClaseAEliminar] = useState(null);
 
     useEffect(() => {
         cargarClases();
@@ -25,24 +27,27 @@ function ListaClasesAdmin() {
     /**
      * La función que se encarga de eliminar la clase, recibe el id de la clase a eliminar
      */
-    const eliminarClase = async (id) => {
+    const eliminarClase = async () => {
 
         setErrorBackend("");
         setMensajeExito("");
 
-        const confirmar = window.confirm(
-            "¿Seguro que desea eliminar esta clase?"
-        );
-
-        if (!confirmar) return;
-
         try {
 
-            await api.delete(`/clases/${id}`);
+            await api.delete(`/clases/${claseAEliminar}`);
 
-            setClases(clases.filter(c => c.id !== id));
+            setClases(
+                clases.filter(c => c.id !== claseAEliminar)
+            );
 
-            setMensajeExito("Eliminacion Completada");
+            setMensajeExito("Eliminación completada");
+
+            setTimeout(() => {
+                setMensajeExito("");
+            }, 3000);
+
+            setMostrarConfirmacion(false);
+            setClaseAEliminar(null);
 
         } catch (error) {
 
@@ -85,10 +90,16 @@ function ListaClasesAdmin() {
                             >
 
                                 <div>
-                                    <h3>{clase.actividad}</h3>
+                                    <h3>
+                                        {clase.actividad.charAt(0).toUpperCase() +
+                                        clase.actividad.slice(1)}
+                                    </h3>
 
                                     <p>
-                                        {clase.dia} — {clase.horario?.slice(0,5)}
+                                        {clase.dia.charAt(0).toUpperCase() +
+                                        clase.dia.slice(1)}
+                                        {" — "}
+                                        {clase.horario?.slice(0,5)}
                                     </p>
 
                                     <p>
@@ -102,7 +113,10 @@ function ListaClasesAdmin() {
 
                                 <button
                                     className="btn-eliminar"
-                                    onClick={() => eliminarClase(clase.id)}
+                                    onClick={() => {
+                                        setClaseAEliminar(clase.id);
+                                        setMostrarConfirmacion(true);
+                                    }}
                                 >
                                     Eliminar clase
                                 </button>
@@ -112,6 +126,43 @@ function ListaClasesAdmin() {
                     )}
                 </div>
             </div>
+
+            {/* MODAL */}
+            {mostrarConfirmacion && (
+                <div className="modal-overlay">
+
+                    <div className="modal-confirmacion">
+
+                        <h3>
+                            ¿Seguro que desea eliminar esta clase?
+                        </h3>
+
+                        <div className="modal-botones">
+
+                            <button
+                                className="btn-cancelar"
+                                onClick={() => {
+                                    setMostrarConfirmacion(false);
+                                    setClaseAEliminar(null);
+                                }}
+                            >
+                                Cancelar
+                            </button>
+
+                            <button
+                                className="btn-eliminar"
+                                onClick={eliminarClase}
+                            >
+                                Eliminar
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            )}
+            
         </AdminLayout>
     );
 }

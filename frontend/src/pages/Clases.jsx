@@ -18,6 +18,20 @@ const formatearHora = (hora) => {
     return hora?.slice(0, 5);
 };
 
+const calcularHoraFin = (hora, duracion) => {
+
+    if (!hora || !duracion) return "";
+
+    const [h, m] = hora.split(":").map(Number);
+
+    const fecha = new Date();
+
+    fecha.setHours(h);
+    fecha.setMinutes(m + duracion);
+
+    return fecha.toTimeString().slice(0, 5);
+};
+
 const Clases = () => {
     const navigate  = useNavigate();
     const hoy       = new Date();
@@ -216,6 +230,8 @@ const Clases = () => {
                                 <p className="clase-nombre">{clase.actividad}</p>
                                 <p>Profesor: <strong>{clase.profesor_nombre}</strong></p>
                                 <p>Comienza a las: <strong>{formatearHora(clase.horario)}</strong></p>
+                                <p>Duración de la clase: <strong>{" "}{clase.duracion} min</strong></p>
+                                <p>Finaliza a las: <strong>{" "}{calcularHoraFin(clase.horario, clase.duracion)}</strong></p>
                                 <p>Precio: <strong>${clase.precio_individual}</strong></p>
                                 <p className={clase.cupo > 0 ? 'cupo-ok' : 'cupo-lleno'}>
                                     {clase.cupo > 0 ? `Cupos disponibles: ${clase.cupo}` : ' Sin cupos '}
