@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import Depends
 from sqlalchemy.orm import Session
 from dependencies.database import get_db
 from models.socio import Socio
@@ -58,21 +59,17 @@ from services.password_recovery_service import (
 # RECUPERAR CONTRASEÑA
 # ---------------------------------------------------
 @router.post("/forgot-password")
-def forgot_password(data: ForgotPasswordRequest):
-    # Llamamos al service
-    # Acá se podría:
-    # - buscar usuario
-    # - generar código
-    # - guardar código en DB
-    # - enviar mail
-    send_recovery_code(data.email)
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
 
-    # Respuesta al frontend
-    return {
-        "message": "Código enviado correctamente"
-    }
+    resultado = await send_recovery_code(
+        data.email,
+        db
+    )
 
-
+    return resultado
 # ---------------------------------------------------
 # VALIDAR CÓDIGO
 # ---------------------------------------------------

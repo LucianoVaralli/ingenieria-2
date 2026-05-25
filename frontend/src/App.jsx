@@ -38,6 +38,10 @@ function AppContent({ token, setToken }) {
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
       </Routes>
     </>
@@ -50,19 +54,10 @@ function App() {
 
   return (
     <Router>
-      <Navbar token={token} setToken={setToken} /> 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/login" element={<Login setToken={setToken} />} />
-        <Route path="/registro" element={<Registro />} />
-        <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
-      </Routes>
       <AppContent token={token} setToken={setToken} />
     </Router>
   );
 }
+ 
 
 export default App;
