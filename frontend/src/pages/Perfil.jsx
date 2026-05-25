@@ -1,33 +1,55 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
-
+ 
 const Perfil = ({ token, setToken }) => {
-    const [user, setUser] = useState(null);
+    const [user,     setUser]     = useState(null);
+    const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
-
+ 
     useEffect(() => {
-        if (!token) {
-            navigate('/login');
-            return;
-        }
-
-        const fetchUserData = async () => {
+        if (!token) { navigate('/login'); return; }
+ 
+        // Cargamos datos del usuario y sus reservas en paralelo
+        const fetchData = async () => {
             try {
-                const res = await api.get('/socios/me');
-                setUser(res.data);
+                const [resUser, resReservas] = await Promise.all([
+                    api.get('/socios/me'),
+                    api.get('/reservas/mis-reservas'),
+                ]);
+                setUser(resUser.data);
+                // Solo mostramos reservas confirmadas y futuras
+                const hoy = new Date();
+                hoy.setHours(0, 0, 0, 0);
+                const activas = resReservas.data.filter(r =>
+                    r.estado === 'confirmada' &&
+                    new Date(r.fecha_clase) >= hoy
+                );
+                setReservas(activas);
             } catch (err) {
-                console.error("No se pudo obtener el usuario", err);
+                console.error("Error cargando perfil", err);
                 localStorage.removeItem('token');
                 setToken(null);
                 navigate('/login');
             }
         };
-
-        fetchUserData();
+ 
+        fetchData();
     }, [token, navigate, setToken]);
-
+ 
+    // Cancelar una reserva
+    /*const handleCancelar = async (reservaId) => {
+        if (!window.confirm('¿Seguro que querés cancelar esta reserva?')) return;
+        try {
+            await api.post(`/reservas/membresia/cancelar/${reservaId}`);
+            // La sacamos del estado local sin recargar la página
+            setReservas(prev => prev.filter(r => r.id !== reservaId));
+        } catch (err) {
+            alert(err.response?.data?.detail || 'No se pudo cancelar la reserva.');
+        }
+    }; */
+ 
     return (
         <div className="perfil-container">
             {user ? (
@@ -48,7 +70,7 @@ const Perfil = ({ token, setToken }) => {
                             </div>
                         </div>
                     </div>
-
+ 
                     {/* ── DATOS PERSONALES ── */}
                     <div className="perfil-datos-row">
                         <div className="dato-item">
@@ -67,34 +89,67 @@ const Perfil = ({ token, setToken }) => {
                             🔒 Cambiar Contraseña
                         </button>
                     </div>
-
+ 
                     {/* ── RESERVAS ── */}
                     <div className="perfil-reservas-section">
                         <div className="perfil-section-header">
                             <span className="perfil-section-icon">📅</span>
                             <h3 className="perfil-section-title">Mis Reservas Activas</h3>
+                            {/* Contador de reservas */}
+                            {reservas.length > 0 && (
+                                <span className="perfil-reservas-count">{reservas.length}</span>
+                            )}
                         </div>
-
+ 
                         <div className="perfil-reservas-scroll">
-                            {/* Estado vacío — reemplazá con tu map cuando tengas datos */}
-                            <div className="reserva-empty">
-                                <span className="reserva-empty-icon">🏋️</span>
-                                <p>No tenés turnos reservados para esta semana.</p>
-                                <span>Andá al inicio para agendar una clase</span>
-                            </div>
-
-                            {/* Cuando tengas reservas:
-                            {reservas.map(r => (
-                                <div className="reserva-card" key={r.id}>
-                                    <div className="reserva-card-day">{r.dia}</div>
-                                    <div className="reserva-card-body">
-                                        <span className="reserva-card-clase">{r.nombre_clase}</span>
-                                        <span className="reserva-card-horario">{r.horario}</span>
-                                        <span className="reserva-card-profe">Prof. {r.profesor}</span>
-                                    </div>
-                                    <button className="reserva-card-cancel">Cancelar</button>
+                            {reservas.length === 0 ? (
+                                /* Estado vacío */
+                                <div className="reserva-empty">
+                                    <span className="reserva-empty-icon">🏋️</span>
+                                    <p>No tenés turnos reservados para esta semana.</p>
+                                    <Link to="/" className="reserva-empty-link">
+                                        Andá al inicio para agendar una clase
+                                    </Link>
                                 </div>
-                            ))} */}
+                            ) : (
+                                /* Cards de reservas reales */
+                                reservas.map(r => (
+                                    <div className="reserva-card" key={r.id}>
+                                        {/* Fecha */}
+                                        <div className="reserva-card-day">
+                                            {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                weekday: 'short',
+                                                day:     'numeric',
+                                                month:   'short',
+                                            })}
+                                        </div>
+                                        <div className="reserva-card-body">
+                                            {/* El backend devuelve clase_id, pero necesitamos
+                                                el nombre. Si tu endpoint /mis-reservas devuelve
+                                                objetos con relación a clase, usá r.clase.actividad.
+                                                Si no, mostramos lo que haya disponible. */}
+                                            <span className="reserva-card-clase">
+                                                {r.clase?.actividad || `Clase #${r.clase_id}`}
+                                            </span>
+                                            <span className="reserva-card-horario">
+                                                {r.clase?.horario
+                                                    ? r.clase.horario.slice(0, 5)
+                                                    : '—'}
+                                            </span>
+                                            <span className="reserva-card-tipo">
+                                                {r.tipo === 'membresia' ? '📋 Membresía' : '🎫 Individual'}
+                                            </span>
+                                        </div>
+                                        {/*<button
+                                            className="reserva-card-cancel"
+                                            onClick={() => handleCancelar(r.id)}
+                                        >
+                                            Cancelar
+                                        </button>
+                                        */}
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </>
@@ -107,5 +162,5 @@ const Perfil = ({ token, setToken }) => {
         </div>
     );
 };
-
+ 
 export default Perfil;

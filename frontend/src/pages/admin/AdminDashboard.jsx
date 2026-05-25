@@ -1,4 +1,7 @@
 import AdminNavbar from "../../components/AdminNavbar";
+import CrearClase from "./CrearClase";
+import ListaClasesAdmin from "./ListaClasesAdmin";
+import EditarCapacidad from "./EditarCapacidad";
 
 function AdminDashboard() {
 
@@ -29,12 +32,37 @@ function AdminDashboard() {
                     Desde acá vas a poder gestionar:
                 </p>
 
-                <ul>
-                    <li>Clases</li>
-                    <li>Horarios</li>
-                    <li>Capacidad del gimnasio</li>
-                    <li>Reservas</li>
-                </ul>
+                <div className="admin-opciones">
+
+                    <div className="admin-card">
+                        <h3>Crear Clase</h3>
+                        <p>
+                            Gestión de actividades y cupos
+                        </p>
+                    </div>
+
+                    <div className="admin-card">
+                        <h3>Eliminar Clase</h3>
+                        <p>
+                            Control de clases programadas
+                        </p>
+                    </div>
+
+                    <div className="admin-card">
+                        <h3>Capacidad</h3>
+                        <p>
+                            Control del espacio disponible
+                        </p>
+                    </div>
+
+                    <div className="admin-card">
+                        <h3>Clases</h3>
+                        <p>
+                            Ver las clases con su información detallada
+                        </p>
+                    </div>
+
+                </div>
 
             </div>
 
