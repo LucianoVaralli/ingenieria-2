@@ -51,3 +51,19 @@
 .admin-logout-btn:hover {
     background-color: #4ca138;
 }
+
+.admin-navbar-logo{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    color: #5DBB46;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.admin-navbar-logo-img{
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+}

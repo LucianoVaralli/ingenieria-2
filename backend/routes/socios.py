@@ -81,9 +81,16 @@ def obtener_mi_perfil(
         "telefono": usuario.telefono,
         "dni": usuario.dni
     }
+""" esto se agregara luego, es para que el admin pueda ver la lista de profesores y me servira para la lista desplegable al crear una clase, para asignarle un profesor a esa clase
+@router.get("/profesores")
+def obtener_profesores(db: Session = Depends(get_db)):
 
+    profesores = db.query(Socio).filter(
+        Socio.rol == Rol.Profesor.value
+    ).all()
 
-
+    return profesores
+"""
 @router.get("/")
 def obtener_socios(
     db: Session = Depends(get_db),

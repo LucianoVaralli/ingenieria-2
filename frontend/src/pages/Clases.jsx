@@ -14,6 +14,24 @@ const DIA_A_NUM = {
     'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6
 };
 
+const formatearHora = (hora) => {
+    return hora?.slice(0, 5);
+};
+
+const calcularHoraFin = (hora, duracion) => {
+
+    if (!hora || !duracion) return "";
+
+    const [h, m] = hora.split(":").map(Number);
+
+    const fecha = new Date();
+
+    fecha.setHours(h);
+    fecha.setMinutes(m + duracion);
+
+    return fecha.toTimeString().slice(0, 5);
+};
+
 const Clases = () => {
     const navigate  = useNavigate();
     const hoy       = new Date();
@@ -144,18 +162,32 @@ const Clases = () => {
     }
     
     for (let d = 1; d <= diasEnMes; d++) {
-        const esHoy     = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
-        const esSelec   = d === diaSelec;
-        celdas.push(
-            <td
-                key={d}
-                className={`cal-celda ${esHoy ? 'hoy' : ''} ${esSelec ? 'seleccionado' : ''}`}
-                onClick={() => handleClickDia(d)}
-            >
-                {d}
-            </td>
-        );
-    }
+    const esHoy     = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
+    const esSelec   = d === diaSelec;
+    // ── NUEVO: verificar si el día ya pasó ──
+    const fechaCelda = new Date(anio, mes, d);
+    const esHoyExacto = new Date(anio, mes, d).toDateString() === hoy.toDateString();
+    const esPasado  = fechaCelda < hoy && !esHoyExacto;
+
+    celdas.push(
+        <td
+            key={d}
+            className={`cal-celda 
+                ${esHoy ? 'hoy' : ''} 
+                ${esSelec ? 'seleccionado' : ''} 
+                ${esPasado ? 'pasado' : ''}`}
+            onClick={() => {
+                if (esPasado) {
+                    alert('Esta fecha ya pasó. No podés reservar clases pasadas.');
+                    return;
+                }
+                handleClickDia(d);
+            }}
+        >
+            {d}
+        </td>
+    );
+}
 
     
     const filas = [];
@@ -211,7 +243,9 @@ const Clases = () => {
                             >
                                 <p className="clase-nombre">{clase.actividad}</p>
                                 <p>Profesor: <strong>{clase.profesor_nombre}</strong></p>
-                                <p>Comienza a las: <strong>{clase.horario}</strong></p>
+                                <p>Comienza a las: <strong>{formatearHora(clase.horario)}</strong></p>
+                                <p>Duración de la clase: <strong>{" "}{clase.duracion} min</strong></p>
+                                <p>Finaliza a las: <strong>{" "}{calcularHoraFin(clase.horario, clase.duracion)}</strong></p>
                                 <p>Precio: <strong>${clase.precio_individual}</strong></p>
                                 <p className={clase.cupo > 0 ? 'cupo-ok' : 'cupo-lleno'}>
                                     {clase.cupo > 0 ? `Cupos disponibles: ${clase.cupo}` : ' Sin cupos '}
@@ -224,7 +258,7 @@ const Clases = () => {
                     {claseElegida && (
                         <div className="reserva-opciones">
                             <p className="reserva-titulo">
-                                Reservar <strong>{claseElegida.actividad}</strong> a las {claseElegida.horario}:
+                                Reservar <strong>{claseElegida.actividad}</strong> a las {formatearHora(claseElegida.horario)}:
                             </p>
                             <div className="reserva-modos">
                                 <label className={`modo-btn ${modoReserva === 'membresia' ? 'activo' : ''}`}>
