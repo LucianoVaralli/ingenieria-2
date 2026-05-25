@@ -17,6 +17,8 @@ from models.reserva_MIO      import Reserva
 from models.lista_espera import ListaEspera   
 from services.scheduler  import scheduler
 
+from models.tarjeta_simulada import TarjetaSimulada
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -48,6 +50,13 @@ def crear_gimnasio_por_defecto():
 # Ejecutar al iniciar la app
 crear_gimnasio_por_defecto()
 
+from services.tarjetas_seed import crear_tarjetas_simuladas
+
+db = SessionLocal()
+
+crear_tarjetas_simuladas(db)
+
+db.close()
 # =========================================
 # CORS
 # =========================================
