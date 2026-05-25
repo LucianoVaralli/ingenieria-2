@@ -19,6 +19,8 @@ from services.scheduler  import scheduler
 # importar tabla de codigos de recuperación
 from models.password_recovery import PasswordRecovery
 
+from models.tarjeta_simulada import TarjetaSimulada
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -50,6 +52,13 @@ def crear_gimnasio_por_defecto():
 # Ejecutar al iniciar la app
 crear_gimnasio_por_defecto()
 
+from services.tarjetas_seed import crear_tarjetas_simuladas
+
+db = SessionLocal()
+
+crear_tarjetas_simuladas(db)
+
+db.close()
 # =========================================
 # CORS
 # =========================================
