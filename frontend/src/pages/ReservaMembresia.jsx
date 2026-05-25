@@ -3,6 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
 
+const formatearHora = (hora) => {
+    return hora?.slice(0, 5);
+};
 
 const ReservaMembresia = () => {
     const location = useLocation();
@@ -29,29 +32,40 @@ const ReservaMembresia = () => {
     
     const handleReservar = async () => {
         setCargando(true);
-        try {
-            const res = await api.post('/reservas/membresia/crear', {
-                clase_id:     clase.id,
-                fechas_clase: fechasDelMes
-            });
+    try {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
 
-            setDatosReserva(res.data);
+        // Separamos antes de mandar al backend
+        const fechasFuturas = fechasDelMes.filter(f => new Date(f) >= hoy);
+        const fechasPasadas = fechasDelMes.filter(f => new Date(f) < hoy);
 
-            if (res.data.hay_lista_espera) {
-                
-                setPaso('confirmar_espera');
-            } else {
-                
-                navegarAlPago(res.data, true);
-            }
-
-        } catch (err) {
-            
-            setMensaje(err.response?.data?.detail || 'Error inesperado');
+        if (fechasFuturas.length === 0) {
+            setMensaje('No quedan clases futuras para este mes.');
             setPaso('error');
-        } finally {
-            setCargando(false);
+            return;
         }
+
+        const res = await api.post('/reservas/membresia/crear', {
+            clase_id:          clase.id,
+            fechas_clase:      fechasFuturas,   // ← solo futuras al backend
+            total_clases_mes:  fechasDelMes.length, // ← total real para el descuento
+        });
+
+        setDatosReserva(res.data);
+
+        if (res.data.hay_lista_espera) {
+            setPaso('confirmar_espera');
+        } else {
+            navegarAlPago(res.data, true);
+        }
+
+    } catch (err) {
+        setMensaje(err.response?.data?.detail || 'Error inesperado');
+        setPaso('error');
+    } finally {
+        setCargando(false);
+    }
     };
 
     
@@ -85,7 +99,7 @@ const ReservaMembresia = () => {
         navigate('/pago', {
             state: {
                 monto:              datos.monto_total,
-                reservasIds:        datos.reservas_ids,
+                fechasConCupo:      datos.fechas_con_cupo,
                 fechasSinCupo:      datos.fechas_sin_cupo ?? [],
                 aceptaListaEspera:  aceptaEspera,
                 claseInfo:          clase,
@@ -111,7 +125,7 @@ const ReservaMembresia = () => {
             <div className="reserva-card">
                 <p><strong>Actividad:</strong> {clase.actividad}</p>
                 <p><strong>Día:</strong> {clase.dia}</p>
-                <p><strong>Horario:</strong> {clase.horario}</p>
+                <p><strong>Horario:</strong> {formatearHora(clase.horario)}</p>
                 <p><strong>Clases del mes:</strong> {fechasDelMes.length}</p>
                 <p><strong>Precio por clase:</strong> ${clase.precio_individual}</p>
                 {(descuentoEstimado > 0 || descuento > 0) && (

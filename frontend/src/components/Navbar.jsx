@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../assets/css/Navbar.css'; 
+import logo from '../assets/logo.png';
 
 const Navbar = ({ setToken }) => {
     const navigate = useNavigate();
@@ -29,12 +30,12 @@ const Navbar = ({ setToken }) => {
     
     const rol = localStorage.getItem("rol"); //recupero el rol del localStorage
 
-    const esAdmin = rol === "ADMIN"; //verifico si el rol es ADMIN
+    const esAdmin = rol === "Admin"; //verifico si el rol es ADMIN
     return (
         <nav className="navbar-container">
             <div className="navbar-logo">
                 <Link to={token ? "/home" : "/"} className="navbar-brand">
-                    <span className="navbar-brand-icon">🏋️</span>
+                    <img src={logo} alt="Sportify" className="navbar-logo-img" /> {/** aca se cambia el logo de la pagina principal*/}
                     <span className="navbar-brand-text">SPORTIFY</span>
                 </Link>
             </div>

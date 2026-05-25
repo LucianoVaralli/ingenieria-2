@@ -17,7 +17,7 @@ const Pago = () => {
 
     const {
         monto            = 0,
-        reservasIds      = [],
+        fechasConCupo     = [], 
         fechasSinCupo    = [],
         aceptaListaEspera = true,
         claseInfo        = null,
@@ -29,7 +29,7 @@ const Pago = () => {
     const [mensaje,    setMensaje]    = useState('');
     const [cargando,   setCargando]   = useState(false);
 
-    if (!reservasIds.length && !fechasSinCupo.length) {
+    if (!fechasConCupo.length && !fechasSinCupo.length) {
     return (
         <div className="pago-container">
             <p>No hay reservas pendientes de pago.</p>
@@ -50,45 +50,25 @@ const Pago = () => {
     setMensaje('');
 
     try {
-        const tarjeta = TARJETAS[nroTarjeta];
-
-        //  fallo de conexión
-        if (tarjeta?.tipo === 'error') {
-            throw new Error('CONNECTION_ERROR');
-        }
-
-        // E3 y E4: fondos insuficientes
-        if (tarjeta && !tarjeta.fondos) {
-            setMensaje('la cuenta no tiene saldo suficiente');
-            setEstado('error');
-            setCargando(false);
-            return;
-        }
-
-        // pago exitoso
         const res = await api.post('/reservas/membresia/confirmar-pago', {
-            reservas_ids:        reservasIds,
+            clase_id:            claseId,
+            fechas_con_cupo:     fechasConCupo,
             fechas_sin_cupo:     fechasSinCupo,
             acepta_lista_espera: aceptaListaEspera,
             pago_exitoso:        true,
-            clase_id:             claseId, 
+            monto_total:         monto,
+            numero_tarjeta:      nroTarjeta,  // ← el backend valida
         });
-        console.log('Respuesta del backend:', res.data);
-        const mensajePago = res.data.mensaje === 'registrado en lista de espera'
-            ? 'Reserva exitosa con lista de espera'
-            : 'Reserva exitosa';
-        setMensaje(mensajePago);
+
+        setMensaje('Reserva exitosa');
         setEstado('exito');
 
     } catch (err) {
-        if (err.message === 'CONNECTION_ERROR') {
-            setMensaje('hay inconvenientes con la conexión al banco');
-        } else {
-            setMensaje(
-                err.response?.data?.detail ||
-                'no se ha realizado el pago correctamente, no se puede llevar a cabo la reserva'
-            );
-        }
+        setMensaje(
+            typeof err.response?.data?.detail === 'string'
+                ? err.response.data.detail
+                : 'No se pudo procesar el pago.'
+        );
         setEstado('error');
     } finally {
         setCargando(false);
@@ -141,7 +121,7 @@ const Pago = () => {
                 <div className="pago-exito">
                     <h3> {mensaje}</h3>
                     <p>Te enviamos el comprobante de pago a tu correo.</p>
-                    <button className="boton-pago" onClick={() => navigate('/mis-reservas')}>
+                    <button className="boton-pago" onClick={() => navigate('/perfil')}>
                         Ver mis reservas
                     </button>
                 </div>
