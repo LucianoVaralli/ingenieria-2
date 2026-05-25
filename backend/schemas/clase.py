@@ -9,6 +9,8 @@ class ClaseCreate(BaseModel):
     horario: time
     profesor_email: EmailStr
     cupo: int
+    precio_individual: float
+    duracion: int
 
 class ClaseResponse(BaseModel):
     id: int
@@ -16,7 +18,19 @@ class ClaseResponse(BaseModel):
     dia: DiaSemana
     horario: time
     profesor_id: int
+    profesor_nombre: str = ""
     cupo: int
-
+    precio_individual: float 
+    duracion: int
+    
     class Config:
         from_attributes = True
+
+class CancelarClaseDia(BaseModel):
+    fecha_clase: str
+    motivo: str
+
+class EliminarClase(BaseModel):
+    motivo: str    
+
+

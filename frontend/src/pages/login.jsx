@@ -4,15 +4,20 @@ import '../assets/css/Login.css';
 import logoSportify from '../assets/logo.png';
 import { useNavigate } from 'react-router-dom'; 
 import { Link } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 
 const Login = ({ setToken }) => { 
     const navigate = useNavigate();
     
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
 
     const handleLogin = async (e) => {
         e.preventDefault();
+
+        setError(''); // limpia errores anteriores
+
         try {
             const data = new URLSearchParams();
             data.append('username', email);
@@ -21,13 +26,22 @@ const Login = ({ setToken }) => {
             const res = await api.post('/auth/login', data);
             
             localStorage.setItem('token', res.data.access_token);
+            localStorage.setItem("rol", res.data.rol);
             setToken(res.data.access_token); 
 
-            navigate('/home'); 
+            const tokenRecibido = res.data.access_token;
+            const decoded = jwtDecode(tokenRecibido);
+            
+            if (decoded.rol === 'admin') {
+                navigate('/admin'); // Si es admin, al panel de control
+            } else {
+                navigate('/home');  // Si es socio/profesor, al home común
+            }
             
         } catch (err) {
             console.error(err);
-            alert("Error en las credenciales");
+
+            setError('Correo o contraseña incorrectos');
         }
     };
 
@@ -39,11 +53,6 @@ const Login = ({ setToken }) => {
                 <div className="login-left-bg" />
                 <div className="login-left-grid" />
                 <div className="login-deco-circle" />
-
-                <div className="login-badge">
-                    <div className="login-badge-icon">🏋️</div>
-                    <span className="login-badge-name">Sportify</span>
-                </div>
 
                 <div className="login-left-content">
                     <h2 className="login-tagline">
@@ -97,6 +106,12 @@ const Login = ({ setToken }) => {
                     <button type="submit" className="boton-login">
                         INICIAR SESIÓN
                     </button>
+                    
+                    {error && (
+                        <p className="login-error">
+                            {error}
+                        </p>
+                    )}                    
                 </form>
 
                 <p className="registro-link-container">

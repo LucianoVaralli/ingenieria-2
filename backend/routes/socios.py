@@ -68,7 +68,7 @@ def obtener_mi_perfil(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    # La magia ocurre acá: la función decodifica el token y busca al socio
+
     usuario = obtener_usuario_actual(token, db)
     
     return {
@@ -81,7 +81,16 @@ def obtener_mi_perfil(
         "telefono": usuario.telefono,
         "dni": usuario.dni
     }
+""" esto se agregara luego, es para que el admin pueda ver la lista de profesores y me servira para la lista desplegable al crear una clase, para asignarle un profesor a esa clase
+@router.get("/profesores")
+def obtener_profesores(db: Session = Depends(get_db)):
 
+    profesores = db.query(Socio).filter(
+        Socio.rol == Rol.Profesor.value
+    ).all()
+
+    return profesores
+"""
 @router.get("/")
 def obtener_socios(
     db: Session = Depends(get_db),
@@ -90,7 +99,7 @@ def obtener_socios(
     # Validamos el token y obtenemos quién es el que pregunta
     usuario_peticion = obtener_usuario_actual(db, token)
     
-    # REGLA DE ROL: Solo Admin o Profesor (usando tu Enum)
+  
     if usuario_peticion.rol not in [Rol.Admin, Rol.Profesor]:
         raise HTTPException(
             status_code=403, 

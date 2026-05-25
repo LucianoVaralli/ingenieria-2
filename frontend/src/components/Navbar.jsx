@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../assets/css/Navbar.css'; 
+import logo from '../assets/logo.png';
 
 const Navbar = ({ setToken }) => {
     const navigate = useNavigate();
@@ -25,12 +27,15 @@ const Navbar = ({ setToken }) => {
             }, 100);
         }
     };
+    
+    const rol = localStorage.getItem("rol"); //recupero el rol del localStorage
 
+    const esAdmin = rol === "Admin"; //verifico si el rol es ADMIN
     return (
         <nav className="navbar-container">
             <div className="navbar-logo">
                 <Link to={token ? "/home" : "/"} className="navbar-brand">
-                    <span className="navbar-brand-icon">🏋️</span>
+                    <img src={logo} alt="Sportify" className="navbar-logo-img" /> {/** aca se cambia el logo de la pagina principal*/}
                     <span className="navbar-brand-text">SPORTIFY</span>
                 </Link>
             </div>
@@ -42,7 +47,11 @@ const Navbar = ({ setToken }) => {
                 <span onClick={() => scrollToSection('seccion-gimnasio')} className="navbar-link" style={{ cursor: 'pointer' }}>
                     El Gimnasio
                 </span>
-                
+                {esAdmin && ( //lo muestra solo si el usuario es admin
+                    <Link to="/admin" className="navbar-link">
+                        Panel Admin
+                    </Link>
+                )}
                 {token ? (
                     <div className="navbar-auth">
                         <Link to="/perfil" className="navbar-link">Mi Perfil</Link>
