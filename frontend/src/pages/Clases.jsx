@@ -162,18 +162,32 @@ const Clases = () => {
     }
     
     for (let d = 1; d <= diasEnMes; d++) {
-        const esHoy     = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
-        const esSelec   = d === diaSelec;
-        celdas.push(
-            <td
-                key={d}
-                className={`cal-celda ${esHoy ? 'hoy' : ''} ${esSelec ? 'seleccionado' : ''}`}
-                onClick={() => handleClickDia(d)}
-            >
-                {d}
-            </td>
-        );
-    }
+    const esHoy     = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
+    const esSelec   = d === diaSelec;
+    // ── NUEVO: verificar si el día ya pasó ──
+    const fechaCelda = new Date(anio, mes, d);
+    const esHoyExacto = new Date(anio, mes, d).toDateString() === hoy.toDateString();
+    const esPasado  = fechaCelda < hoy && !esHoyExacto;
+
+    celdas.push(
+        <td
+            key={d}
+            className={`cal-celda 
+                ${esHoy ? 'hoy' : ''} 
+                ${esSelec ? 'seleccionado' : ''} 
+                ${esPasado ? 'pasado' : ''}`}
+            onClick={() => {
+                if (esPasado) {
+                    alert('Esta fecha ya pasó. No podés reservar clases pasadas.');
+                    return;
+                }
+                handleClickDia(d);
+            }}
+        >
+            {d}
+        </td>
+    );
+}
 
     
     const filas = [];

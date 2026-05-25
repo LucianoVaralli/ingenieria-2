@@ -9,17 +9,19 @@ from models.reserva_MIO import Reserva
 load_dotenv()
 
 conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM=os.getenv("MAIL_FROM"),
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME", "tu_usuario@gmail.com"),
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", "tu_contraseña_de_app"),
+    MAIL_FROM=os.getenv("MAIL_FROM", "tu_usuario@gmail.com"),
 
-    MAIL_PORT=int(os.getenv("MAIL_PORT")),
-    MAIL_SERVER=os.getenv("MAIL_SERVER"),
+    # Usamos 587 como puerto por defecto si MAIL_PORT no existe
+    MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
+    
+    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
 
-    MAIL_STARTTLS=os.getenv("MAIL_STARTTLS") == "True",
-    MAIL_SSL_TLS=os.getenv("MAIL_SSL_TLS") == "True",
+    MAIL_STARTTLS=os.getenv("MAIL_STARTTLS", "True") == "True",
+    MAIL_SSL_TLS=os.getenv("MAIL_SSL_TLS", "False") == "True",
 
-    USE_CREDENTIALS=os.getenv("USE_CREDENTIALS") == "True"
+    USE_CREDENTIALS=os.getenv("USE_CREDENTIALS", "True") == "True"
 )
 
 

@@ -341,3 +341,21 @@
     .dato-item { border-right: none; margin-right: 0; padding-right: 0; }
     .perfil-reservas-section { padding: 24px 20px; }
 }
+
+.perfil-reservas-count {
+    margin-left: auto;
+    background: rgba(92,184,77,0.12);
+    color: #5CB84D;
+    border: 1px solid rgba(92,184,77,0.3);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+}
+
+.reserva-card-tipo {
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+    font-style: italic;
+    margin-top: 4px;
+}

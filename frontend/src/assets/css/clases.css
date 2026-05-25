@@ -1,3 +1,13 @@
+.cal-celda.pasado {
+    color: rgba(255,255,255,0.15);
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.cal-celda.pasado:hover {
+    background: rgba(255,80,80,0.06);
+    color: rgba(255,100,100,0.4);
+}
 
 .clases-wrapper {
     display: flex;

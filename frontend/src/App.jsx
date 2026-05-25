@@ -4,7 +4,6 @@ import Login from './pages/Login';
 import Home from './pages/Home'; 
 import Registro from './pages/Registro';
 import Navbar from './components/Navbar';
-import Landing from './pages/Landing';
 import ReservaMembresia from './pages/ReservaMembresia';   
 import MisReservas from './pages/MisReservas';             
 import Clases from './pages/Clases';       
