@@ -19,10 +19,5 @@ class Reserva(Base):
 
     monto_total  = Column(Float, nullable=False)
     monto_pagado = Column(Float, default=0.0)
-    # últimos 4 números
-    tarjeta_ultimos = Column(String, nullable=True)
 
-    # credito/debito
-    tipo_tarjeta = Column(String, nullable=True)
-    
     fecha_creacion = Column(DateTime, default=lambda: datetime.now(timezone.utc))
