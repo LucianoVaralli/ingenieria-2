@@ -8,7 +8,7 @@ from models.lista_espera import ListaEspera
 from models.clase        import Clase
 from services.auth       import oauth2_scheme, obtener_usuario_actual
 from schemas.reserva     import ReservaMembresiaCreate, ConfirmarPagoMembresia
-
+from models.enums import Rol
 from schemas.reserva_individual import (
     ReservaIndividualCreate,
     ConfirmarPagoIndividual
@@ -359,7 +359,7 @@ def crear_reserva_individual(
     socio = obtener_usuario_actual(db=db, token=token)
 
     # Solo miembros y no_miembros pueden reservar
-    if socio.rol not in [enums.rol.Rol.Miembro.value, enums.rol.Rol.NoMiembro.value]:
+    if socio.rol not in [Rol.Miembro.value, Rol.NoMiembro.value]:
 
         raise HTTPException(
             status_code=403,
@@ -383,8 +383,9 @@ def crear_reserva_individual(
     # no puede reservar una clase ya iniciada
     # ─────────────────────────────────────────────
 
+    horario_str = str(clase.horario)[:5]  # convierte "16:30:00" → "16:30"
     fecha_hora = datetime.strptime(
-        f"{datos.fecha_clase} {clase.horario}",
+        f"{datos.fecha_clase} {horario_str}",
         "%Y-%m-%d %H:%M"
     )
 
@@ -573,7 +574,10 @@ async def pagar_reserva_individual(
 
         db.commit()
 
-        await enviar_mail_error_pago(socio)
+        try:
+            await enviar_mail_pago_exitoso(socio, clase, reserva)
+        except Exception as e:
+            print(f"⚠️ Mail no enviado: {e}")  # log pero no rompe
 
         raise HTTPException(
             status_code=400,
@@ -591,7 +595,10 @@ async def pagar_reserva_individual(
 
         db.commit()
 
-        await enviar_mail_error_pago(socio)
+        try:
+            await enviar_mail_pago_exitoso(socio)
+        except Exception as e:
+            print(f"⚠️ Mail no enviado: {e}")
 
         raise HTTPException(
             status_code=400,
@@ -660,11 +667,10 @@ async def pagar_reserva_individual(
 
         db.commit()
 
-        await enviar_mail_lista_espera(
-            socio,
-            clase,
-            reserva.fecha_clase
-        )
+        try:
+            await enviar_mail_pago_exitoso(socio, clase, reserva.fecha_clase)
+        except Exception as e:
+            print(f"⚠️ Mail no enviado: {e}")
 
         return {
             "mensaje": "Pago realizado y agregado a lista de espera"
@@ -684,11 +690,10 @@ async def pagar_reserva_individual(
 
     db.commit()
 
-    await enviar_mail_pago_exitoso(
-        socio,
-        clase,
-        reserva
-    )
+    try:
+        await enviar_mail_pago_exitoso(socio, clase, reserva)
+    except Exception as e:
+        print(f"⚠️ Mail no enviado: {e}")
 
     return {
         "mensaje": "El pago se realizó correctamente"
