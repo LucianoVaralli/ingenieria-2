@@ -1,16 +1,50 @@
 from models.socio import Socio
+from models.password_recovery import PasswordRecovery
+
+from services.auth import get_password_hash
+
 import random
+
+from datetime import datetime, timedelta
+
+
 # ---------------------------------------------------
-# ENVIAR CÓDIGO DE RECUPERACIÓN
+# RATE LIMITING TEMPORAL
+# ---------------------------------------------------
+request_limits = {}
+
+
+# ---------------------------------------------------
+# ENVIAR CÓDIGO
 # ---------------------------------------------------
 async def send_recovery_code(email: str, db):
 
-    # Buscar usuario por email
+    # -----------------------------------------------
+    # RATE LIMIT
+    # -----------------------------------------------
+    ultima_request = request_limits.get(email)
+
+    if ultima_request:
+
+        # Esperar 1 minuto entre requests
+        if datetime.now() < ultima_request + timedelta(minutes=1):
+
+            return {
+                "success": False,
+                "message": "Debes esperar 1 minuto antes de solicitar otro código"
+            }
+
+    # Guardar timestamp actual
+    request_limits[email] = datetime.now()
+
+    # -----------------------------------------------
+    # Buscar usuario
+    # -----------------------------------------------
     usuario = db.query(Socio).filter(
         Socio.email == email
     ).first()
 
-    # Validar si existe
+    # Validar existencia
     if not usuario:
 
         return {
@@ -18,17 +52,33 @@ async def send_recovery_code(email: str, db):
             "message": "El email no está registrado"
         }
 
-    # Generar código temporal
-    # (por ahora fijo para pruebas)
-    codigo = str(random.randint(100000, 999999))
+    # -----------------------------------------------
+    # Generar código aleatorio
+    # -----------------------------------------------
+    codigo = str(
+        random.randint(100000, 999999)
+    )
 
-    # Simular envío de mail
+    # Expira en 2 minutos
+    expires_at = datetime.now() + timedelta(minutes=2)
+
+    # -----------------------------------------------
+    # Crear recovery en DB
+    # -----------------------------------------------
+    new_recovery = PasswordRecovery(
+        email=email,
+        code=codigo,
+        expires_at=expires_at,
+        used=False
+    )
+
+    # Guardar en DB
+    db.add(new_recovery)
+
+    db.commit()
+
+    # Simular envío
     print(f"Código {codigo} enviado a {email}")
-
-    # Acá más adelante podrías:
-    # - guardar código en DB
-    # - guardar expiración
-    # - enviar mail real
 
     return {
         "success": True,
@@ -39,39 +89,85 @@ async def send_recovery_code(email: str, db):
 # ---------------------------------------------------
 # VALIDAR CÓDIGO
 # ---------------------------------------------------
-async def validate_recovery_code(email: str, code: str):
+async def validate_recovery_code(
+    email: str,
+    code: str,
+    db
+):
 
-    # Placeholder temporal
+    # Buscar recovery
+    recovery = db.query(
+        PasswordRecovery
+    ).filter(
+        PasswordRecovery.email == email,
+        PasswordRecovery.code == code,
+        PasswordRecovery.used == False
+    ).first()
 
-    # Más adelante:
-    # - buscar código en DB
-    # - validar expiración
-    # - validar uso único
-
-    if code == "123456":
+    # Validar existencia
+    if not recovery:
 
         return {
-            "success": True,
-            "message": "Código válido"
+            "success": False,
+            "message": "Código inválido"
+        }
+
+    # Validar expiración
+    if datetime.now() > recovery.expires_at:
+
+        # Marcar como usado
+        recovery.used = True
+
+        db.commit()
+
+        return {
+            "success": False,
+            "message": "El código expiró"
         }
 
     return {
-        "success": False,
-        "message": "Código inválido"
+        "success": True,
+        "message": "Código válido"
     }
 
 
 # ---------------------------------------------------
-# CAMBIAR CONTRASEÑA
+# CAMBIAR PASSWORD
 # ---------------------------------------------------
-async def change_password(email: str, new_password: str, db):
+async def change_password(
+    email: str,
+    code: str,
+    new_password: str,
+    db
+):
+
+    # Reutilizar validación
+    validation = await validate_recovery_code(
+        email,
+        code,
+        db
+    )
+
+    # Si falla
+    if not validation["success"]:
+
+        return validation
+
+    # Buscar recovery
+    recovery = db.query(
+        PasswordRecovery
+    ).filter(
+        PasswordRecovery.email == email,
+        PasswordRecovery.code == code,
+        PasswordRecovery.used == False
+    ).first()
 
     # Buscar usuario
     usuario = db.query(Socio).filter(
         Socio.email == email
     ).first()
 
-    # Validar existencia
+    # Validar usuario
     if not usuario:
 
         return {
@@ -79,18 +175,32 @@ async def change_password(email: str, new_password: str, db):
             "message": "Usuario no encontrado"
         }
 
-    # ---------------------------------------------------
-    # IMPORTANTE:
-    # Esto es TEMPORAL
-    # Después deberías hashear password
-    # ---------------------------------------------------
+    # Hashear nueva password
+    hashed_password = get_password_hash(
+        new_password
+    )
 
-    usuario.hashed_password = new_password
+    # Actualizar password
+    usuario.hashed_password = hashed_password
 
-    # Guardar cambios
-    db.commit()
+    # Marcar código como usado
+    recovery.used = True
+
+    try:
+
+        # Guardar cambios
+        db.commit()
+
+    except Exception:
+
+        db.rollback()
+
+        return {
+            "success": False,
+            "message": "Error al actualizar contraseña"
+        }
 
     return {
         "success": True,
-        "message": "Contraseña actualizada"
+        "message": "Contraseña actualizada correctamente"
     }

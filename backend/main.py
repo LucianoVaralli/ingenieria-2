@@ -16,6 +16,8 @@ from routes.reserva  import router as reserva_router
 from models.reserva_MIO      import Reserva      
 from models.lista_espera import ListaEspera   
 from services.scheduler  import scheduler
+# importar tabla de codigos de recuperación
+from models.password_recovery import PasswordRecovery
 
 Base.metadata.create_all(bind=engine)
 

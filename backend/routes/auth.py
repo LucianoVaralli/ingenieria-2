@@ -64,12 +64,12 @@ async def forgot_password(
     db: Session = Depends(get_db)
 ):
 
-    resultado = await send_recovery_code(
+    result = await send_recovery_code(
         data.email,
         db
     )
 
-    return resultado
+    return result
 # ---------------------------------------------------
 # VALIDAR CÓDIGO
 # ---------------------------------------------------
@@ -78,19 +78,19 @@ async def forgot_password(
 # POST /auth/validate-code
 
 @router.post("/validate-code")
-def validate_code(data: ValidateCodeRequest):
+async def validate_code(
+    data: ValidateCodeRequest,
+    db: Session = Depends(get_db)
+):
 
     # Validamos el código
-    valid = validate_recovery_code(data.code)
-    if not valid:
-        return {
-            "message": "Código inválido o expirado"
-        }
-    return {
-        "message": "Código válido"
-    }
+    result = await validate_recovery_code(
+        data.email,
+        data.code,
+        db
+    )
 
-
+    return result
 # ---------------------------------------------------
 # CAMBIAR CONTRASEÑA
 # ---------------------------------------------------
@@ -99,15 +99,16 @@ def validate_code(data: ValidateCodeRequest):
 # POST /auth/reset-password
 
 @router.post("/reset-password")
-def reset_password(data: ResetPasswordRequest):
+async def reset_password(
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
 
-    # Cambiamos contraseña
-    # usando el código y la nueva password
-    change_password(
+    result = await change_password(
+        data.email,
         data.code,
-        data.new_password
+        data.password,
+        db
     )
 
-    return {
-        "message": "Contraseña actualizada"
-    }
+    return result
