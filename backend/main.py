@@ -18,6 +18,8 @@ from routes.clase import router as clase_router
 from routes.reserva import router as reserva_router   
 
 # Crear las tablas en la base de datos
+from models.tarjeta_simulada import TarjetaSimulada
+
 Base.metadata.create_all(bind=engine)
 
 # =========================================
@@ -62,6 +64,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+from services.tarjetas_seed import crear_tarjetas_simuladas
+
+db = SessionLocal()
+
+crear_tarjetas_simuladas(db)
+
+db.close()
 # =========================================
 # CORS
 # =========================================
