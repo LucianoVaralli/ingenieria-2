@@ -16,7 +16,7 @@ from routes.auth import router as auth_router
 from routes.gimnasio import router as gimnasio_router
 from routes.clase import router as clase_router
 from routes.reserva import router as reserva_router   
-
+from fastapi.staticfiles import StaticFiles
 # Crear las tablas en la base de datos
 from models.tarjeta_simulada import TarjetaSimulada
 
@@ -97,7 +97,7 @@ app.include_router(auth_router)
 app.include_router(gimnasio_router)
 app.include_router(clase_router)
 app.include_router(reserva_router)   
-
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # =========================================
 # ROOT
 # =========================================

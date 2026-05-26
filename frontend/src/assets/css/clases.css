@@ -1,3 +1,343 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+ 
+/* ── WRAPPER GENERAL ── */
+.clases-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+    font-family: 'Lora', serif;
+    color: #fff;
+    width: 100%;
+}
+ 
+/* ══════════════════════════════
+   CALENDARIO
+══════════════════════════════ */
+.cal-contenedor {
+    background: #0c0c0c;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px;
+    padding: 28px;
+    width: 100%;
+}
+ 
+/* Header: mes y flechas */
+.cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+ 
+.cal-header h2 {
+    font-family: 'Lora', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: 0.3px;
+}
+ 
+.cal-nav {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6);
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    line-height: 1;
+}
+ 
+.cal-nav:hover:not(:disabled) {
+    background: rgba(92,184,77,0.1);
+    border-color: rgba(92,184,77,0.35);
+    color: #5CB84D;
+}
+ 
+.cal-nav:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+ 
+/* Tabla */
+.cal-tabla {
+    width: 100%;
+    border-collapse: collapse;
+}
+ 
+.cal-th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.25);
+    padding: 0 0 14px;
+    text-align: center;
+}
+ 
+.cal-celda {
+    text-align: center;
+    padding: 10px 4px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+ 
+.cal-celda:hover:not(.vacio) {
+    background: rgba(92,184,77,0.1);
+    color: #fff;
+}
+ 
+.cal-celda.vacio {
+    cursor: default;
+}
+ 
+/* Día de hoy */
+.cal-celda.hoy {
+    background: rgba(92,184,77,0.12);
+    color: #5CB84D;
+    font-weight: 700;
+    border: 1px solid rgba(92,184,77,0.3);
+}
+ 
+/* Día seleccionado */
+.cal-celda.seleccionado {
+    background: #5CB84D;
+    color: #000;
+    font-weight: 700;
+    border-radius: 8px;
+}
+ 
+.cal-celda.seleccionado:hover {
+    background: #6dd15d;
+}
+ 
+/* ══════════════════════════════
+   PANEL LATERAL DE CLASES
+══════════════════════════════ */
+.panel-clases {
+    background: #0c0c0c;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 200px;
+}
+ 
+.panel-clases h3 {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.6);
+    margin: 0 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+ 
+.sin-clases {
+    font-size: 13px;
+    font-style: italic;
+    color: rgba(255,255,255,0.25);
+    margin: 0;
+    padding: 24px 0;
+    text-align: center;
+}
+ 
+/* Cards de cada clase */
+.clase-card {
+    background: #141414;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+ 
+.clase-card:hover {
+    border-color: rgba(92,184,77,0.25);
+    transform: translateY(-1px);
+}
+ 
+.clase-card.elegida {
+    border-color: rgba(92,184,77,0.55);
+    background: rgba(92,184,77,0.05);
+}
+ 
+.clase-nombre {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+ 
+.clase-card p {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    margin: 0;
+}
+ 
+.clase-card p strong {
+    color: rgba(255,255,255,0.75);
+    font-weight: 600;
+}
+ 
+.cupo-ok {
+    color: #5CB84D !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+ 
+.cupo-lleno {
+    color: rgba(255,80,80,0.7) !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+ 
+/* ── SECCIÓN DE RESERVA ── */
+.reserva-opciones {
+    background: #0a0a0a;
+    border: 1px solid rgba(92,184,77,0.15);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+}
+ 
+.reserva-titulo {
+    font-size: 13px;
+    color: rgba(255,255,255,0.45);
+    margin: 0;
+    font-style: italic;
+}
+ 
+.reserva-titulo strong {
+    color: #fff;
+    font-style: normal;
+}
+ 
+/* Radio buttons estilizados */
+.reserva-modos {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+ 
+.modo-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 9px;
+    padding: 11px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: rgba(255,255,255,0.45);
+    transition: all 0.2s;
+}
+ 
+.modo-btn input[type="radio"] {
+    accent-color: #5CB84D;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+ 
+.modo-btn:hover {
+    border-color: rgba(92,184,77,0.3);
+    color: rgba(255,255,255,0.7);
+}
+ 
+.modo-btn.activo {
+    border-color: rgba(92,184,77,0.5);
+    background: rgba(92,184,77,0.07);
+    color: #fff;
+}
+ 
+/* Botón reservar */
+.boton-reservar-cal {
+    width: 100%;
+    padding: 13px;
+    background: #5CB84D;
+    color: #000;
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 3px 16px rgba(92,184,77,0.22);
+}
+ 
+.boton-reservar-cal::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+    animation: shimmer 2.5s infinite;
+}
+ 
+@keyframes shimmer {
+    0%   { left: -60%; }
+    100% { left: 160%; }
+}
+ 
+.boton-reservar-cal:hover:not(:disabled) {
+    background: #6dd15d;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 22px rgba(92,184,77,0.35);
+}
+ 
+.boton-reservar-cal:disabled {
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.2);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+ 
+.boton-reservar-cal:disabled::after {
+    display: none;
+}
+ 
+
+.cal-celda.hoy {
+    background: rgba(92,184,77,0.12);
+    color: #5CB84D;
+    font-weight: 700;
+    border: 1px solid rgba(92,184,77,0.3);
+    border-radius: 8px;
+}
+
 .cal-celda.pasado {
     color: rgba(255,255,255,0.15);
     cursor: not-allowed;
@@ -6,167 +346,25 @@
 
 .cal-celda.pasado:hover {
     background: rgba(255,80,80,0.06);
-    color: rgba(255,100,100,0.4);
+    color: rgba(255,100,100,0.35);
 }
 
-.clases-wrapper {
-    display: flex;
-    gap: 2rem;
-    padding: 2rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    font-family: Arial, sans-serif;
-    color: white;
-    justify-content: center;
-}
-
-.cal-contenedor { flex: 0 0 auto; }
-
-.cal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-}
-
-.cal-header h2 { color: #5CB84D; margin: 0; font-size: 1.3rem; }
-
-.cal-nav {
-    background: #2a2d37;
-    color: #5CB84D;
-    border: 1px solid #5CB84D;
-    border-radius: 6px;
-    padding: 4px 14px;
-    font-size: 1.3rem;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.cal-nav:hover { background: #5CB84D; color: black; }
-
-.cal-tabla { border-collapse: collapse; width: 100%; }
-
-.cal-th {
-    background: #2a2d37;
-    color: #5CB84D;
-    padding: 8px 12px;
-    text-align: center;
-    font-size: 0.85rem;
-    border: 1px solid #3a3d47;
-}
-
-.cal-celda {
-    padding: 10px 14px;
-    text-align: center;
-    border: 1px solid #3a3d47;
-    cursor: pointer;
-    background: #1a1c23;
-    transition: background 0.15s;
-    min-width: 40px;
-}
-
-.cal-celda:hover:not(.vacio) { background: #2a2d37; }
-
-.cal-celda.hoy {
-    background: #0d1f0a;
-    color: #5CB84D;
-    font-weight: bold;
-}
-
-.cal-celda.seleccionado {
-    background: #5CB84D;
-    color: black;
-    font-weight: bold;
-}
-
-.cal-celda.vacio { background: #111; cursor: default; }
-
-.panel-clases {
-    flex: 1;
-    min-width: 280px;
-    max-width: 420px;
-    background: #1a1c23;
-    border-radius: 10px;
-    padding: 1.2rem;
-    border: 1px solid #3a3d47;
-}
-
-.panel-clases h3 {
-    color: #5CB84D;
-    margin-top: 0;
-    border-bottom: 1px solid #3a3d47;
-    padding-bottom: 0.5rem;
-}
-
-.sin-clases { color: #888; }
-
-.clase-card {
-    background: #2a2d37;
+.cal-error {
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    font-style: italic;
+    color: rgba(255,80,80,0.8);
+    border: 1px solid rgba(255,80,80,0.2);
+    background: rgba(255,80,80,0.06);
     border-radius: 8px;
-    padding: 0.8rem 1rem;
-    margin-bottom: 0.8rem;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: border 0.2s;
-    line-height: 1.7;
+    padding: 10px 14px;
+    margin-top: 12px;
+    text-align: center;
 }
 
-.clase-card:hover { border-color: #5CB84D; }
-.clase-card.elegida { border-color: #5CB84D; background: #0d1f0a; }
-
-.clase-nombre {
-    font-size: 1.05rem;
-    font-weight: bold;
-    color: #5CB84D;
-    margin: 0 0 4px;
-    text-transform: capitalize;
+/* ── RESPONSIVE ── */
+@media (max-width: 860px) {
+    .clases-wrapper {
+        grid-template-columns: 1fr;
+    }
 }
-
-.cupo-ok   { color: #5CB84D; font-weight: bold; }
-.cupo-lleno { color: #5CB84D; font-weight: bold; }
-
-.reserva-opciones {
-    margin-top: 1rem;
-    border-top: 1px solid #3a3d47;
-    padding-top: 1rem;
-}
-
-.reserva-titulo { margin-bottom: 0.8rem; color: #ddd; }
-
-.reserva-modos {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.modo-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #2a2d37;
-    padding: 0.6rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: border 0.2s;
-    color: white;
-}
-
-.modo-btn.activo { border-color: #5CB84D; color: #5CB84D; }
-.modo-btn input  { accent-color: #5CB84D; }
-
-.boton-reservar-cal {
-    width: 100%;
-    background: #5CB84D;
-    color: black;
-    border: none;
-    padding: 12px;
-    border-radius: 6px;
-    font-weight: bold;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.boton-reservar-cal:hover:not(:disabled) { background: #4aa33e; }
-.boton-reservar-cal:disabled { background: #555; cursor: not-allowed; color: #999; }
