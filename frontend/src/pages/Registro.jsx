@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Registro.css';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Registro = () => {
 
 const [errors, setErrors] = useState({});
-
+const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -24,7 +26,28 @@ const handleChange = (e) => {
 };
 
 const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+    
+    if (selectedFile) {
+        const extension = selectedFile.name.split('.').pop().toLowerCase();
+        
+        if (extension !== 'pdf') {
+            // Seteamos el error en lugar del alert
+            setErrors(prev => ({ 
+                ...prev, 
+                apto_fisico: "Por favor, seleccioná solo archivos PDF." 
+            }));
+            e.target.value = ''; 
+            setFile(null);
+        } else {
+            // Si el archivo es válido, borramos el error previo si existía
+            setErrors(prev => ({ 
+                ...prev, 
+                apto_fisico: null 
+            }));
+            setFile(selectedFile);
+        }
+    }
 };
 
 const validate = () => {
@@ -61,6 +84,8 @@ const validate = () => {
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0; // Retorna true si no hay errores
 };
+
+
 
 const handleRegistro = async (e) => {
 e.preventDefault();
@@ -202,27 +227,46 @@ return (
                     {/* contraseña */}
                     <div className="registro-row">
                         <div className="registro-field">
-                            <label className="registro-label">Contraseña</label>
+                        <label className="registro-label">Contraseña</label>
+                        <div className="password-wrapper">
                             <input
                                 name="password"
-                                type="password"
+                                type={showPassword ? "text" : "password"} // Cambia dinámicamente
                                 className={`registro-input ${errors.password ? 'error' : ''}`}
                                 placeholder="Mín. 6 car., 1 mayúscula y 1 especial"
                                 onChange={handleChange}
                                 required
                             />
-                            {errors.password && <span className="error-message">{errors.password}</span>}
+                            {/* El botón del ojo */}
+                            <button 
+                                type="button" 
+                                className="toggle-password" 
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                            </button>
                         </div>
+                        {errors.password && <span className="error-message">{errors.password}</span>}
+                    </div>
                         <div className="registro-field">
                             <label className="registro-label">Confirmar Contraseña</label>
-                            <input
-                                name="confirmar_password"
-                                type="password"
-                                className={`registro-input ${errors.confirmar_password ? 'error' : ''}`}
-                                placeholder="Repetí tu contraseña"
-                                onChange={handleChange}
-                                required
-                            />
+                            <div className="password-wrapper">
+                                <input
+                                    name="confirmar_password"
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    className={`registro-input ${errors.confirmar_password ? 'error' : ''}`}
+                                    placeholder="Repetí tu contraseña"
+                                    onChange={handleChange}
+                                    required
+                                />
+                                <button 
+                                    type="button" 
+                                    className="toggle-password" 
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                >
+                                    {showConfirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                                </button>
+                            </div>
                             {errors.confirmar_password && <span className="error-message">{errors.confirmar_password}</span>}
                         </div>
                     </div>
@@ -233,8 +277,17 @@ return (
                             <span className="registro-file-text">
                                 {file ? file.name : 'Seleccionar archivo PDF'}
                             </span>
-                            <input type="file" accept=".pdf" className="registro-file-input" onChange={handleFileChange} required />
+                            <input 
+                                type="file" 
+                                accept=".pdf" 
+                                className="registro-file-input" 
+                                onChange={handleFileChange} 
+                                required 
+                            />
                         </label>
+    
+    {/* AGREGÁ ESTA LÍNEA */}
+    {errors.apto_fisico && <span className="error-message">{errors.apto_fisico}</span>}
                     </div>
 
                     <button type="submit" className="boton-registrar">

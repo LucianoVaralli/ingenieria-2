@@ -17,6 +17,8 @@ import CrearClase from "./pages/admin/CrearClase";
 import ListaClasesAdmin from "./pages/admin/ListaClasesAdmin";
 import EditarCapacidad from "./pages/admin/EditarCapacidad";
 import ResetPassword from './pages/ResetPassword';
+import { Navigate } from "react-router-dom";
+import ReservaIndividual from './pages/ReservaIndividual';
 
 // 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
@@ -43,6 +45,11 @@ function AppContent({ token, setToken }) {
         <Route path="/reservar/membresia" element={<ReservaMembresia />} />
         <Route path="/pago" element={<Pago />} />
         <Route path="/mis-reservas" element={<MisReservas />} />
+        <Route path="/clases" element={<Clases />} />    
+        <Route path="/reservar/membresia" element={<ReservaMembresia />} />
+        <Route path="/reservar/individual" element={<ReservaIndividual />} />
+        <Route path="/pago" element={<Pago />} /> 
+        <Route path="/mis-reservas" element={<MisReservas />} />        
         <Route path="/login" element={<Login setToken={setToken} />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
