@@ -45,13 +45,23 @@ const ResetPassword = () => {
     };
 
     const handleResetPassword = async (e) => {
+        // 1. Frenar la recarga nativa del navegador inmediatamente
         e.preventDefault();
 
+        // 2. Si hay errores visuales, cortamos con "return;" seco
         if (passwordError || matchError) {
+            toast.error("Por favor, corrige los errores en las contraseñas antes de continuar.");
+            return;
+        }
+
+        // 3. Si faltan campos obligatorios, cortamos con "return;" seco
+        if (!formData.email || !formData.code || !formData.newPassword || !formData.confirmPassword) {
+            toast.error("Todos los campos son obligatorios.");
             return;
         }
 
         try {
+            // Ahora la petición saldrá correctamente por POST hacia el backend (puerto 8000)
             const res = await api.post('/auth/reset-password', {
                 email: formData.email,
                 code: formData.code,
@@ -68,18 +78,12 @@ const ResetPassword = () => {
             }, 2000);
 
         } catch (err) {
-            // Frenamos cualquier propagación de error adicional
             console.error("Error capturado en ResetPassword:", err);
-
-            // Buscamos el mensaje detallado de FastAPI (anteponiendo .detail)
             const mensajeError = err.response?.data?.detail || err.response?.data?.message || "Error al cambiar la contraseña";
 
             toast.error(mensajeError, {
                 style: { borderRadius: '8px', background: '#222', color: '#fff' },
             });
-
-            // Retornamos de forma explícita para congelar la ejecución aquí
-            return;
         }
     };
 
