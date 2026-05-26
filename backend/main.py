@@ -1,21 +1,16 @@
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from contextlib import asynccontextmanager
 
 from database import engine, Base, SessionLocal
 from models.gimnasio import Gimnasio
-
-# Importar los modelos para que SQLAlchemy cree las tablas
-from models.reserva_MIO import Reserva      
-from models.lista_espera import ListaEspera   
-from services.scheduler import scheduler
 
 from routes.socios import router as socios_router
 from routes.auth import router as auth_router
 from routes.gimnasio import router as gimnasio_router
 from routes.clase import router as clase_router
-<<<<<<< HEAD
 from routes.reserva  import router as reserva_router   
 
 # Importar los modelos nuevos para que SQLAlchemy cree las tablas
@@ -24,56 +19,33 @@ from models.lista_espera import ListaEspera
 from services.scheduler  import scheduler
 # importar tabla de codigos de recuperación
 from models.password_recovery import PasswordRecovery
-=======
-from routes.reserva import router as reserva_router   
->>>>>>> f47c8d7ae695ff6122b7976f112ab849b10b9381
 
-# Crear las tablas en la base de datos
 from models.tarjeta_simulada import TarjetaSimulada
 
 Base.metadata.create_all(bind=engine)
 
 # =========================================
-# FUNCIÓN AUXILIAR SEGURA
+# CREAR GIMNASIO POR DEFECTO
 # =========================================
 def crear_gimnasio_por_defecto():
     db: Session = SessionLocal()
-    try:
-        gimnasio = db.query(Gimnasio).first()
-        if not gimnasio:
-            nuevo_gimnasio = Gimnasio(
-                capacidad_total=50,
-                capacidad_disponible=50
-            )
-            db.add(nuevo_gimnasio)
-            db.commit()
-    except Exception as e:
-        print(f"Error al inicializar el gimnasio: {e}")
-    finally:
-        db.close() # Garantiza el cierre de la conexión pase lo que pase
 
-# =========================================
-# CICLO DE VIDA DE LA APLICACIÓN (LIFESPAN)
-# =========================================
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Lo que se ejecuta AL ARRANCAR la app:
-    crear_gimnasio_por_defecto()
-    
-    if not scheduler.running:
-        scheduler.start() # Inicia el scheduler de forma segura
-    
-    yield # Aquí la app se queda corriendo libremente
-    
-    # Lo que se ejecuta AL APAGAR la app:
-    if scheduler.running:
-        scheduler.shutdown()
+    gimnasio = db.query(Gimnasio).first()
 
-# Inicializar FastAPI con el lifespan
-app = FastAPI(
-    title="Sportify API",
-    lifespan=lifespan
-)
+    if not gimnasio:
+
+        nuevo_gimnasio = Gimnasio(
+            capacidad_total=50,
+            capacidad_disponible=50
+        )
+
+        db.add(nuevo_gimnasio)
+        db.commit()
+
+    db.close()
+
+# Ejecutar al iniciar la app
+crear_gimnasio_por_defecto()
 
 from services.tarjetas_seed import crear_tarjetas_simuladas
 
