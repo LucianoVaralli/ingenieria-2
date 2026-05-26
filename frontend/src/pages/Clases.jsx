@@ -252,9 +252,6 @@
                                     <p>Duración de la clase: <strong>{" "}{clase.duracion} min</strong></p>
                                     <p>Finaliza a las: <strong>{" "}{calcularHoraFin(clase.horario, clase.duracion)}</strong></p>
                                     <p>Precio: <strong>${clase.precio_individual}</strong></p>
-                                    <p className={clase.cupo > 0 ? 'cupo-ok' : 'cupo-lleno'}>
-                                        {clase.cupo > 0 ? `Cupos disponibles: ${clase.cupo}` : ' Sin cupos '}
-                                    </p>
                                 </div>
                             ))
                         )}
