@@ -40,7 +40,12 @@ const MisReservas = () => {
                     }}>
                         <p><strong>Fecha:</strong> {r.fecha_clase}</p>
                         <p><strong>Tipo:</strong> {r.tipo}</p>
-                        <p><strong>Estado:</strong> {r.estado}</p>
+                        <p>
+                            <strong>Estado:</strong>{' '}
+                            {r.lista_espera
+                                ? 'Lista de espera'
+                                : r.estado}
+                        </p>
                         <p><strong>Monto:</strong> ${r.monto_total}</p>
                     </div>
                 ))
