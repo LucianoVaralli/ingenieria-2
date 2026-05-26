@@ -16,9 +16,7 @@ router = APIRouter(
 
 @router.post("/registrar")
 async def registrar_socio(
-    # Recibimos el archivo (Escenario 4)
     apto_fisico: UploadFile = File(...),
-    # Recibimos los datos como Form (porque enviamos archivo)
     nombre: str = Form(...),
     apellido: str = Form(...),
     dni: str = Form(...),
@@ -35,16 +33,35 @@ async def registrar_socio(
     if db.query(Socio).filter(Socio.email == email).first():
         raise HTTPException(status_code=400, detail="correo ya registrado")
 
-    # 2. Guardar el archivo físicamente en una carpeta 'uploads'
-    # 3. Crear la carpeta si no existe
-    os.makedirs("uploads", exist_ok=True) 
+    # Validar contraseñas
+    if password != confirmar_password:
+        raise HTTPException(status_code=400, detail="Las contraseñas no coinciden")
 
-    # 4. Guardar
+    # 2. VALIDACIÓN DEL ARCHIVO (Una sola vez, clara y segura)
+    filename = apto_fisico.filename.lower()
+    
+    # Validamos extensión
+    if not filename.endswith(".pdf"):
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se permiten archivos con extensión .pdf"
+        )
+    
+    # Validamos tipo MIME (opcional, pero recomendado)
+    if apto_fisico.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=400,
+            detail="El archivo no es un PDF válido."
+        )
+
+    # 3. Guardar el archivo
+    os.makedirs("uploads", exist_ok=True) 
     file_location = f"uploads/{dni}_{apto_fisico.filename}"
+    
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(apto_fisico.file, buffer)
 
-    # 3. Encriptar y Guardar en DB
+    # 4. Guardar en DB
     hashed_pass = get_password_hash(password)
     
     nuevo_socio = Socio(
@@ -54,13 +71,14 @@ async def registrar_socio(
         email=email,
         telefono=telefono,
         hashed_password=hashed_pass,
-        apto_fisico_path=file_location, # Guardamos donde quedó la foto
-        rol=Rol.Miembro.value # Por defecto según tu Enum
+        apto_fisico_path=file_location,
+        rol=Rol.Miembro.value 
     )
 
     db.add(nuevo_socio)
     db.commit()
     db.refresh(nuevo_socio)
+    
     return {"mensaje": "registro exitoso", "socio_id": nuevo_socio.id}
 
 @router.get("/me")

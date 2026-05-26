@@ -2,6 +2,7 @@ import React, { useState, useEffect  } from 'react';
 import { Link } from 'react-router-dom';
 import '../assets/css/Home.css';
 import Clases from './Clases';
+import { Dumbbell, Check, ChevronDown, MapPin, Zap } from 'lucide-react';
 // ─────────────────────────────────────────────
 // DATOS DEL SLIDESHOW
 // Reemplazá las URLs por fotos propias del gimnasio cuando las tengas
@@ -310,7 +311,7 @@ const Home = ({ token }) => {
             <footer className="home-footer">
                 <div className="home-footer-inner">
                     <div className="home-footer-brand">
-                        <span className="home-footer-logo">🏋️</span>
+                        <span className="home-footer-logo"><Dumbbell color="#5CB84D" size={24} /></span>
                         <span className="home-footer-name">SPORTIFY</span>
                     </div>
                     <p className="home-footer-copy">© 2026 Sportify · La Plata, Argentina · Todos los derechos reservados.</p>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
+
  
 const Perfil = ({ token, setToken }) => {
     const [user,     setUser]     = useState(null);
@@ -49,9 +50,11 @@ const Perfil = ({ token, setToken }) => {
             alert(err.response?.data?.detail || 'No se pudo cancelar la reserva.');
         }
     }; */
- 
+
     return (
         <div className="perfil-container">
+            <div className='perfil-layout'>
+        
             {user ? (
                 <>
                     {/* ── HERO ── */}
@@ -84,12 +87,35 @@ const Perfil = ({ token, setToken }) => {
                         <div className="dato-item">
                             <span className="dato-label">Teléfono</span>
                             <span className="dato-valor">{user.telefono || '—'}</span>
-                        </div>
+                        </div> 
                         <button className="btn-cambiar-pass" disabled>
                             🔒 Cambiar Contraseña
                         </button>
                     </div>
- 
+
+                    {/* ── ACTA MÉDICA ── */}
+                    <div className="perfil-acta-section">
+                        <div className="perfil-section-header">
+                            <span className="perfil-section-icon">🩺</span>
+                            <h3 className="perfil-section-title">Apto Físico</h3>
+                        </div>
+
+                        {user.apto_fisico ? (
+                            <a
+                                href={`http://localhost:8000/${user.apto_fisico}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn-ver-acta"
+                            >
+                                Ver PDF
+                            </a>
+                        ) : (
+                            <p className="acta-faltante">
+                                No tenés un apto físico cargado.
+                            </p>
+                        )}
+                    </div>
+
                     {/* ── RESERVAS ── */}
                     <div className="perfil-reservas-section">
                         <div className="perfil-section-header">
@@ -152,6 +178,7 @@ const Perfil = ({ token, setToken }) => {
                             )}
                         </div>
                     </div>
+                    
                 </>
             ) : (
                 <div className="perfil-loading">
@@ -159,6 +186,7 @@ const Perfil = ({ token, setToken }) => {
                     <p>Cargando panel de socio...</p>
                 </div>
             )}
+            </div>
         </div>
     );
 };

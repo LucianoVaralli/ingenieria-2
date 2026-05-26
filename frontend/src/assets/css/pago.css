@@ -2,7 +2,7 @@
  
 .pago-page {
     min-height: 100vh;
-    background: #000;
+    background: linear-gradient(180deg, rgba(0,0,0,1) 40%, rgba(92,184,77,0.15) 100%);
     font-family: 'Lora', serif;
     color: #fff;
     padding: 40px 48px 80px;

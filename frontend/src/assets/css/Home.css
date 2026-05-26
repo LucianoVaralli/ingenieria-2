@@ -1,11 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
+
 /* ── BASE ── */
 .home-container {
     font-family: 'Lora', serif;
-    background: #000;
+    background: linear-gradient(180deg, rgba(0,0,0,1) 40%, rgba(92,184,77,0.15) 100%);
+    background-attachment: fixed; /* Esto hace que el fondo se quede quieto al hacer scroll */
     color: #fff;
     width: 100%;
+    min-height: 100vh;
 }
 
 /* ── HERO ── */
@@ -99,14 +102,14 @@
     padding: 13px 28px;
     border-radius: 9px;
     text-decoration: none;
-    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    transition: all 0.3s ease; 
     box-shadow: 0 4px 20px rgba(92,184,77,0.25);
 }
 
 .home-btn-primary:hover {
     background: #6dd15d;
-    transform: translateY(-1px);
-    box-shadow: 0 8px 28px rgba(92,184,77,0.38);
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 25px rgba(92,184,77,0.45);
 }
 
 .home-btn-ghost {
@@ -118,12 +121,13 @@
     border-radius: 9px;
     border: 1px solid rgba(255,255,255,0.12);
     text-decoration: none;
-    transition: color 0.2s, border-color 0.2s;
+    transition: all 0.3s ease;
 }
 
 .home-btn-ghost:hover {
     color: #fff;
     border-color: rgba(255,255,255,0.3);
+    transform: translateY(-3px);
 }
 
 /* =========================================
@@ -258,6 +262,7 @@
     border-bottom: none;
     border-radius: 16px 16px 0 0;
     padding: 20px 48px;
+
 }
 
 .home-stat {
@@ -330,6 +335,7 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
+
 }
 
 .home-paso {
@@ -337,11 +343,13 @@
     border: 1px solid rgba(255,255,255,0.06);
     border-radius: 16px;
     padding: 32px;
-    transition: border-color 0.3s;
+    transition: all 0.3s ease;
 }
 
 .home-paso:hover {
-    border-color: rgba(92,184,77,0.2);
+    border-color: rgba(92,184,77,0.3); 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .home-paso-num {
@@ -378,19 +386,20 @@
 }
 
 .home-disciplina-card {
-    background: #0d0d0d;
+    background: linear-gradient(145deg, #1a1a1a 0%, #080808 100%);
     border: 1px solid rgba(255,255,255,0.07);
     border-radius: 18px;
     padding: 32px;
     display: flex;
     flex-direction: column;
     gap: 18px;
-    transition: border-color 0.3s, transform 0.2s;
+    transition: all 0.3s ease;
 }
 
 .home-disciplina-card:hover {
-    border-color: rgba(92,184,77,0.25);
-    transform: translateY(-3px);
+    border-color: rgba(92,184,77,0.3);
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .home-disciplina-top {
@@ -714,7 +723,7 @@
 }
 
 .home-cal-card {
-    background: #0d0d0d;
+    background: linear-gradient(145deg, #1a1a1a 0%, #080808 100%);
     border: 1px solid rgba(255,255,255,0.07);
     border-radius: 14px;
     padding: 20px;
