@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 import os
 import random
 from datetime import datetime, timedelta
@@ -23,10 +24,10 @@ async def send_recovery_code(email: str, db: Session):
     ultima_request = request_limits.get(email)
     if ultima_request:
         if datetime.now() < ultima_request + timedelta(minutes=1):
-            return {
-                "success": False,
-                "message": "Debes esperar 1 minuto antes de solicitar otro código"
-            }
+            raise HTTPException(
+                status_code=400,
+                detail="Debes esperar 1 minuto antes de solicitar otro código"
+            )
 
     # Guardar timestamp actual
     request_limits[email] = datetime.now()
@@ -34,15 +35,15 @@ async def send_recovery_code(email: str, db: Session):
     # Buscar usuario
     usuario = db.query(Socio).filter(Socio.email == email).first()
     if not usuario:
-        return {
-            "success": False,
-            "message": "El email no está registrado"
-        }
+        raise HTTPException(
+            status_code=404,
+            detail="El email no está registrado"
+        )
 
     # Generar código aleatorio de 6 dígitos
     codigo = str(random.randint(100000, 999999))
 
-    # Expira en 2 minutos
+    # Expira en 5 minutos
     expires_at = datetime.now() + timedelta(minutes=5)
 
     # Crear token de recuperación en DB
@@ -58,23 +59,29 @@ async def send_recovery_code(email: str, db: Session):
 
     # 🌟 INTEGRACIÓN REAL CON TU MAIL SERVICE
     try:
-        # Aquí configuras el cuerpo del correo de Sportify
         asunto = "Sportify - Recuperación de Contraseña"
+
         cuerpo = f"""
         Hola,
+        
         Has solicitado restablecer tu contraseña en Sportify.
+        
         Tu código de verificación es: {codigo}
-        Este código expirará en 2 minutos.
+        
+        Este código expirará en 5 minutos.
+        
         Si no solicitaste esto, ignora este correo.
         """
-        
-        # Ejecuta la función de tu mail_service de fondo
+
+        # Ejecuta la función de tu mail_service
         await send_email(email, asunto, cuerpo)
+
         print(f"Código {codigo} enviado de forma REAL a {email}")
-        
+
     except Exception as e:
         print(f"Error al enviar el email real: {e}. Se muestra en consola: {codigo}")
-        # Caída limpia: Si el servidor SMTP falla, al menos dejamos el print para debuggear
+
+        # Fallback para debug
         print(f"Código de emergencia: {codigo}")
 
     return {
@@ -86,6 +93,7 @@ async def send_recovery_code(email: str, db: Session):
 # VALIDAR CÓDIGO
 # ---------------------------------------------------
 async def validate_recovery_code(email: str, code: str, db: Session):
+
     # Buscar registro activo
     recovery = db.query(PasswordRecovery).filter(
         PasswordRecovery.email == email,
@@ -94,63 +102,70 @@ async def validate_recovery_code(email: str, code: str, db: Session):
     ).first()
 
     if not recovery:
-        return {
-            "success": False,
-            "message": "Código inválido"
-        }
+        raise HTTPException(
+            status_code=400,
+            detail="Código inválido"
+        )
 
-    # Validar si ya expiró
+    # Validar expiración
     if datetime.now() > recovery.expires_at:
+
         recovery.used = True
         db.commit()
-        return {
-            "success": False,
-            "message": "El código expiró"
-        }
 
-    # Retornamos el objeto 'recovery' interno para ahorrar búsquedas duplicadas después
+        raise HTTPException(
+            status_code=400,
+            detail="El código expiró"
+        )
+
+    # Retornamos recovery para reutilizarlo
     return {
         "success": True,
         "message": "Código válido",
-        "recovery_obj": recovery  
+        "recovery_obj": recovery
     }
 
 # ---------------------------------------------------
 # CAMBIAR PASSWORD
 # ---------------------------------------------------
 async def change_password(email: str, code: str, new_password: str, db: Session):
-    # Reutilizar validación y obtener el objeto directo de la DB
+
+    # Validar código
     validation = await validate_recovery_code(email, code, db)
 
-    if not validation["success"]:
-        return validation
-
-    # Recuperamos el registro directo sin volver a consultar la base de datos
+    # Recuperar objeto ya validado
     recovery = validation["recovery_obj"]
 
     # Buscar usuario
-    usuario = db.query(Socio).filter(Socio.email == email).first()
-    if not usuario:
-        return {
-            "success": False,
-            "message": "Usuario no encontrado"
-        }
+    usuario = db.query(Socio).filter(
+        Socio.email == email
+    ).first()
 
-    # Hashear y actualizar contraseña
+    if not usuario:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no encontrado"
+        )
+
+    # Hashear nueva contraseña
     usuario.hashed_password = get_password_hash(new_password)
-    
-    # Marcar código como usado para que quede inhabilitado
+
+    # Marcar código como usado
     recovery.used = True
 
     try:
         db.commit()
+
     except Exception as e:
+
         db.rollback()
+
         print(f"Error en commit: {e}")
-        return {
-            "success": False,
-            "message": "Error al actualizar la contraseña en el sistema"
-        }
+
+        raise HTTPException(
+            status_code=500,
+            detail="Error al actualizar la contraseña en el sistema"
+        )
 
     return {
         "success": True,

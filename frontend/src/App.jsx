@@ -27,14 +27,17 @@ function AppContent({ token, setToken }) {
   // 2. Definimos en qué rutas NO queremos que aparezca el Navbar común
   const esRutaAdmin = location.pathname.startsWith("/admin");
 
+  // 🚨 Ocultamos el Navbar en las rutas de autenticación y recuperación de clave
+  const esRutaAuth = ["/login", "/registro", "/forgot-password", "/reset-password"].includes(location.pathname);
+
   return (
     <>
       {/* 🌟 CONFIGURAMOS EL TOASTER AQUÍ 
           Esto permite que los mensajes floten estéticamente en cualquier pantalla */}
       <Toaster position="top-right" reverseOrder={false} />
 
-      {/* 3. Condición para mostrar el Navbar */}
-      {!esRutaAdmin && (
+      {/* 3. Condición para mostrar el Navbar: No debe ser admin ni tampoco una pantalla de auth */}
+      {!esRutaAdmin && !esRutaAuth && (
         <Navbar token={token} setToken={setToken} />
       )}
 
@@ -45,16 +48,16 @@ function AppContent({ token, setToken }) {
         <Route path="/reservar/membresia" element={<ReservaMembresia />} />
         <Route path="/pago" element={<Pago />} />
         <Route path="/mis-reservas" element={<MisReservas />} />
-        <Route path="/clases" element={<Clases />} />    
+        <Route path="/clases" element={<Clases />} />
         <Route path="/reservar/membresia" element={<ReservaMembresia />} />
         <Route path="/reservar/individual" element={<ReservaIndividual />} />
-        <Route path="/pago" element={<Pago />} /> 
-        <Route path="/mis-reservas" element={<MisReservas />} />        
+        <Route path="/pago" element={<Pago />} />
+        <Route path="/mis-reservas" element={<MisReservas />} />
         <Route path="/login" element={<Login setToken={setToken} />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} /> 
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Rutas de Administración (Limpiadas las duplicadas) */}
         <Route path="/admin" element={<AdminDashboard />} />
