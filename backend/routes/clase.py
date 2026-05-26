@@ -106,6 +106,12 @@ async def crear_clase(
             minutes=clase_existente.duracion
         )
 
+        nuevo_inicio = nuevo_inicio.replace(tzinfo=None)
+        nuevo_fin = nuevo_fin.replace(tzinfo=None)
+
+        existente_inicio = existente_inicio.replace(tzinfo=None)
+        existente_fin = existente_fin.replace(tzinfo=None)
+
         if (
             nuevo_inicio < existente_fin and
             nuevo_fin > existente_inicio
