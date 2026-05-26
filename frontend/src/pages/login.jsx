@@ -5,6 +5,8 @@ import logoSportify from '../assets/logo.png';
 import { useNavigate } from 'react-router-dom'; 
 import { Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+import { Eye, EyeOff } from 'lucide-react';
+
 
 const Login = ({ setToken }) => { 
     const navigate = useNavigate();
@@ -12,6 +14,7 @@ const Login = ({ setToken }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -103,7 +106,7 @@ const Login = ({ setToken }) => {
                         required
                     />
 
-                    <button type="submit" className="boton-login">
+                    <button type="submit" className="   boton-login">
                         INICIAR SESIÓN
                     </button>
                     
