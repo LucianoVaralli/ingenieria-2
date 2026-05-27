@@ -300,11 +300,22 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
     resultado = []
     for r in reservas:
         clase = db.query(Clase).filter(Clase.id == r.clase_id).first()
+        lista_espera = db.query(ListaEspera).filter(
+
+        ListaEspera.socio_id == socio.id,
+
+        ListaEspera.clase_id == r.clase_id,
+
+        ListaEspera.estado == "esperando"
+
+        ).first()
+
         resultado.append({
             "id":         r.id,
             "clase_id":   r.clase_id,
             "tipo":       r.tipo,
             "estado":     r.estado,
+            "lista_espera": lista_espera is not None,
             "fecha_clase": str(r.fecha_clase),
             "monto_total": r.monto_total,
             "clase": {
