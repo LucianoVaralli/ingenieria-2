@@ -15,4 +15,8 @@ class ConfirmarPagoIndividual(BaseModel):
 
     numero_tarjeta: str
 
+    titular: str
+
+    cvv: str
+
     acepta_lista_espera: bool = False

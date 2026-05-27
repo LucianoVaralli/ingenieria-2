@@ -154,6 +154,8 @@ const ReservaIndividual = () => {
             const res = await api.post('/reservas/individual/pagar', {
                 reserva_id: reservaId,
                 numero_tarjeta: nroTarjeta,
+                titular: titular,
+                cvv: cvv,
                 acepta_lista_espera: debeListaEspera
             });
 
