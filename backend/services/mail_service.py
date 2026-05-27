@@ -6,6 +6,12 @@ from models.socio import Socio
 from models.clase import Clase
 from models.reserva_MIO import Reserva
 
+load_dotenv(dotenv_path=".env")
+
+print("MAIL_USERNAME:", os.getenv("MAIL_USERNAME"))
+print("MAIL_PASSWORD:", os.getenv("MAIL_PASSWORD"))
+print("MAIL_SERVER:", os.getenv("MAIL_SERVER"))
+
 load_dotenv()
 
 conf = ConnectionConfig(

@@ -44,21 +44,24 @@ const ResetPassword = () => {
         }
     };
 
-    // 🚨 quitamos el (e) ya que no usaremos el submit nativo
-    const handleResetPassword = async () => {
-        // Si hay errores visuales, cortamos aquí
+    const handleResetPassword = async (e) => {
+        // 1. Frenar la recarga nativa del navegador inmediatamente
+        e.preventDefault();
+
+        // 2. Si hay errores visuales, cortamos con "return;" seco
         if (passwordError || matchError) {
             toast.error("Por favor, corrige los errores en las contraseñas antes de continuar.");
             return;
         }
 
-        // Si faltan campos obligatorios, cortamos aquí
+        // 3. Si faltan campos obligatorios, cortamos con "return;" seco
         if (!formData.email || !formData.code || !formData.newPassword || !formData.confirmPassword) {
             toast.error("Todos los campos son obligatorios.");
             return;
         }
 
         try {
+            // Ahora la petición saldrá correctamente por POST hacia el backend (puerto 8000)
             const res = await api.post('/auth/reset-password', {
                 email: formData.email,
                 code: formData.code,
@@ -107,9 +110,7 @@ const ResetPassword = () => {
     return (
         <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto', color: '#fff' }}>
             <h1>Restablecer Contraseña</h1>
-
-            {/* 🚨 REEMPLAZADO <form> POR UN <div> PARA EVITAR COMPORTAMIENTOS NATIVOS */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <input
                     type="email"
                     name="email"
@@ -182,15 +183,10 @@ const ResetPassword = () => {
                     {matchError && <div style={errorTextStyle}>{matchError}</div>}
                 </div>
 
-                {/* 🚨 EL BOTÓN AHORA ES type="button" Y TIENE UN onClick DIRECTO */}
-                <button
-                    type="button"
-                    onClick={handleResetPassword}
-                    style={{ padding: '12px', borderRadius: '10px', cursor: 'pointer', backgroundColor: '#fff', color: '#000', fontWeight: 'bold', border: 'none' }}
-                >
+                <button type="submit" style={{ padding: '12px', borderRadius: '10px', cursor: 'pointer', backgroundColor: '#fff', color: '#000', fontWeight: 'bold', border: 'none' }}>
                     Actualizar Contraseña
                 </button>
-            </div>
+            </form>
         </div>
     );
 };
