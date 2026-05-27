@@ -24,7 +24,10 @@ const Perfil = ({ token, setToken }) => {
                 const hoy = new Date();
                 hoy.setHours(0, 0, 0, 0);
                 const activas = resReservas.data.filter(r =>
-                    r.estado === 'confirmada' &&
+                    (
+                        r.estado === 'confirmada' ||
+                        r.lista_espera
+                    ) &&
                     new Date(r.fecha_clase) >= hoy
                 );
                 setReservas(activas);
@@ -162,9 +165,34 @@ const Perfil = ({ token, setToken }) => {
                                                     ? r.clase.horario.slice(0, 5)
                                                     : '—'}
                                             </span>
-                                            <span className="reserva-card-tipo">
-                                                {r.tipo === 'membresia' ? '📋 Membresía' : '🎫 Individual'}
-                                            </span>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                
+                                                <span className="reserva-card-tipo">
+                                                    {r.tipo === 'membresia'
+                                                        ? '📋 Membresía'
+                                                        : '🎫 Individual'}
+                                                </span>
+
+                                                {r.lista_espera && (
+                                                    <span
+                                                        style={{
+                                                            background: '#00ff1e',
+                                                            color: 'black',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '12px',
+                                                            fontWeight: 'bold',
+                                                            width: 'fit-content'
+                                                        }}
+                                                    >
+                                                        Lista de espera
+                                                    </span>
+                                                )}
+
+                                            </div>
+
+
                                         </div>
                                         {/*<button
                                             className="reserva-card-cancel"
