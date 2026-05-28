@@ -1,72 +1,48 @@
-import AdminNavbar from "../../components/AdminNavbar";
-import CrearClase from "./CrearClase";
-import ListaClasesAdmin from "./ListaClasesAdmin";
-import EditarCapacidad from "./EditarCapacidad";
+import { Link } from "react-router-dom";
+import AdminLayout from "../../layouts/AdminLayout";
+import "../../assets/css/Admin.css";
+
+const OPCIONES = [
+    {
+        to:    "/admin/crear-clase",
+        icon:  "＋",
+        titulo: "Crear Clase",
+        desc:  "Agregá una nueva actividad con horario, profesor y cupos.",
+    },
+    {
+        to:    "/admin/eliminar-clase",
+        icon:  "☰",
+        titulo: "Ver Clases",
+        desc:  "Listado completo de clases activas con opción de eliminar.",
+    },
+    {
+        to:    "/admin/editar-capacidad",
+        icon:  "◎",
+        titulo: "Capacidad",
+        desc:  "Actualizá el aforo máximo del gimnasio.",
+    },
+];
 
 function AdminDashboard() {
-
     return (
-        <div style={{
-            minHeight: "100vh",
-            backgroundColor: "#121212",
-            color: "white"
-        }}>
+        <AdminLayout>
+            <div className="admin-page">
 
-            <AdminNavbar />
-
-            <div style={{
-                padding: "40px"
-            }}>
-
-                <h1 style={{
-                    color: "#5DBB46"
-                }}>
-                    Panel de Administración
-                </h1>
-
-                <p>
-                    Bienvenido administrador.
-                </p>
-
-                <p>
-                    Desde acá vas a poder gestionar:
-                </p>
+                <div className="admin-section-label">Panel de control</div>
+                <h1 className="admin-section-title">Dashboard</h1>
 
                 <div className="admin-opciones">
-
-                    <div className="admin-card">
-                        <h3>Crear Clase</h3>
-                        <p>
-                            Gestión de actividades y cupos
-                        </p>
-                    </div>
-
-                    <div className="admin-card">
-                        <h3>Eliminar Clase</h3>
-                        <p>
-                            Control de clases programadas
-                        </p>
-                    </div>
-
-                    <div className="admin-card">
-                        <h3>Capacidad</h3>
-                        <p>
-                            Control del espacio disponible
-                        </p>
-                    </div>
-
-                    <div className="admin-card">
-                        <h3>Clases</h3>
-                        <p>
-                            Ver las clases con su información detallada
-                        </p>
-                    </div>
-
+                    {OPCIONES.map(op => (
+                        <Link to={op.to} className="admin-card" key={op.to}>
+                            <span className="admin-card-icon">{op.icon}</span>
+                            <h3>{op.titulo}</h3>
+                            <p>{op.desc}</p>
+                        </Link>
+                    ))}
                 </div>
 
             </div>
-
-        </div>
+        </AdminLayout>
     );
 }
 

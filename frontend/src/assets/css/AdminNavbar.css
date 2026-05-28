@@ -1,69 +1,154 @@
-.admin-navbar {
-    height: 70px;
-    background-color: #1a1a1f;
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
+/* ── LAYOUT GENERAL ── */
+.admin-layout {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    padding: 0 30px;
-
-    border-bottom: 1px solid #2a2a2f;
+    min-height: 100vh;
+    background: #080808;
+    font-family: 'Lora', serif;
 }
 
-.admin-navbar-logo {
-    color: #5DBB46;
-    font-size: 24px;
-    font-weight: bold;
+.admin-main {
+    flex: 1;
+    padding: 40px 48px;
+    overflow-y: auto;
+    background: #080808;
+    color: #fff;
 }
 
-.admin-navbar-links {
+/* ── SIDEBAR ── */
+.admin-sidebar {
+    width: 400px;
+    min-height: 100vh;
+    background: #0c0c0c;
+    border-right: 1px solid rgba(255,255,255,0.06);
     display: flex;
-    align-items: center;
-    gap: 20px;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
 }
 
-.admin-link {
-    text-decoration: none;
-    color: white;
-    transition: color 0.2s ease;
-}
-
-.admin-link:hover {
-    color: #5DBB46;
-}
-
-.admin-logout-btn {
-    background-color: #5DBB46;
-    color: #121212;
-
-    border: none;
-    padding: 10px 15px;
-
-    border-radius: 6px;
-
-    cursor: pointer;
-    font-weight: bold;
-
-    transition: background-color 0.2s ease;
-}
-
-.admin-logout-btn:hover {
-    background-color: #4ca138;
-}
-
-.admin-navbar-logo{
+/* Brand */
+.admin-sidebar-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-
-    color: #5DBB46;
-    font-size: 24px;
-    font-weight: bold;
+    gap: 10px;
+    padding: 24px 20px;
 }
 
-.admin-navbar-logo-img{
-    width: 36px;
-    height: 36px;
+.admin-sidebar-logo {
+    width: 32px;
+    height: 32px;
     object-fit: contain;
+    border-radius: 8px;
+}
+
+.admin-sidebar-name {
+    display: block;
+    font-family: 'Lora', serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #fff;
+    line-height: 1;
+}
+
+.admin-sidebar-tag {
+    display: block;
+    font-size: 10px;
+    color: #5CB84D;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+/* Separador */
+.admin-sidebar-sep {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 0 20px;
+}
+
+/* Nav */
+.admin-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 12px;
+    gap: 2px;
+    flex: 1;
+}
+
+.admin-sidebar-section {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.2);
+    font-weight: 600;
+    padding: 0 8px;
+    margin-bottom: 8px;
+    margin-top: 4px;
+}
+
+.admin-sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Lora', serif;
+    color: rgba(255,255,255,0.45);
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+
+.admin-sidebar-link:hover {
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.8);
+}
+
+.admin-sidebar-link--active {
+    background: rgba(92,184,77,0.1);
+    color: #5CB84D;
+    font-weight: 600;
+}
+
+.admin-sidebar-link--active:hover {
+    background: rgba(92,184,77,0.14);
+    color: #5CB84D;
+}
+
+.admin-sidebar-link-icon {
+    font-size: 12px;
+    width: 18px;
+    text-align: center;
+    opacity: 0.7;
+}
+
+/* Footer */
+.admin-sidebar-footer {
+    padding: 16px 12px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.admin-sidebar-logout {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.3);
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.admin-sidebar-logout:hover {
+    border-color: rgba(255,80,80,0.3);
+    color: rgba(255,100,100,0.7);
+    background: rgba(255,80,80,0.04);
 }
