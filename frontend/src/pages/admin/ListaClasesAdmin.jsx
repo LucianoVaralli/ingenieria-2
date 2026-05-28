@@ -34,11 +34,11 @@ function ListaClasesAdmin() {
 
         try {
 
-            await api.delete(`/clases/${claseAEliminar}`);
+            await api.put(`/clases/eliminar/${claseAEliminar}`, {
+                motivo: "Clase eliminada por administrador"
+            });
 
-            setClases(
-                clases.filter(c => c.id !== claseAEliminar)
-            );
+            await cargarClases();
 
             setMensajeExito("Eliminación completada");
 
