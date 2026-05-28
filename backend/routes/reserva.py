@@ -139,6 +139,8 @@ def crear_reserva_membresia(
             "clases_perdidas":    clases_perdidas,
             "descuento_aplicado": round(descuento, 2),
             "monto_total":        round(monto_total, 2),
+            "hay_lista_espera":   True,
+            "mensaje_espera":     f"¿Desea estar en lista de espera?"
         }
 
     # Créditos: solo cuenta las clases futuras con cupo
@@ -154,11 +156,11 @@ def crear_reserva_membresia(
         "descuento_aplicado": round(descuento, 2),
         "monto_total":        round(monto_total, 2),
         "hay_lista_espera":   len(fechas_sin_cupo) > 0,
-        **({"mensaje_espera": f"¿Desea estar en lista de espera para las fechas: {', '.join(fechas_sin_cupo)}?"} if fechas_sin_cupo else {})
+        **({"mensaje_espera": f"¿Desea estar en lista de espera?"} if fechas_sin_cupo else {})
     }
 
     if fechas_sin_cupo:
-        respuesta["mensaje_espera"] = f"¿Desea estar en lista de espera para las fechas: {', '.join(fechas_sin_cupo)}?"
+        respuesta["mensaje_espera"] = f"¿Desea estar en lista de espera?"
 
     return respuesta
 
@@ -179,8 +181,9 @@ def confirmar_pago_membresia(
 
     #  VALIDACIÓN DE TARJETA 
     if datos.numero_tarjeta:
+        primeros_4 = datos.numero_tarjeta.replace(" ", "")[:4]
         tarjeta = db.query(TarjetaSimulada).filter(
-            TarjetaSimulada.numero == datos.numero_tarjeta
+            TarjetaSimulada.numero == primeros_4
         ).first()
 
         if not tarjeta:
@@ -564,10 +567,9 @@ async def pagar_reserva_individual(
     # Buscamos tarjeta simulada
     # ─────────────────────────────────────────────
 
+    primeros_4 = datos.numero_tarjeta.replace(" ", "")[:4]
     tarjeta = db.query(TarjetaSimulada).filter(
-        TarjetaSimulada.numero == datos.numero_tarjeta,
-        func.lower(TarjetaSimulada.titular) == datos.titular.lower(),
-        TarjetaSimulada.cvv == datos.cvv
+         TarjetaSimulada.numero == primeros_4
     ).first()
 
     if not tarjeta:

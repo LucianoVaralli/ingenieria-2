@@ -215,9 +215,9 @@ const ReservaMembresia = () => {
                     {paso === 'confirmar_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
-                            <h3 className="reserva-accion-titulo">Algunas fechas sin cupo</h3>
+                            <h3 className="reserva-accion-titulo">Clases sin cupos</h3>
                             <p className="reserva-accion-desc">
-                                Las siguientes fechas no tienen cupos disponibles:
+                                Las siguientes clases no tienen cupos disponibles:
                             </p>
                             <div className="reserva-fechas-lista reserva-fechas-lista--sin-cupo">
                                 {datosReserva.fechas_sin_cupo.map(f => {
@@ -238,14 +238,14 @@ const ReservaMembresia = () => {
                                     onClick={() => handleResponderEspera(true)}
                                     disabled={cargando}
                                 >
-                                    Sí, anotarme en lista de espera
+                                    Confirmar lista de espera
                                 </button>
                                 <button
                                     className="boton-cancelar"
                                     onClick={() => handleResponderEspera(false)}
                                     disabled={cargando}
                                 >
-                                    No, solo las fechas con cupo
+                                    Rechazar lista de espera
                                 </button>
                             </div>
                         </div>
