@@ -152,14 +152,14 @@ return (
                             <span className="registro-stat-num">+2K</span>
                             <span className="registro-stat-label">Miembros</span>
                         </div>
-                        <div className="registro-stat">
+                        {/*<div className="registro-stat">
                             <span className="registro-stat-num">30+</span>
                             <span className="registro-stat-label">Clases</span>
                         </div>
                         <div className="registro-stat">
                             <span className="registro-stat-num">5★</span>
                             <span className="registro-stat-label">Rating</span>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>
