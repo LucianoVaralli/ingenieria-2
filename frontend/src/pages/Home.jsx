@@ -150,15 +150,8 @@ const Home = ({ token }) => {
                     </h1>
                     <p className="hero-slide-sub">{slide.tagline}</p>
                     <div className="hero-slide-actions">
-                        {token ? (
-                            /* Usuario logueado: lo llevamos a su perfil */
+                        {token && (
                             <Link to="/perfil" className="hero-btn-primary">Ver mi perfil</Link>
-                        ) : (
-                            /* Visitante: invitamos a registrarse o loguear */
-                            <>
-                                <Link to="/registro" className="hero-btn-primary">Comenzar ahora</Link>
-                                <Link to="/login" className="hero-btn-ghost">Iniciar sesión</Link>
-                            </>
                         )}
                     </div>
                 </div>

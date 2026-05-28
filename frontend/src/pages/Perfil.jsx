@@ -68,9 +68,6 @@ const Perfil = ({ token, setToken }) => {
                                 <h2 className="perfil-nombre">{user.nombre}</h2>
                                 <p className="perfil-id">ID Socio · #2026{user.id || '01'}</p>
                             </div>
-                            <div className={`badge-cuota ${user.cuota_al_dia ? 'badge-al-dia' : 'badge-pendiente'}`}>
-                                {user.cuota_al_dia ? '✓ Cuota al Día' : '⚠ Matrícula Pendiente'}
-                            </div>
                         </div>
                     </div>
  
