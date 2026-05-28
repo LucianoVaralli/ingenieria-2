@@ -20,7 +20,8 @@ const [formData, setFormData] = useState({
 });
 const [file, setFile] = useState(null);
 const navigate = useNavigate();
-
+const [mensaje, setMensaje] = useState('');
+const [tipoMensaje, setTipoMensaje] = useState(''); // "error" | "success"
 const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 };
@@ -81,6 +82,11 @@ const validate = () => {
     tempErrors.confirmar_password = "Las contraseñas no coinciden.";
     }
 
+    // Validación de archivo PDF
+    if (!file) {
+        tempErrors.apto_fisico = "Debés subir un apto físico en PDF.";
+    }    
+
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0; // Retorna true si no hay errores
 };
@@ -113,29 +119,70 @@ try {
     await api.post('/socios/registrar', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
-    alert("¡Registro exitoso!");
-    navigate('/login'); 
+
+    setMensaje("¡Registro exitoso!");
+    setTipoMensaje("success");
+
+    setTimeout(() => {
+        setMensaje(""); // limpia visual
+        navigate('/login');
+    }, 1500);
+
 } catch (err) {
+    const detail = err.response?.data?.detail;
     // Si el backend devuelve 400 (DNI o Email ya registrados)
     if (err.response && err.response.status === 400) {
-        const detail = err.response.data.detail;
-    
+
         // Mapeamos el error al campo que corresponde
-    if (detail.includes("DNI")) {
-        setErrors(prev => ({ ...prev, dni: detail }));
-    } else if (detail.includes("correo")) {
-        setErrors(prev => ({ ...prev, email: detail }));
-    }
+        if (detail?.includes("DNI")) {
+            setErrors(prev => ({ ...prev, dni: detail }));
+        } 
+        else if (detail?.includes("correo")) {
+            setErrors(prev => ({ ...prev, email: detail }));
+        } 
+        else if (detail?.includes("contraseñas")) {
+            setErrors(prev => ({
+                ...prev,
+                confirmar_password: detail
+            }));
+        } 
+        else if (
+            detail?.includes("PDF") ||
+            detail?.includes("archivo") ||
+            detail?.includes("adjuntar")
+        ) {
+            setErrors(prev => ({
+                ...prev,
+                apto_fisico: detail
+            }));
+        } 
+        else {
+            setMensaje(detail || "Error al registrar usuario");
+            setTipoMensaje("error");
+        }
+
     } else {
-      // Error genérico por si se cae el servidor o hay problemas de red
-        alert("Ocurrió un error inesperado. Intentalo más tarde.");
+        setMensaje("Ocurrió un error inesperado. Intentalo más tarde.");
+        setTipoMensaje("error");
+
+        setTimeout(() => {
+            setMensaje('');
+            setTipoMensaje('');
+        }, 3000);
     }
 }
 
 };
 
 return (
-    <div className="registro-container">
+    <>
+        {mensaje && (
+            <div className={`toast ${tipoMensaje}`}>
+                {mensaje}
+            </div>
+        )}
+
+        <div className="registro-container">
 
             {/* Panel izquierdo decorativo */}
             <div className="registro-left">
@@ -170,7 +217,6 @@ return (
                     <h2 className="registro-titulo">Crear tu cuenta</h2>
                     <p className="registro-subtitle">Completá los datos para registrarte</p>
                 </div>
-
                 <form onSubmit={handleRegistro} className="registro-form">
                     {/* nombre y apellido */}
                     <div className="registro-row">
@@ -277,12 +323,12 @@ return (
                             <span className="registro-file-text">
                                 {file ? file.name : 'Seleccionar archivo PDF'}
                             </span>
+                            {/*se quito el required para que nos salga el error de adjuntar pdf*/}
                             <input 
                                 type="file" 
                                 accept=".pdf" 
                                 className="registro-file-input" 
-                                onChange={handleFileChange} 
-                                required 
+                                onChange={handleFileChange}
                             />
                         </label>
     
@@ -300,6 +346,7 @@ return (
                 </p>
             </div>
         </div>
+    </>
 );
 };
 
