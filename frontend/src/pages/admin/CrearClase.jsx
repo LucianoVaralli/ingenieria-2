@@ -35,18 +35,16 @@ const CrearClase = () => {
 
         let nuevosErrores = { ...errores };
 
+        // Si el usuario vuelve a escribir en un campo con error, limpiamos ese error específico
+        if (nuevosErrores[name]) {
+            delete nuevosErrores[name];
+        }
+
         if (name === "cupo") {
             if (!value) nuevosErrores.cupo = "Debe ingresar un cupo";
             else if (isNaN(value)) nuevosErrores.cupo = "El cupo debe ser numérico";
             else if (Number(value) <= 0) nuevosErrores.cupo = "El cupo debe ser mayor a 0";
             else delete nuevosErrores.cupo;
-        }
-        if (name === "duracion") {
-            if (!value) nuevosErrores.duracion = "Debe ingresar una duración";
-            else if (isNaN(value)) nuevosErrores.duracion = "La duración debe ser numérica";
-            else if (Number(value) < 30) nuevosErrores.duracion = "La duración mínima es de 30 minutos";
-            else if (Number(value) > 240) nuevosErrores.duracion = "La duración máxima es de 4 horas";
-            else delete nuevosErrores.duracion;
         }
         if (name === "precio_individual") {
             if (!value) nuevosErrores.precio_individual = "Debe ingresar un precio";
@@ -58,6 +56,9 @@ const CrearClase = () => {
             if (value && !value.includes("@")) nuevosErrores.profesor_email = "Email inválido";
             else delete nuevosErrores.profesor_email;
         }
+        
+        // NOTA: Se eliminó por completo el bloque "if (name === 'duracion')" de aquí
+        
         setErrores(nuevosErrores);
     };
 
@@ -65,21 +66,50 @@ const CrearClase = () => {
         e.preventDefault();
         setErrorBackend("");
         setMensajeExito("");
+        
+        // Validaciones de duración al presionar el botón
+        const dur = Number(formData.duracion);
+        if (!formData.duracion) {
+            setErrores(prev => ({ ...prev, duracion: "Debe ingresar una duración" }));
+            return;
+        }
+        if (isNaN(dur)) {
+            setErrores(prev => ({ ...prev, duracion: "La duración debe ser numérica" }));
+            return;
+        }
+        if (dur < 30 || dur > 240) {
+            setErrores(prev => ({ 
+                ...prev, 
+                duracion: "La duración de la clase es de mínimo 30 minutos y máximo 4 horas" 
+            }));
+            return;
+        }
+
         try {
             await api.post("/clases/crear", formData);
             setMensajeExito("¡Clase creada exitosamente!");
             setTimeout(() => setMensajeExito(""), 3000);
             setFormData({ actividad: "", dia: "", horario: "", profesor_email: "", cupo: "", duracion: "", precio_individual: "" });
         } catch (error) {
-            setErrorBackend(error.response?.data?.detail || "Error al crear clase");
+            // Manejo de errores de negocio del backend (ej: Profesor inexistente, horario ocupado, etc.)
+            const detail = error.response?.data?.detail || "Error al crear clase";
+            
+            if (detail.toLowerCase().includes("profesor")) {
+                setErrores(prev => ({ ...prev, profesor_email: detail }));
+            } else {
+                setErrorBackend(detail);
+            }
         }
     };
 
     const deshabilitado =
-        Object.keys(errores).length > 0 ||
-        !formData.actividad || !formData.dia || !formData.horario ||
-        !formData.profesor_email || !formData.cupo ||
-        !formData.duracion || !formData.precio_individual;
+        !formData.actividad ||
+        !formData.dia ||
+        !formData.horario ||
+        !formData.profesor_email ||
+        !formData.cupo ||
+        !formData.duracion ||
+        !formData.precio_individual;
 
     return (
         <AdminLayout>
