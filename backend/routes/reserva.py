@@ -571,6 +571,9 @@ async def pagar_reserva_individual(
     ).first()
 
     if not tarjeta:
+        reserva.estado = "cancelada"
+
+        db.commit()
 
         raise HTTPException(
             status_code=400,
@@ -588,11 +591,6 @@ async def pagar_reserva_individual(
 
         db.commit()
 
-        try:
-            await enviar_mail_pago_exitoso(socio, clase, reserva)
-        except Exception as e:
-            print(f"⚠️ Mail no enviado: {e}")  # log pero no rompe
-
         raise HTTPException(
             status_code=400,
             detail="Hay inconvenientes con la conexión al banco"
@@ -608,11 +606,6 @@ async def pagar_reserva_individual(
         reserva.estado = "cancelada"
 
         db.commit()
-
-        try:
-            await enviar_mail_pago_exitoso(socio)
-        except Exception as e:
-            print(f"⚠️ Mail no enviado: {e}")
 
         raise HTTPException(
             status_code=400,
@@ -682,7 +675,7 @@ async def pagar_reserva_individual(
         db.commit()
 
         try:
-            await enviar_mail_pago_exitoso(socio, clase, reserva.fecha_clase)
+            await enviar_mail_lista_espera(socio, clase, reserva.fecha_clase)
         except Exception as e:
             print(f"⚠️ Mail no enviado: {e}")
 
@@ -711,4 +704,43 @@ async def pagar_reserva_individual(
 
     return {
         "mensaje": "El pago se realizó correctamente"
+    }
+
+@router.delete("/individual/cancelar/{reserva_id}")
+def cancelar_reserva_individual(
+
+    reserva_id: int,
+
+    token: str = Depends(oauth2_scheme),
+
+    db: Session = Depends(get_db)
+):
+
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    reserva = db.query(Reserva).filter(
+
+        Reserva.id == reserva_id,
+
+        Reserva.socio_id == socio.id,
+
+        Reserva.tipo == "individual",
+
+        Reserva.estado == "pendiente_pago"
+
+    ).first()
+
+    if not reserva:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Reserva no encontrada"
+        )
+
+    reserva.estado = "cancelada"
+
+    db.commit()
+
+    return {
+        "mensaje": "Reserva cancelada"
     }

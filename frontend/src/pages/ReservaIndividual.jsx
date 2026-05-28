@@ -122,7 +122,18 @@ const ReservaIndividual = () => {
     // RECHAZAR LISTA ESPERA
     // ─────────────────────────────────────────────
 
-    const handleRechazarLista = () => {
+    const handleRechazarLista = async () => {
+
+        try {
+
+            await api.delete(
+                `/reservas/individual/cancelar/${reservaId}`
+            );
+
+        } catch (err) {
+            console.error(err);
+        }
+
         setMensaje('Reserva cancelada');
         setPaso('error');
     };
