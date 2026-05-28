@@ -4,11 +4,19 @@ import "../../assets/css/ListaClasesAdmin.css";
 import AdminLayout from "../../layouts/AdminLayout";
 
 function ListaClasesAdmin() {
-    const [clases,               setClases]               = useState([]);
-    const [errorBackend,         setErrorBackend]         = useState("");
-    const [mensajeExito,         setMensajeExito]         = useState("");
-    const [mostrarConfirmacion,  setMostrarConfirmacion]  = useState(false);
-    const [claseAEliminar,       setClaseAEliminar]       = useState(null);
+    const [clases, setClases] = useState([]);
+    const [errorBackend, setErrorBackend] = useState("");
+    const [mensajeExito, setMensajeExito] = useState("");
+    const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+    const [claseAEliminar, setClaseAEliminar] = useState(null);
+
+    // Array de días en orden para armar las columnas
+    const diasSemana = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"];
+
+    // Helper para normalizar el texto (evita problemas de mayúsculas/minúsculas o acentos de la Base de Datos)
+    const normalizarTexto = (txt) => {
+        return txt ? txt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+    };
 
     useEffect(() => { cargarClases(); }, []);
 
@@ -25,13 +33,11 @@ function ListaClasesAdmin() {
         setErrorBackend("");
         setMensajeExito("");
         try {
-
             await api.put(`/clases/eliminar/${claseAEliminar}`, {
                 motivo: "Clase eliminada por administrador"
             });
 
             await cargarClases();
-
             setMensajeExito("Eliminación completada");
 
             setTimeout(() => {
@@ -48,7 +54,6 @@ function ListaClasesAdmin() {
     return (
         <AdminLayout>
             <div className="lista-page">
-
                 <div className="lista-header">
                     <div className="lista-label">Gestión</div>
                     <h1 className="lista-titulo">Clases existentes</h1>
@@ -63,22 +68,50 @@ function ListaClasesAdmin() {
                         <p>No hay clases cargadas todavía.</p>
                     </div>
                 ) : (
-                    clases.map(clase => (
-                        <div key={clase.id} className="clase-admin-card">
-                            <div className="clase-admin-card-info">
-                                <h3>{clase.actividad}</h3>
-                                <p>{clase.dia.charAt(0).toUpperCase() + clase.dia.slice(1)} — {clase.horario?.slice(0, 5)}</p>
-                                <p>Prof. {clase.profesor_nombre}</p>
-                                <span className="clase-admin-card-badge">Cupo: {clase.cupo}</span>
-                            </div>
-                            <button
-                                className="btn-eliminar"
-                                onClick={() => { setClaseAEliminar(clase.id); setMostrarConfirmacion(true); }}
-                            >
-                                Eliminar
-                            </button>
-                        </div>
-                    ))
+                    /* Contenedor principal de las columnas */
+                    <div className="columnas-semana-container">
+                        {diasSemana.map((dia) => {
+                            // Filtramos las clases que corresponden a este día y las ordenamos por horario
+                            const clasesDelDia = clases
+                                .filter(clase => normalizarTexto(clase.dia) === normalizarTexto(dia))
+                                .sort((a, b) => (a.horario || "").localeCompare(b.horario || ""));
+
+                            return (
+                                <div key={dia} className="columna-dia">
+                                    <div className="columna-dia-header">
+                                        <h3>{dia}</h3>
+                                        <span className="columna-contador">{clasesDelDia.length}</span>
+                                    </div>
+                                    
+                                    <div className="columna-dia-contenido">
+                                        {clasesDelDia.length === 0 ? (
+                                            <p className="clase-vacia-txt">Sin clases</p>
+                                        ) : (
+                                            clasesDelDia.map((clase) => (
+                                                <div key={clase.id} className="clase-admin-card-mini">
+                                                    <div className="clase-mini-info">
+                                                        <h4>{clase.actividad}</h4>
+                                                        <span className="clase-mini-horario">
+                                                            {clase.horario?.slice(0, 5)} hs
+                                                        </span>
+                                                        <p className="clase-mini-prof">Prof. {clase.profesor_nombre}</p>
+
+                                                        <span className="clase-mini-badge">Cupo: {clase.cupo}</span>
+                                                    </div>
+                                                    <button
+                                                        className="btn-eliminar-mini"
+                                                        onClick={() => { setClaseAEliminar(clase.id); setMostrarConfirmacion(true); }}
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
 

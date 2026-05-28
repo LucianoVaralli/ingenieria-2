@@ -199,3 +199,215 @@
     border-color: rgba(255,255,255,0.2);
     color: rgba(255,255,255,0.7);
 }
+/* Contenedor principal de la página */
+.lista-page {
+    padding: 20px;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Encabezados */
+.lista-header {
+    margin-bottom: 25px;
+}
+.lista-label {
+    color: #48bb78; /* Verde Sportify */
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: bold;
+}
+.lista-titulo {
+    color: #ffffff;
+    font-size: 1.8rem;
+    margin-top: 5px;
+}
+
+/* Mensajes de feedback */
+.lista-mensaje-exito {
+    background-color: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #48bb78;
+    margin-bottom: 20px;
+}
+.lista-error-backend {
+    background-color: rgba(245, 101, 101, 0.15);
+    color: #f56565;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #f56565;
+    margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   ESTRUCTURA DE COLUMNAS HORIZONTALES (Tablero)
+   ========================================================================== */
+.columnas-semana-container {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    overflow-x: auto; /* Permite scroll horizontal si las columnas no entran */
+    padding-bottom: 20px;
+    align-items: flex-start;
+}
+
+/* Estilo de cada columna */
+.columna-dia {
+    flex: 1;
+    min-width: 180px; /* Ancho mínimo para que no se aplasten */
+    background-color: #111111; /* Fondo oscuro integrado */
+    border: 1px solid #222222;
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cabecera del día */
+.columna-dia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #222222;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+.columna-dia-header h3 {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 600;
+}
+.columna-contador {
+    background-color: #2d3748;
+    color: #a0aec0;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.columna-dia-contenido {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.clase-vacia-txt {
+    color: #4a5568;
+    font-size: 0.85rem;
+    text-align: center;
+    font-style: italic;
+    margin: 15px 0;
+}
+
+/* ==========================================================================
+   TARJETAS COMPACTAS (DENTRO DE LA COLUMNA)
+   ========================================================================== */
+.clase-admin-card-mini {
+    background-color: #1a1a1a;
+    border: 1px solid #2d2d2d;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
+}
+.clase-admin-card-mini:hover {
+    transform: translateY(-2px);
+    border-color: #444444;
+}
+
+.clase-mini-info h4 {
+    color: #ffffff;
+    font-size: 0.95rem;
+    margin: 0 0 4px 0;
+}
+.clase-mini-horario {
+    color: #48bb78; /* Color verde destacado */
+    font-size: 0.8rem;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 4px;
+}
+.clase-mini-prof {
+    color: #a0aec0;
+    font-size: 0.8rem;
+    margin: 0 0 6px 0;
+}
+.clase-mini-badge {
+    background-color: #2d2d2d;
+    color: #e2e8f0;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* Botón eliminar chiquito */
+.btn-eliminar-mini {
+    background-color: transparent;
+    color: #e53e3e;
+    border: 1px solid #e53e3e;
+    padding: 5px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-weight: 600;
+    width: 100%;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-eliminar-mini:hover {
+    background-color: #e53e3e;
+    color: #ffffff;
+}
+
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+.modal-confirmacion {
+    background-color: #1a1a1a;
+    border: 1px solid #2d2d2d;
+    padding: 25px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    color: white;
+}
+.modal-botones {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+.btn-cancelar {
+    background-color: #4a5568;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.btn-eliminar {
+    background-color: #e53e3e;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}

@@ -154,3 +154,142 @@
     font-size: 13px;
     font-style: italic;
 }
+
+/* Contenedor de la sección de los días */
+.capacidad-dias-section {
+    margin: 30px auto;
+    width: 100%;
+    max-width: 1100px; /* Le damos aire para que se estire horizontalmente */
+    padding: 0 20px;
+}
+
+.seccion-subtitulo {
+    font-size: 1.2rem;
+    color: #a0aec0; /* Texto gris claro para fondo oscuro */
+    margin-bottom: 20px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Grilla configurada en Flexbox horizontal para obligarlos a ir de costado */
+.capacidad-dias-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap; /* Si la pantalla no da, bajan limpiamente */
+    justify-content: center;
+    gap: 15px;
+    width: 100%;
+}
+
+/* Estilo base del cuadradito - AHORA MODO OSCURO */
+.dia-cuadradito {
+    background-color: #151515; /* Gris casi negro idéntico a tus tarjetas */
+    border: 1px solid #2d2d2d;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    min-width: 130px; /* Ancho fijo ideal para que entren los 7 de costado */
+    flex: 1; /* Distribuye el espacio equitativamente */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dia-cuadradito:hover {
+    transform: translateY(-4px);
+}
+
+/* Nombre del día */
+.dia-nombre {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #ffffff; /* Texto blanco */
+    margin-bottom: 8px;
+}
+
+.dia-pico-contenedor {
+    margin-bottom: 12px;
+}
+
+/* El número grande del pico */
+.dia-pico-valor {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+/* El divisor (/ 30) */
+.dia-pico-max {
+    font-size: 0.85rem;
+    color: #718096; /* Gris apagado */
+    margin-left: 4px;
+}
+
+/* Fondo de la barra de progreso interna */
+.dia-progreso-bar {
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    height: 6px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.dia-progreso-llenado {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+/* ==========================================================================
+   ESTADOS DE COLOR EN MODO OSCURO (Bordes sutiles y barras temáticas)
+   ========================================================================== */
+
+/* 1. Día sin clases */
+.dia-vacio {
+    border-top: 4px solid #4a5568;
+}
+.dia-vacio .dia-progreso-llenado {
+    background-color: #4a5568;
+}
+
+/* 2. Todo OK (Menos del 50% de concurrencia) */
+.dia-ok {
+    border-top: 4px solid #48bb78; /* Verde Sportify */
+}
+.dia-ok .dia-pico-valor {
+    color: #48bb78;
+}
+.dia-ok .dia-progreso-llenado {
+    background-color: #48bb78;
+}
+.dia-ok:hover {
+    box-shadow: 0 6px 15px rgba(72, 187, 120, 0.15); /* Brillo verde sutil */
+}
+
+/* 3. Intermedio (Entre 50% y 90%) */
+.dia-advertencia {
+    border-top: 4px solid #ecc94b; /* Amarillo/Dorado */
+}
+.dia-advertencia .dia-pico-valor {
+    color: #ecc94b;
+}
+.dia-advertencia .dia-progreso-llenado {
+    background-color: #ecc94b;
+}
+.dia-advertencia:hover {
+    box-shadow: 0 6px 15px rgba(236, 201, 75, 0.15);
+}
+
+/* 4. Al límite (Más del 90%) - ¡Peligro! */
+.dia-peligro {
+    border-top: 4px solid #f56565; /* Rojo de alerta */
+    background-color: #1f1313; /* Fondo negro tirando a rojizo opaco */
+}
+.dia-peligro .dia-pico-valor {
+    color: #f56565;
+}
+.dia-peligro .dia-progreso-llenado {
+    background-color: #f56565;
+}
+.dia-peligro:hover {
+    box-shadow: 0 6px 15px rgba(245, 101, 101, 0.2);
+}

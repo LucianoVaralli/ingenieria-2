@@ -3,16 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
 
- 
 const Perfil = ({ token, setToken }) => {
     const [user,     setUser]     = useState(null);
     const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
- 
+
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
- 
-        // Cargamos datos del usuario y sus reservas en paralelo
+
         const fetchData = async () => {
             try {
                 const [resUser, resReservas] = await Promise.all([
@@ -20,7 +18,7 @@ const Perfil = ({ token, setToken }) => {
                     api.get('/reservas/mis-reservas'),
                 ]);
                 setUser(resUser.data);
-                // Solo mostramos reservas confirmadas y futuras
+                
                 const hoy = new Date();
                 hoy.setHours(0, 0, 0, 0);
                 const activas = resReservas.data.filter(r =>
@@ -35,98 +33,107 @@ const Perfil = ({ token, setToken }) => {
                 navigate('/login');
             }
         };
- 
+
         fetchData();
     }, [token, navigate, setToken]);
- 
-    // Cancelar una reserva
-    /*const handleCancelar = async (reservaId) => {
-        if (!window.confirm('¿Seguro que querés cancelar esta reserva?')) return;
-        try {
-            await api.post(`/reservas/membresia/cancelar/${reservaId}`);
-            // La sacamos del estado local sin recargar la página
-            setReservas(prev => prev.filter(r => r.id !== reservaId));
-        } catch (err) {
-            alert(err.response?.data?.detail || 'No se pudo cancelar la reserva.');
-        }
-    }; */
+
+    // ── LÓGICA DE AGRUPACIÓN PARA LA AGENDA SEMANAL ──
+    const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const mapeoDias = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
+
+    const reservasPorDia = diasSemana.reduce((acc, dia) => {
+        acc[dia] = [];
+        return acc;
+    }, {});
+
+    [...reservas]
+        .sort((a, b) => {
+            const momentoA = `${a.fecha_clase}T${a.clase?.horario || '00:00:00'}`;
+            const momentoB = `${b.fecha_clase}T${b.clase?.horario || '00:00:00'}`;
+            return momentoA.localeCompare(momentoB);
+        })
+        .forEach(r => {
+            const fecha = new Date(r.fecha_clase + 'T00:00:00');
+            const nombreDia = mapeoDias[fecha.getDay()];
+            if (reservasPorDia[nombreDia]) {
+                reservasPorDia[nombreDia].push(r);
+            }
+        });
 
     return (
         <div className="perfil-container">
-            <div className='perfil-layout'>
-        
             {user ? (
                 <>
-                    {/* ── HERO ── */}
-                    <div className="perfil-hero">
-                        <div className="perfil-hero-bg" />
-                        <div className="perfil-hero-inner">
-                            <div className="perfil-avatar">
-                                {user.nombre ? user.nombre.charAt(0).toUpperCase() : 'S'}
+                    {/* ── BLOQUE 1: INFORMACIÓN DEL SOCIO (Estructura superior aislada) ── */}
+                    <div className="perfil-info-block">
+                        {/* HERO */}
+                        <div className="perfil-hero">
+                            <div className="perfil-hero-bg" />
+                            <div className="perfil-hero-inner">
+                                <div className="perfil-avatar">
+                                    {user.nombre ? user.nombre.charAt(0).toUpperCase() : 'S'}
+                                </div>
+                                <div className="perfil-hero-info">
+                                    <h2 className="perfil-nombre">{user.nombre}</h2>
+                                    <p className="perfil-id">ID Socio · #2026{user.id || '01'}</p>
+                                </div>
                             </div>
-                            <div className="perfil-hero-info">
-                                <h2 className="perfil-nombre">{user.nombre}</h2>
-                                <p className="perfil-id">ID Socio · #2026{user.id || '01'}</p>
+                        </div>
+
+                        {/* DATOS PERSONALES */}
+                        <div className="perfil-datos-row">
+                            <div className="dato-item">
+                                <span className="dato-label">Email</span>
+                                <span className="dato-valor">{user.email || 'No registrado'}</span>
                             </div>
-                        </div>
-                    </div>
- 
-                    {/* ── DATOS PERSONALES ── */}
-                    <div className="perfil-datos-row">
-                        <div className="dato-item">
-                            <span className="dato-label">Email</span>
-                            <span className="dato-valor">{user.email || 'No registrado'}</span>
-                        </div>
-                        <div className="dato-item">
-                            <span className="dato-label">DNI</span>
-                            <span className="dato-valor">{user.dni || '—'}</span>
-                        </div>
-                        <div className="dato-item">
-                            <span className="dato-label">Teléfono</span>
-                            <span className="dato-valor">{user.telefono || '—'}</span>
-                        </div> 
-                        <button className="btn-cambiar-pass" disabled>
-                            🔒 Cambiar Contraseña
-                        </button>
-                    </div>
-
-                    {/* ── ACTA MÉDICA ── */}
-                    <div className="perfil-acta-section">
-                        <div className="perfil-section-header">
-                            <span className="perfil-section-icon">🩺</span>
-                            <h3 className="perfil-section-title">Apto Físico</h3>
+                            <div className="dato-item">
+                                <span className="dato-label">DNI</span>
+                                <span className="dato-valor">{user.dni || '—'}</span>
+                            </div>
+                            <div className="dato-item">
+                                <span className="dato-label">Teléfono</span>
+                                <span className="dato-valor">{user.telefono || '—'}</span>
+                            </div> 
+                            <button className="btn-cambiar-pass" disabled>
+                                🔒 Cambiar Contraseña
+                            </button>
                         </div>
 
-                        {user.apto_fisico ? (
-                            <a
-                                href={`http://localhost:8000/${user.apto_fisico}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="btn-ver-acta"
-                            >
-                                Ver PDF
-                            </a>
-                        ) : (
-                            <p className="acta-faltante">
-                                No tenés un apto físico cargado.
-                            </p>
-                        )}
-                    </div>
-
-                    {/* ── RESERVAS ── */}
-                    <div className="perfil-reservas-section">
-                        <div className="perfil-section-header">
-                            <span className="perfil-section-icon">📅</span>
-                            <h3 className="perfil-section-title">Mis Reservas Activas</h3>
-                            {/* Contador de reservas */}
-                            {reservas.length > 0 && (
-                                <span className="perfil-reservas-count">{reservas.length}</span>
+                        {/* APTO FÍSICO */}
+                        <div className="perfil-acta-section">
+                            <div className="perfil-section-header">
+                                <span className="perfil-section-icon">🩺</span>
+                                <h3 className="perfil-section-title">Apto Físico</h3>
+                            </div>
+                            {user.apto_fisico ? (
+                                <a
+                                    href={`http://localhost:8000/${user.apto_fisico}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn-ver-acta"
+                                >
+                                    Ver PDF
+                                </a>
+                            ) : (
+                                <p className="acta-faltante">
+                                    No tenés un apto físico cargado.
+                                </p>
                             )}
                         </div>
- 
-                        <div className="perfil-reservas-scroll">
+                    </div>
+
+                    {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
+                    <div className="perfil-calendar-block">
+                        <div className="perfil-reservas-section">
+                            <div className="perfil-section-header">
+                                <span className="perfil-section-icon">📅</span>
+                                <h3 className="perfil-section-title">Mis Reservas Activas</h3>
+                                {reservas.length > 0 && (
+                                    <span className="perfil-reservas-count">{reservas.length}</span>
+                                )}
+                            </div>
+
                             {reservas.length === 0 ? (
-                                /* Estado vacío */
                                 <div className="reserva-empty">
                                     <span className="reserva-empty-icon">🏋️</span>
                                     <p>No tenés turnos reservados para esta semana.</p>
@@ -135,72 +142,59 @@ const Perfil = ({ token, setToken }) => {
                                     </Link>
                                 </div>
                             ) : (
-                                /* Cards de reservas reales */
-                                reservas.map(r => (
-                                    <div className="reserva-card" key={r.id}>
-                                        {/* Fecha */}
-                                        <div className="reserva-card-day">
-                                            {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
-                                                weekday: 'short',
-                                                day:     'numeric',
-                                                month:   'short',
-                                            })}
-                                        </div>
-                                        <div className="reserva-card-body">
-                                            {/* El backend devuelve clase_id, pero necesitamos
-                                                el nombre. Si tu endpoint /mis-reservas devuelve
-                                                objetos con relación a clase, usá r.clase.actividad.
-                                                Si no, mostramos lo que haya disponible. */}
-                                            <span className="reserva-card-clase">
-                                                {r.clase?.actividad || `Clase #${r.clase_id}`}
-                                            </span>
-                                            <span className="reserva-card-horario">
-                                                {r.clase?.horario
-                                                    ? r.clase.horario.slice(0, 5)
-                                                    : '—'}
-                                            </span>
-
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                
-                                                <span className="reserva-card-tipo">
-                                                    {r.tipo === 'membresia'
-                                                        ? '📋 Membresía'
-                                                        : '🎫 Individual'}
-                                                </span>
-
-                                                {r.lista_espera && (
-                                                    <span
-                                                        style={{
-                                                            background: '#00ff1e',
-                                                            color: 'black',
-                                                            padding: '4px 8px',
-                                                            borderRadius: '6px',
-                                                            fontSize: '12px',
-                                                            fontWeight: 'bold',
-                                                            width: 'fit-content'
-                                                        }}
-                                                    >
-                                                        Lista de espera
+                                <div className="perfil-agenda-container">
+                                    {diasSemana.map(dia => {
+                                        const clasesDelDia = reservasPorDia[dia];
+                                        return (
+                                            <div className="agenda-columna" key={dia}>
+                                                <div className="agenda-columna-header">
+                                                    <h4>{dia}</h4>
+                                                    <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
+                                                        {clasesDelDia.length}
                                                     </span>
-                                                )}
+                                                </div>
 
+                                                <div className="agenda-columna-body">
+                                                    {clasesDelDia.length === 0 ? (
+                                                        <p className="agenda-columna-vacio">Sin clases</p>
+                                                    ) : (
+                                                        clasesDelDia.map(r => (
+                                                            <div className="reserva-card-mini" key={r.id}>
+                                                                <div className="reserva-mini-fecha">
+                                                                    {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                                        day: 'numeric',
+                                                                        month: 'short',
+                                                                    })}
+                                                                </div>
+                                                                
+                                                                <div className="reserva-mini-detalles">
+                                                                    <span className="reserva-mini-actividad">
+                                                                        {r.clase?.actividad || `Clase #${r.clase_id}`}
+                                                                    </span>
+                                                                    <span className="reserva-mini-horario">
+                                                                        {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
+                                                                    </span>
+                                                                    <span className="reserva-mini-tipo">
+                                                                        {r.tipo === 'membresia' ? '📋 Memb.' : '🎫 Indiv.'}
+                                                                    </span>
+                                                                    
+                                                                    {r.lista_espera && (
+                                                                        <span className="reserva-mini-espera">
+                                                                            En Espera
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
                                             </div>
-
-
-                                        </div>
-                                        {/*<button
-                                            className="reserva-card-cancel"
-                                            onClick={() => handleCancelar(r.id)}
-                                        >
-                                            Cancelar
-                                        </button>
-                                        */}
-                                    </div>
-                                ))
+                                        );
+                                    })}
+                                </div>
                             )}
                         </div>
                     </div>
-                    
                 </>
             ) : (
                 <div className="perfil-loading">
@@ -208,9 +202,8 @@ const Perfil = ({ token, setToken }) => {
                     <p>Cargando panel de socio...</p>
                 </div>
             )}
-            </div>
         </div>
     );
 };
- 
+
 export default Perfil;
