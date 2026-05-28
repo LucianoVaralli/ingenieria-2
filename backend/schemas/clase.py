@@ -2,6 +2,7 @@ from datetime import time
 
 from pydantic import BaseModel, EmailStr
 from models.enums import DiaSemana, TipoActividad
+from datetime import datetime, timedelta, time
 
 class ClaseCreate(BaseModel):
     actividad: TipoActividad
