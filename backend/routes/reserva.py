@@ -9,6 +9,7 @@ from models.clase        import Clase
 from services.auth       import oauth2_scheme, obtener_usuario_actual
 from schemas.reserva     import ReservaMembresiaCreate, ConfirmarPagoMembresia
 from models.enums import Rol
+from sqlalchemy import func
 from schemas.reserva_individual import (
     ReservaIndividualCreate,
     ConfirmarPagoIndividual
@@ -564,7 +565,9 @@ async def pagar_reserva_individual(
     # ─────────────────────────────────────────────
 
     tarjeta = db.query(TarjetaSimulada).filter(
-        TarjetaSimulada.numero == datos.numero_tarjeta
+        TarjetaSimulada.numero == datos.numero_tarjeta,
+        func.lower(TarjetaSimulada.titular) == datos.titular.lower(),
+        TarjetaSimulada.cvv == datos.cvv
     ).first()
 
     if not tarjeta:

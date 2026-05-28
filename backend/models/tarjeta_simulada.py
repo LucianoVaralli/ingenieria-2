@@ -11,6 +11,12 @@ class TarjetaSimulada(Base):
     # Número que el usuario ingresa en el frontend/swagger
     numero = Column(String, unique=True, nullable=False)
 
+    # NUEVO
+    titular = Column(String, nullable=False)
+
+    # NUEVO
+    cvv = Column(String, nullable=False)
+
     # credito o debito
     tipo = Column(String, nullable=False)
 

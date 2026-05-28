@@ -25,10 +25,19 @@ function ListaClasesAdmin() {
         setErrorBackend("");
         setMensajeExito("");
         try {
-            await api.delete(`/clases/${claseAEliminar}`);
-            setClases(clases.filter(c => c.id !== claseAEliminar));
-            setMensajeExito("Clase eliminada correctamente");
-            setTimeout(() => setMensajeExito(""), 3000);
+
+            await api.put(`/clases/eliminar/${claseAEliminar}`, {
+                motivo: "Clase eliminada por administrador"
+            });
+
+            await cargarClases();
+
+            setMensajeExito("Eliminación completada");
+
+            setTimeout(() => {
+                setMensajeExito("");
+            }, 3000);
+
             setMostrarConfirmacion(false);
             setClaseAEliminar(null);
         } catch (error) {
