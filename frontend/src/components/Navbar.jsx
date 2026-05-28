@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // El cambio está aquí
 import { Link, useNavigate } from 'react-router-dom';
 import '../assets/css/Navbar.css'; 
 import logo from '../assets/logo.png';
@@ -31,8 +31,16 @@ const Navbar = ({ setToken }) => {
     const rol = localStorage.getItem("rol"); //recupero el rol del localStorage
 
     const esAdmin = rol === "Admin"; //verifico si el rol es ADMIN
+
+    const [scrolled, setScrolled] = useState(false);
+
+    useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', onScroll);
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
     return (
-        <nav className="navbar-container">
+        <nav className={`navbar-container ${scrolled ? 'navbar-scrolled' : ''}`}>
             <div className="navbar-logo">
                 <Link to={token ? "/home" : "/"} className="navbar-brand">
                     <img src={logo} alt="Sportify" className="navbar-logo-img" /> {/** aca se cambia el logo de la pagina principal*/}

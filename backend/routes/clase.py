@@ -145,6 +145,9 @@ async def eliminar_clase(
     datos: EliminarClase,
     db: Session = Depends(get_db)
 ):
+    clase = db.query(Clase).filter(Clase.id == clase_id).first()
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
     # 1. Buscar la clase recurrente activa
     clase = db.query(Clase).filter(Clase.id == clase_id, Clase.activa == True).first()
     if not clase:
