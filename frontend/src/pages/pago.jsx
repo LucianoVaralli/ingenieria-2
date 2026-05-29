@@ -173,6 +173,45 @@ const Pago = () => {
                             <h2 className="pago-form-titulo">Datos de pago</h2>
 
                             {/* 3. Inputs agregados al formulario */}
+                            
+                            {/* Número de tarjeta */}
+                            <div className="pago-field">
+                                <label className="pago-label">Número de tarjeta</label>
+                                <input
+                                    className="pago-input pago-input--wide"
+                                    type="text"
+                                    inputMode="numeric"
+                                    placeholder="1111 2222 3333 4444"
+                                    value={nroTarjeta}
+                                    onChange={e => setNroTarjeta(formatearNumero(e.target.value))}
+                                    maxLength={19}
+                                />
+                            </div>
+
+                            {/* Titular de la tarjeta */}
+                            <div className="pago-field">
+                                <label className="pago-label">Nombre del titular</label>
+                                <input
+                                    className="pago-input pago-input--wide"
+                                    type="text"
+                                    placeholder="Tal como aparece en la tarjeta"
+                                    value={titular}
+                                    onChange={e => setTitular(e.target.value)}
+                                />
+                            </div>
+
+                            {/* CVV */}
+                            <div className="pago-field" style={{ maxWidth: '160px' }}>
+                                <label className="pago-label">Código de seguridad (CVV)</label>
+                                <input
+                                    className="pago-input"
+                                    type="password"
+                                    inputMode="numeric"
+                                    placeholder="•••"
+                                    value={cvv}
+                                    onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                />
+                            </div>
 
                             {/* Número de tarjeta */}
                             {monto > 0 ? (
