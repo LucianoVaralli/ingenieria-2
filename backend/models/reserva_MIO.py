@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from database import Base
 
@@ -19,5 +20,26 @@ class Reserva(Base):
 
     monto_total  = Column(Float, nullable=False)
     monto_pagado = Column(Float, default=0.0)
+    # últimos 4 números
+    tarjeta_ultimos = Column(String, nullable=True)
 
+    # credito/debito
+    tipo_tarjeta = Column(String, nullable=True)
+    
     fecha_creacion = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+    monto_pagado = Column(Float, default=0)
+    monto_total  = Column(Float, nullable=False)
+    porcentaje_pagado = Column(Integer, default=100)    
+
+    reembolso_realizado = Column(Boolean, default=False)
+    credito_generado = Column(Boolean, default=False)
+
+    motivo_cancelacion = Column(String, nullable=True)
+    mensaje_admin = Column(String, nullable=True)
+    tipo_cancelacion = Column(String, nullable=True)
+
+    # Relaciones para acceder fácil a los datos en la lógica del backend
+    socio = relationship("Socio")
+    clase = relationship("Clase")

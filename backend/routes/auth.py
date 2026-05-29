@@ -6,6 +6,7 @@ from models.socio import Socio
 from schemas.socio import EsquemaLogin
 from services.auth import verificar_password
 from services.auth import crear_token_acceso
+from services.auth import get_password_hash
 
 router = APIRouter(
     prefix="/auth", # Agregamos un prefijo para agrupar
@@ -20,7 +21,7 @@ def login(
 ):
     # Ojo: OAuth2PasswordRequestForm usa .username (aunque sea el email)
     usuario = db.query(Socio).filter(Socio.email == credenciales.username).first()
-    
+    print(usuario.hashed_password)
     error_msg = "Nombre de usuario y/o contraseña incorrecta"
 
     if not usuario or not verificar_password(credenciales.password, usuario.hashed_password):

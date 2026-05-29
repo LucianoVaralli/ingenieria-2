@@ -48,8 +48,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 from fastapi import Depends
 
-def obtener_usuario_actual(db: Session, token: str):
+def obtener_usuario_actual(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
     try:
+        # 1. Abrimos el token con la llave secreta
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         
@@ -59,6 +63,7 @@ def obtener_usuario_actual(db: Session, token: str):
     except JWTError:
         raise HTTPException(status_code=401, detail="No se pudo validar la sesión")
 
+    # 2. Buscamos al dueño del token en la DB
     usuario = db.query(Socio).filter(Socio.email == email).first()
     if usuario is None:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")

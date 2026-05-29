@@ -1,0 +1,295 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+.capacidad-page {
+    font-family: 'Lora', serif;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 24px 80px;
+}
+
+.capacidad-header {
+    text-align: center;
+    margin-bottom: 32px;
+    width: 100%;
+    max-width: 560px;
+}
+
+.capacidad-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: #5CB84D;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.capacidad-titulo {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: -0.3px;
+}
+
+/* Stats */
+.capacidad-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 560px;
+    margin-bottom: 20px;
+}
+
+.capacidad-stat {
+    background: #0f0f0f;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 24px;
+    text-align: center;
+}
+
+.capacidad-stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.25);
+    margin-bottom: 8px;
+}
+
+.capacidad-stat-value {
+    font-size: 42px;
+    font-weight: 700;
+    color: #5CB84D;
+    line-height: 1;
+}
+
+/* Formulario */
+.capacidad-card {
+    background: #0f0f0f;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px;
+    padding: 32px;
+    width: 100%;
+    max-width: 560px;
+}
+
+.capacidad-card h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 20px;
+}
+
+.capacidad-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.capacidad-input {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: #fff;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s;
+    caret-color: #5CB84D;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.capacidad-input::placeholder { color: rgba(255,255,255,0.2); }
+
+.capacidad-input:focus {
+    border-color: rgba(92,184,77,0.6);
+    background: rgba(92,184,77,0.04);
+    box-shadow: 0 0 0 3px rgba(92,184,77,0.08);
+}
+
+.capacidad-btn {
+    width: 100%;
+    padding: 14px;
+    background: #5CB84D;
+    color: #000;
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 3px 14px rgba(92,184,77,0.2);
+}
+
+.capacidad-btn:hover {
+    background: #6dd15d;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(92,184,77,0.32);
+}
+
+/* Mensajes */
+.capacidad-exito {
+    background: rgba(92,184,77,0.08);
+    border: 1px solid rgba(92,184,77,0.25);
+    color: #5CB84D;
+    padding: 12px 16px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.capacidad-error {
+    background: rgba(255,80,80,0.06);
+    border: 1px solid rgba(255,80,80,0.2);
+    color: rgba(255,100,100,0.8);
+    padding: 12px 16px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Contenedor de la sección de los días */
+.capacidad-dias-section {
+    margin: 30px auto;
+    width: 100%;
+    max-width: 1100px; /* Le damos aire para que se estire horizontalmente */
+    padding: 0 20px;
+}
+
+.seccion-subtitulo {
+    font-size: 1.2rem;
+    color: #a0aec0; /* Texto gris claro para fondo oscuro */
+    margin-bottom: 20px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Grilla configurada en Flexbox horizontal para obligarlos a ir de costado */
+.capacidad-dias-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap; /* Si la pantalla no da, bajan limpiamente */
+    justify-content: center;
+    gap: 15px;
+    width: 100%;
+}
+
+/* Estilo base del cuadradito - AHORA MODO OSCURO */
+.dia-cuadradito {
+    background-color: #151515; /* Gris casi negro idéntico a tus tarjetas */
+    border: 1px solid #2d2d2d;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    min-width: 130px; /* Ancho fijo ideal para que entren los 7 de costado */
+    flex: 1; /* Distribuye el espacio equitativamente */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dia-cuadradito:hover {
+    transform: translateY(-4px);
+}
+
+/* Nombre del día */
+.dia-nombre {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #ffffff; /* Texto blanco */
+    margin-bottom: 8px;
+}
+
+.dia-pico-contenedor {
+    margin-bottom: 12px;
+}
+
+/* El número grande del pico */
+.dia-pico-valor {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+/* El divisor (/ 30) */
+.dia-pico-max {
+    font-size: 0.85rem;
+    color: #718096; /* Gris apagado */
+    margin-left: 4px;
+}
+
+/* Fondo de la barra de progreso interna */
+.dia-progreso-bar {
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    height: 6px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.dia-progreso-llenado {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+/* ==========================================================================
+   ESTADOS DE COLOR EN MODO OSCURO (Bordes sutiles y barras temáticas)
+   ========================================================================== */
+
+/* 1. Día sin clases */
+.dia-vacio {
+    border-top: 4px solid #4a5568;
+}
+.dia-vacio .dia-progreso-llenado {
+    background-color: #4a5568;
+}
+
+/* 2. Todo OK (Menos del 50% de concurrencia) */
+.dia-ok {
+    border-top: 4px solid #48bb78; /* Verde Sportify */
+}
+.dia-ok .dia-pico-valor {
+    color: #48bb78;
+}
+.dia-ok .dia-progreso-llenado {
+    background-color: #48bb78;
+}
+.dia-ok:hover {
+    box-shadow: 0 6px 15px rgba(72, 187, 120, 0.15); /* Brillo verde sutil */
+}
+
+/* 3. Intermedio (Entre 50% y 90%) */
+.dia-advertencia {
+    border-top: 4px solid #ecc94b; /* Amarillo/Dorado */
+}
+.dia-advertencia .dia-pico-valor {
+    color: #ecc94b;
+}
+.dia-advertencia .dia-progreso-llenado {
+    background-color: #ecc94b;
+}
+.dia-advertencia:hover {
+    box-shadow: 0 6px 15px rgba(236, 201, 75, 0.15);
+}
+
+/* 4. Al límite (Más del 90%) - ¡Peligro! */
+.dia-peligro {
+    border-top: 4px solid #f56565; /* Rojo de alerta */
+    background-color: #1f1313; /* Fondo negro tirando a rojizo opaco */
+}
+.dia-peligro .dia-pico-valor {
+    color: #f56565;
+}
+.dia-peligro .dia-progreso-llenado {
+    background-color: #f56565;
+}
+.dia-peligro:hover {
+    box-shadow: 0 6px 15px rgba(245, 101, 101, 0.2);
+}
