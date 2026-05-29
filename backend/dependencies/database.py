@@ -1,8 +1,14 @@
-from database import SessionLocal
+from database import SessionLocal, Base
+
 
 def get_db():
+
     db = SessionLocal()
+
     try:
+
         yield db
+
     finally:
+
         db.close()
