@@ -52,33 +52,26 @@ const ForgotPassword = () => {
     };
 
     return (
-        // ── CONTENEDOR PRINCIPAL OSCURO ──
         <div className="forgot-container">
-            {/* ── TARJETA CENTRAL ENVOLVENTE ── */}
             <div className="forgot-card">
-
                 <h2 className="forgot-title">Recuperar contraseña</h2>
 
                 <form className="forgot-form" onSubmit={handleForgotPassword}>
-
-                    {/* ── GRUPO DE ENTRADA CON LABEL ESTILIZADA ── */}
                     <div className="forgot-input-group">
                         <label className="forgot-label">Correo Electrónico</label>
                         <input
                             type="email"
                             className="forgot-input"
-                            placeholder="Ejemplo@gmail.com"
+                            placeholder="usuario@email.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
                         />
                     </div>
 
-                    {/* ── BOTÓN VERDE SPORTIFY ── */}
                     <button type="submit" className="forgot-button">
-                        Enviar código
+                        ENVIAR CÓDIGO
                     </button>
-
                 </form>
             </div>
         </div>
