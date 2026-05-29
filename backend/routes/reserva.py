@@ -145,8 +145,19 @@ def crear_reserva_membresia(
 
     # Créditos: solo cuenta las clases futuras con cupo
     cantidad_clases_a_reservar = len(fechas_con_cupo)
-    if socio.creditos_disponibles >= cantidad_clases_a_reservar:
-        monto_total = 0.0
+    creditos_a_usar = min(
+        socio.creditos_disponibles,
+        cantidad_clases_a_reservar
+    )
+
+    clases_pagadas = cantidad_clases_a_reservar - creditos_a_usar
+
+    socio.creditos_disponibles -= creditos_a_usar
+
+    monto_total = max(
+        0,
+        clases_pagadas * precio_por_clase - descuento
+    )
 
     respuesta = {
         "fechas_con_cupo":    fechas_con_cupo,
@@ -362,11 +373,8 @@ def ver_lista_espera(
 
 @router.post("/individual/crear")
 def crear_reserva_individual(
-
     datos: ReservaIndividualCreate,
-
     token: str = Depends(oauth2_scheme),
-
     db: Session = Depends(get_db)
 ):
 
@@ -375,7 +383,6 @@ def crear_reserva_individual(
 
     # Solo miembros y no_miembros pueden reservar
     if socio.rol not in [Rol.Miembro.value, Rol.NoMiembro.value]:
-
         raise HTTPException(
             status_code=403,
             detail="No tiene permisos para reservar"
@@ -387,7 +394,6 @@ def crear_reserva_individual(
     ).first()
 
     if not clase:
-
         raise HTTPException(
             status_code=404,
             detail="Clase no encontrada"
@@ -405,7 +411,6 @@ def crear_reserva_individual(
     )
 
     if datetime.now() >= fecha_hora:
-
         raise HTTPException(
             status_code=400,
             detail="La clase ya comenzó"
@@ -417,21 +422,15 @@ def crear_reserva_individual(
     # ─────────────────────────────────────────────
 
     conflicto = db.query(Reserva).join(Clase).filter(
-
         Reserva.socio_id == socio.id,
-
         Clase.dia == clase.dia,
-
         Clase.horario == clase.horario,
-
         Reserva.fecha_clase == datos.fecha_clase,
-
         Reserva.estado.in_(["pendiente_pago", "confirmada"])
 
     ).first()
 
     if conflicto:
-
         raise HTTPException(
             status_code=400,
             detail="Ya tiene una reserva en ese horario"
@@ -444,21 +443,15 @@ def crear_reserva_individual(
     # ─────────────────────────────────────────────
 
     membresia_existente = db.query(Reserva).filter(
-
         Reserva.socio_id == socio.id,
-
         Reserva.clase_id == clase.id,
-
         Reserva.fecha_clase == datos.fecha_clase,
-
         Reserva.tipo == "membresia",
-
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
 
     ).first()
 
     if membresia_existente:
-
         raise HTTPException(
             status_code=400,
             detail="Ya posee una membresía para esta clase"
@@ -469,11 +462,8 @@ def crear_reserva_individual(
     # ─────────────────────────────────────────────
 
     ocupadas = db.query(Reserva).filter(
-
         Reserva.clase_id == clase.id,
-
         Reserva.fecha_clase == datos.fecha_clase,
-
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
 
     ).count()
@@ -485,24 +475,30 @@ def crear_reserva_individual(
     # individual paga solo el 50%
     # ─────────────────────────────────────────────
 
-    monto = clase.precio_individual * 0.5
+    # Validamos tipo de pago
+    if datos.tipo_pago not in ["sena", "total"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Tipo de pago inválido"
+        )
+    
+    if datos.tipo_pago == "sena":
+        monto = clase.precio_individual * 0.5
+    else:
+        monto = clase.precio_individual
 
     # Creamos reserva pendiente
     reserva = Reserva(
-
         socio_id=socio.id,
-
         clase_id=clase.id,
-
         tipo="individual",
-
         estado="pendiente_pago",
-
         fecha_clase=datos.fecha_clase,
 
         monto_total=clase.precio_individual,
+        monto_pagado=monto,
 
-        monto_pagado=monto
+        tipo_pago=datos.tipo_pago
     )
 
     db.add(reserva)
@@ -704,8 +700,11 @@ async def pagar_reserva_individual(
     except Exception as e:
         print(f"⚠️ Mail no enviado: {e}")
 
+    alerta = None
+
     return {
-        "mensaje": "El pago se realizó correctamente"
+        "mensaje": "El pago se realizó correctamente",
+        "alerta": alerta,
     }
 
 @router.delete("/individual/cancelar/{reserva_id}")
