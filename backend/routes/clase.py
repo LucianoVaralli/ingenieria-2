@@ -25,42 +25,29 @@ async def crear_clase(
     clase: ClaseCreate,
     db: Session = Depends(get_db)
 ):
-    # Validaciones
-    #validacion de que el gimnasio existe
+    # Validaciones estructurales
     gimnasio = db.query(Gimnasio).first()
     if not gimnasio:
         raise HTTPException(status_code=404, detail="No existe configuración del gimnasio")
 
-    #validacion de que el cupo es mayor a 0
     if clase.cupo <= 0:
         raise HTTPException(status_code=400, detail="El cupo debe ser mayor a 0")
 
-    #validacion de que el gimnasio tiene capacidad disponible para esa clase
     if clase.cupo > gimnasio.capacidad_disponible:
         raise HTTPException(status_code=400, detail="Creación de clase fallido por falta de espacio en el gimnasio")
 
-    #validacion de que el precio es mayor a 0
     if clase.precio_individual <= 0:
         raise HTTPException(status_code=400, detail="El precio debe ser mayor a 0")
 
-    # validación duración
     if clase.duracion <= 0:
-        raise HTTPException(status_code=400,detail="La duración debe ser mayor a 0")
+        raise HTTPException(status_code=400, detail="La duración debe ser mayor a 0")
 
-    #validacion de duracion que la clase sea mayor a 30 minutos y menor a 4 horas
     if clase.duracion < 30:
-        raise HTTPException(status_code=400,detail="La duración mínima es de 30 minutos")
+        raise HTTPException(status_code=400, detail="La duración mínima es de 30 minutos")
 
     if clase.duracion > 240:
-        raise HTTPException(status_code=400,detail="La duración máxima es de 4 horas")  
+        raise HTTPException(status_code=400, detail="La duración máxima es de 4 horas")  
 
-    #validacion de que no exista una clase con la misma actividad, dia y horario
-    if db.query(Clase).filter(
-        Clase.actividad == clase.actividad,
-        Clase.dia == clase.dia,
-        Clase.horario == clase.horario,
-    ).first():
-        raise HTTPException(status_code=400, detail="Creación de clase fallido por duplicar la misma clase")
 
 
     # Buscar profesor por email
@@ -69,20 +56,12 @@ async def crear_clase(
         Socio.rol == Rol.Profesor.value
     ).first()
 
-
     # Validar que el profesor exista y no tenga otra clase en el mismo horario
     if not profesor:
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
 
-    #se puede borrar esta validacion porque se valida que no exista una clase con el mismo dia y horario, pero se deja por seguridad
-    if db.query(Clase).filter(
-        Clase.profesor_id == profesor.id,
-        Clase.dia == clase.dia,
-        Clase.horario == clase.horario
-    ).first():
-        raise HTTPException(status_code=400, detail="Creación de clase fallida porque el profesor ya tiene una clase en ese horario")
     
-    #validar que no se creen clases con horarios pasados
+    # ⏱️ VALIDACIÓN DE SUPERPOSICIÓN HORARIA (Tu lógica mágica)
     nuevo_inicio = datetime.combine(
         datetime.today(),
         clase.horario
@@ -98,7 +77,6 @@ async def crear_clase(
     ).all()    
 
     for clase_existente in clases_profesor:
-
         existente_inicio = datetime.combine(
             datetime.today(),
             clase_existente.horario
@@ -108,12 +86,13 @@ async def crear_clase(
             minutes=clase_existente.duracion
         )
 
+        # Limpiamos zonas horarias por seguridad
         nuevo_inicio = nuevo_inicio.replace(tzinfo=None)
         nuevo_fin = nuevo_fin.replace(tzinfo=None)
-
         existente_inicio = existente_inicio.replace(tzinfo=None)
         existente_fin = existente_fin.replace(tzinfo=None)
 
+        # Si hay cualquier tipo de cruce de horarios para el mismo profesor...
         if (
             nuevo_inicio < existente_fin and
             nuevo_fin > existente_inicio
@@ -123,7 +102,7 @@ async def crear_clase(
                 detail="El profesor ya tiene una clase en ese horario"
             )  
         
-    # Crear la clase
+    # Crear la clase si todo está OK 
     nueva_clase = Clase(
         actividad=clase.actividad,
         dia=clase.dia,
@@ -139,7 +118,6 @@ async def crear_clase(
     db.commit()
     db.refresh(nueva_clase)
     return {"mensaje": "Creación de clase exitosa", "clase_id": nueva_clase.id}
-
 
 @router.put("/eliminar/{clase_id}")
 async def eliminar_clase(
