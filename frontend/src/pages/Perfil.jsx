@@ -13,12 +13,13 @@ const Perfil = ({ token, setToken }) => {
 
         const fetchData = async () => {
             try {
-                const [resUser, resReservas] = await Promise.all([
+                const [resUser, resReservas, resAlertas] = await Promise.all([
                     api.get('/socios/me'),
                     api.get('/reservas/mis-reservas'),
+                    api.get('/alertas-individuales')
                 ]);
                 setUser(resUser.data);
-  
+
                 const hoy = new Date();
                 hoy.setHours(0, 0, 0, 0);
                 const activas = resReservas.data.filter(r =>
@@ -26,6 +27,8 @@ const Perfil = ({ token, setToken }) => {
                     new Date(r.fecha_clase) >= hoy
                 );
                 setReservas(activas);
+
+                setAlertaIndividual(resAlertas.data);
             } catch (err) {
                 console.error("Error cargando perfil", err);
                 localStorage.removeItem('token');
@@ -130,14 +133,16 @@ const Perfil = ({ token, setToken }) => {
                         </div>
                     </div>
                     {/* ALERTA GLOBAL */}
-                    {r.tipo === "individual" && r.mensaje_admin && (
-                        <div className="alerta-reembolso">
-                            {r.mensaje_admin}
-                            <button onClick={() => {/* opcional */}}>
+                    {alertaIndividual?.length > 0 && alertaIndividual.map((a, i) => (
+                        <div className="alerta-reembolso" key={i}>
+                            {a.mensaje}
+                            <button onClick={() =>
+                                setAlertaIndividual(prev => prev.filter((_, idx) => idx !== i))
+                            }>
                                 OK
                             </button>
                         </div>
-                    )}
+                    ))}
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
                     <div className="perfil-calendar-block">
                         <div className="perfil-reservas-section">

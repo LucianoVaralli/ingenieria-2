@@ -745,3 +745,26 @@ def cancelar_reserva_individual(
     return {
         "mensaje": "Reserva cancelada"
     }
+
+@router.get("/alertas-individuales")
+def obtener_alertas_individuales(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    alertas = db.query(Reserva).filter(
+        Reserva.socio_id == socio.id,
+        Reserva.tipo == "individual",
+        Reserva.mensaje_admin != None
+    ).order_by(Reserva.id.desc()).all()
+
+    return [
+        {
+            "reserva_id": r.id,
+            "mensaje": r.mensaje_admin,
+            "clase_id": r.clase_id,
+            "fecha": r.fecha_clase
+        }
+        for r in alertas
+    ]
