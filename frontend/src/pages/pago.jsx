@@ -32,7 +32,6 @@ const Pago = () => {
         claseId          = null, 
     } = location.state || {};
 
-    // 1. Agregamos los estados para el Titular y el CVV
     const [nroTarjeta, setNroTarjeta] = useState('');
     const [titular,    setTitular]    = useState('');
     const [cvv,        setCvv]        = useState('');
@@ -54,8 +53,8 @@ const Pago = () => {
     }
 
     const handlePagar = async () => {
-        // Validación frontend simple
-        if (!nroTarjeta.trim() || !titular.trim() || !cvv.trim()) {
+        // Validación frontend simple (solo si requiere pago en dinero)
+        if (monto > 0 && (!nroTarjeta.trim() || !titular.trim() || !cvv.trim())) {
             setMensaje('Por favor, completá todos los datos de la tarjeta.');
             return;
         }
@@ -64,7 +63,6 @@ const Pago = () => {
         setMensaje('');
 
         try {
-            // NOTA: Acá NO enviamos 'titular' ni 'cvv' para que no explote tu backend desactualizado
             const res = await api.post('/reservas/membresia/confirmar-pago', {
                 clase_id:            claseId,
                 fechas_con_cupo:     fechasConCupo,
@@ -72,7 +70,9 @@ const Pago = () => {
                 acepta_lista_espera: aceptaListaEspera,
                 pago_exitoso:        true,
                 monto_total:         monto,
-                numero_tarjeta:      nroTarjeta,  
+                numero_tarjeta:      nroTarjeta,
+                nombre_titular:      titular,  // 👈 Enviamos el nombre
+                cvv:                 cvv,
             });
 
             setMensaje('Reserva exitosa');
@@ -135,7 +135,7 @@ const Pago = () => {
                         </div>
                     </div>
 
-                    {/* 2. Card visual de tarjeta actualizada con Titular y CVV */}
+                    {/* Card visual de tarjeta */}
                     <div className="pago-card-visual">
                         <div className="pago-card-chip">▬</div>
 
@@ -172,12 +172,8 @@ const Pago = () => {
 
                             <h2 className="pago-form-titulo">Datos de pago</h2>
 
-                            {/* 3. Inputs agregados al formulario */}
-
-                            {/* Número de tarjeta */}
                             {monto > 0 ? (
                                 <>
-
                                     {/* Número de tarjeta */}
                                     <div className="pago-field">
                                         <label className="pago-label">Número de tarjeta</label>
@@ -185,42 +181,41 @@ const Pago = () => {
                                             className="pago-input pago-input--wide"
                                             type="text"
                                             inputMode="numeric"
-                                            autoComplete="cc-number" // <-- Ayuda al navegador a saber qué es
+                                            autoComplete="cc-number"
                                             placeholder="1111 2222 3333 4444"
                                             value={nroTarjeta}
                                             onChange={e => setNroTarjeta(formatearNumero(e.target.value))}
                                             maxLength={19}
                                         />
                                     </div>
-                                                        
+                                                                            
                                     {/* Titular de la tarjeta */}
                                     <div className="pago-field">
                                         <label className="pago-label">Nombre del titular</label>
                                         <input
                                             className="pago-input pago-input--wide"
                                             type="text"
-                                            autoComplete="cc-name" // <-- Le dice a Chrome: "Esto es un nombre de tarjeta, NO un usuario"
+                                            autoComplete="cc-name"
                                             placeholder="Tal como aparece en la tarjeta"
                                             value={titular}
                                             onChange={e => setTitular(e.target.value)}
                                         />
                                     </div>
-                                                        
+                                                                            
                                     {/* CVV */}
                                     <div className="pago-field" style={{ maxWidth: '160px' }}>
                                         <label className="pago-label">Código de seguridad (CVV)</label>
                                         <input
                                             className="pago-input"
-                                            type="text" // <-- Cambialo a text o tel para que Chrome no piense que es una contraseña de login
+                                            type="text"
                                             inputMode="numeric"
-                                            autoComplete="cc-csc" // <-- Atributo estándar para el código de seguridad
-                                            style={{ WebkitTextSecurity: 'disc' }} // <-- Truco CSS para ocultar los números como si fuera un password
+                                            autoComplete="cc-csc"
+                                            style={{ WebkitTextSecurity: 'disc' }}
                                             placeholder="•••"
                                             value={cvv}
                                             onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
                                         />
                                     </div>
-
 
                                     {mensaje && (
                                         <p className="pago-error-msg">
@@ -239,21 +234,16 @@ const Pago = () => {
                                                 {' '}Procesando...
                                             </>
                                         ) : (
-                                            monto > 0
-                                                ? `Pagar $${monto.toFixed(2)}`
-                                                : 'Confirmar reserva'
+                                            `Pagar $${monto.toFixed(2)}`
                                         )}
                                     </button>
 
                                     <p className="pago-seguro-txt">
                                         🔒 Pago simulado — tus datos no se almacenan
                                     </p>
-
                                 </>
                             ) : (
-
                                 <div className="pago-credito-box">
-
                                     <div className="pago-credito-icon">🎟️</div>
 
                                     <h3>Reserva cubierta con créditos</h3>
@@ -267,11 +257,16 @@ const Pago = () => {
                                         onClick={handlePagar}
                                         disabled={cargando}
                                     >
-                                        Confirmar reserva
+                                        {cargando ? (
+                                            <>
+                                                <span className="pago-spinner" />
+                                                {' '}Confirmando...
+                                            </>
+                                        ) : (
+                                            'Confirmar reserva'
+                                        )}
                                     </button>
-
                                 </div>
-
                             )}
 
                         </div>
@@ -279,35 +274,27 @@ const Pago = () => {
 
                     {estado === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
-
                             <div className="pago-resultado-icon">✓</div>
-
                             <h3>¡Reserva confirmada!</h3>
-
                             <p>
                                 Tu lugar está asegurado.
                                 Te enviamos el comprobante a tu correo.
                             </p>
-
                             <button
                                 className="pago-btn-primary"
                                 onClick={() => navigate('/perfil')}
                             >
                                 Ver mis reservas
                             </button>
-
                         </div>
                     )}
 
                     {estado === 'error' && (
                         <div className="pago-resultado pago-resultado--error">
-
                             <div className="pago-resultado-icon pago-resultado-icon--error">
                                 ✕
                             </div>
-
                             <h3>{mensaje}</h3>
-
                             <button
                                 className="pago-btn-ghost"
                                 onClick={() => {
@@ -317,22 +304,18 @@ const Pago = () => {
                             >
                                 Intentar de nuevo
                             </button>
-
                             <button
                                 className="pago-btn-ghost"
                                 onClick={() => navigate('/')}
                             >
                                 Volver al inicio
                             </button>
-
                         </div>
                     )}
 
-                </div> {/* pago-form-col */}
-
-            </div> {/* pago-layout */}
-
-        </div> /* pago-page */
+                </div>
+            </div>
+        </div>
     );
 };
 export default Pago;

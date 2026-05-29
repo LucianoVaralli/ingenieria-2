@@ -110,13 +110,18 @@ const ReservaMembresia = () => {
     };
 
     const hoy = new Date();
-    const clasesPerdidas    = fechasDelMes.filter(f => new Date(f) < hoy).length;
-    const clasesFuturas     = fechasDelMes.length - clasesPerdidas;
-    const descuentoPorClase = clase.precio_individual * 0.20;
-    const descuentoEstimado = clasesPerdidas * descuentoPorClase;
+    const clasesPerdidas = fechasDelMes.filter(f => new Date(f) < hoy).length;
+    const clasesFuturas  = fechasDelMes.length - clasesPerdidas;
+
+    // ── 2. LÓGICA DE PRECIOS SIMULADOS (Paso inicial) ──
+    // REVISÁ ACÁ: Modificá estas fórmulas para que hagan EXACTAMENTE lo mismo que tu backend actual
     const precioBase        = clase.precio_individual * fechasDelMes.length;
-    const descuento         = datosReserva?.descuento_aplicado ?? descuentoEstimado;
-    const montoFinal        = datosReserva?.monto_total ?? (precioBase - descuentoEstimado);
+    
+    // Ejemplo: Si en tu backend el descuento ahora es del 25% o es un valor fijo, cambialo acá:
+    const descuentoEstimado = clase.precio_individual * fechasDelMes.length * (clasesPerdidas * 0.20);
+    // ── 3. VALORES DEFINITIVOS (Prioriza siempre lo que responde el Backend) ──
+    const descuento = datosReserva ? datosReserva.descuento_applied : descuentoEstimado;
+    const montoFinal = datosReserva ? datosReserva.monto_total : (precioBase - descuentoEstimado);
 
     // Emoji por disciplina
     const emojiDisciplina = {
