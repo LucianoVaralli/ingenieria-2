@@ -218,16 +218,8 @@ async def eliminar_clase(
     # liberamos los cupos estructurales de la clase y los devolvemos a la bolsa general.
     gimnasio.capacidad_disponible += clase.cupo
 
-    #agregado por ahora para las alerts
-    alertas = []
-
-    for reserva in reservas_futuras:
-        if reserva.mensaje_admin:
-            alertas.append(reserva.mensaje_admin)
-
     db.commit()
-    return {"mensaje": "Clase dada de baja. Se cancelaron las reservas futuras, otorgando créditos a miembros y reembolsos a individuales.",
-            "alertas": alertas}
+    return {"mensaje": "Clase dada de baja. Se cancelaron las reservas futuras, otorgando créditos a miembros y reembolsos a individuales."}
 
 
 @router.put("/cancelar-dia/{clase_id}")

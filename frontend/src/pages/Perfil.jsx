@@ -7,7 +7,6 @@ const Perfil = ({ token, setToken }) => {
     const [user,     setUser]     = useState(null);
     const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
-    const [alerta, setAlerta] = useState(null);
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
@@ -19,7 +18,7 @@ const Perfil = ({ token, setToken }) => {
                     api.get('/reservas/mis-reservas'),
                 ]);
                 setUser(resUser.data);
-                
+  
                 const hoy = new Date();
                 hoy.setHours(0, 0, 0, 0);
                 const activas = resReservas.data.filter(r =>
@@ -131,10 +130,10 @@ const Perfil = ({ token, setToken }) => {
                         </div>
                     </div>
                     {/* ALERTA GLOBAL */}
-                    {alerta && (
+                    {r.tipo === "individual" && r.mensaje_admin && (
                         <div className="alerta-reembolso">
-                            {alerta.mensaje}
-                            <button onClick={() => setAlerta(null)}>
+                            {r.mensaje_admin}
+                            <button onClick={() => {/* opcional */}}>
                                 OK
                             </button>
                         </div>
