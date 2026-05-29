@@ -36,49 +36,24 @@ function EditarCapacidad() {
     const calcularPicosPorDia = (clases) => {
         const diasSemana = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"];
         const picosCalculados = { Lunes: 0, Martes: 0, Miercoles: 0, Jueves: 0, Viernes: 0, Sabado: 0, Domingo: 0 };
-
-        // Helper para convertir "15:00" o "15:00:00" a minutos totales del día
-        const stringAMinutos = (timeStr) => {
-            if (!timeStr) return 0;
-            const [horas, minutos] = timeStr.split(":");
-            return parseInt(horas, 10) * 60 + parseInt(minutos, 10);
-        };
-
+        
         diasSemana.forEach((dia) => {
-            // Filtramos las clases de este día en específico (ignorando mayúsculas/minúsculas y acentos)
+            // 1. Filtramos las clases de este día en específico
             const clasesDelDia = clases.filter(c => {
                 const diaClase = (c.dia?.value || c.dia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 const diaObjetivo = dia.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 return diaClase === diaObjetivo;
             });
-
-            let maxPicoDelDia = 0;
-
-            // Para cada clase del día, vemos cuántas otras se superponen con ella
-            clasesDelDia.forEach((c1) => {
-                const inicio1 = stringAMinutos(c1.horario);
-                const fin1 = inicio1 + parseInt(c1.duracion, 10);
-                let sumaConcurrentes = 0;
-
-                clasesDelDia.forEach((c2) => {
-                    const inicio2 = stringAMinutos(c2.horario);
-                    const fin2 = inicio2 + parseInt(c2.duracion, 10);
-
-                    // Condición de superposición de rangos horarios
-                    if (inicio1 < fin2 && fin1 > inicio2) {
-                        sumaConcurrentes += parseInt(c2.cupo, 10);
-                    }
-                });
-
-                // Si esta superposición es el nuevo récord del día, lo guardamos
-                if (sumaConcurrentes > maxPicoDelDia) {
-                    maxPicoDelDia = sumaConcurrentes;
-                }
-            });
-
-            picosCalculados[dia] = maxPicoDelDia;
+        
+            // 2. EN VEZ DE BUSCAR SUPERPOSICIONES, SUMAMOS TODOS LOS CUPOS DEL DÍA
+            const totalCuposDia = clasesDelDia.reduce((acumulador, clase) => {
+                return acumulador + parseInt(clase.cupo || 0, 10);
+            }, 0);
+        
+            // 3. Guardamos el total acumulado para ese día
+            picosCalculados[dia] = totalCuposDia;
         });
-
+    
         setPicosPorDia(picosCalculados);
     };
 
