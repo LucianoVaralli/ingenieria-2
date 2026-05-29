@@ -7,6 +7,7 @@ const Perfil = ({ token, setToken }) => {
     const [user,     setUser]     = useState(null);
     const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
+    const [alertaIndividual, setAlertaIndividual] = useState([]);
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
@@ -17,15 +18,28 @@ const Perfil = ({ token, setToken }) => {
                     api.get('/socios/me'),
                     api.get('/reservas/mis-reservas'),
                 ]);
+
                 setUser(resUser.data);
-                
+
                 const hoy = new Date();
                 hoy.setHours(0, 0, 0, 0);
+
                 const activas = resReservas.data.filter(r =>
                     r.estado === 'confirmada' &&
                     new Date(r.fecha_clase) >= hoy
                 );
+
                 setReservas(activas);
+
+                // ALERTAS EN OTRO TRY (IMPORTANTE)
+                try {
+                    const resAlertas = await api.get('/reservas/alertas-individuales');
+                    setAlertaIndividual(resAlertas.data);
+                } catch (e) {
+                    console.log("sin alertas, no rompe sesión");
+                    setAlertaIndividual([]);
+                }
+
             } catch (err) {
                 console.error("Error cargando perfil", err);
                 localStorage.removeItem('token');
@@ -33,7 +47,6 @@ const Perfil = ({ token, setToken }) => {
                 navigate('/login');
             }
         };
-
         fetchData();
     }, [token, navigate, setToken]);
 
@@ -94,6 +107,14 @@ const Perfil = ({ token, setToken }) => {
                                 <span className="dato-label">Teléfono</span>
                                 <span className="dato-valor">{user.telefono || '—'}</span>
                             </div> 
+                            {user.rol === 'Miembro' && (
+                                <div className="dato-item">
+                                    <span className="dato-label">Créditos disponibles</span>
+                                    <span className="dato-valor">
+                                        🎟️ {user.creditos_disponibles || 0}
+                                    </span>
+                                </div>
+                            )}
                             <button className="btn-cambiar-pass" disabled>
                                 🔒 Cambiar Contraseña
                             </button>
@@ -121,7 +142,17 @@ const Perfil = ({ token, setToken }) => {
                             )}
                         </div>
                     </div>
-
+                    {/* ALERTA GLOBAL */}
+                    {alertaIndividual?.length > 0 && alertaIndividual.map((a, i) => (
+                        <div className="alerta-reembolso" key={i}>
+                            {a.mensaje}
+                            <button onClick={() =>
+                                setAlertaIndividual(prev => prev.filter((_, idx) => idx !== i))
+                            }>
+                                OK
+                            </button>
+                        </div>
+                    ))}
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
                     <div className="perfil-calendar-block">
                         <div className="perfil-reservas-section">

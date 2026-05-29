@@ -41,10 +41,13 @@ const ReservaIndividual = () => {
 
     const [mensaje, setMensaje] = useState('');
     const [cargando, setCargando] = useState(false);
+    const [alerta, setAlerta] = useState(null);
 
     const [reservaId, setReservaId] = useState(null);
     const [monto, setMonto] = useState(0);
     const [debeListaEspera, setDebeListaEspera] = useState(false);
+    
+    const [tipoPago, setTipoPago] = useState('sena');
 
     // pago
     const [nroTarjeta, setNroTarjeta] = useState('');
@@ -86,7 +89,8 @@ const ReservaIndividual = () => {
 
             const res = await api.post('/reservas/individual/crear', {
                 clase_id: clase.id,
-                fecha_clase: fechaSeleccionada
+                fecha_clase: fechaSeleccionada,
+                tipo_pago: tipoPago,
             });
 
             setReservaId(res.data.reserva_id);
@@ -165,20 +169,22 @@ const ReservaIndividual = () => {
             const res = await api.post('/reservas/individual/pagar', {
                 reserva_id: reservaId,
                 numero_tarjeta: nroTarjeta,
-                titular: titular,
-                cvv: cvv,
+                titular,
+                cvv,
                 acepta_lista_espera: debeListaEspera
             });
 
-            // LISTA ESPERA
-            if (
-                res.data.mensaje === 'Pago realizado y agregado a lista de espera'
-            ) {
-                setMensaje('Reserva exitosa con lista de espera');
+            // ALERTA (si existe)
+            if (res.data.alerta) {
+                setAlerta({
+                    mensaje: res.data.alerta
+                });
             }
 
-            // NORMAL
-            else {
+            // MENSAJE PRINCIPAL
+            if (res.data.mensaje === 'Pago realizado y agregado a lista de espera') {
+                setMensaje('Reserva exitosa con lista de espera');
+            } else {
                 setMensaje('Reserva exitosa');
             }
 
@@ -260,15 +266,25 @@ const ReservaIndividual = () => {
                             <span>${clase.precio_individual}</span>
                         </div>
 
-                        <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
-                            <span>Seña (50%)</span>
-                            <span>${(clase.precio_individual * 0.5).toFixed(2)}</span>
-                        </div>
+                            <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
+                                <span>
+                                    {tipoPago === 'sena'
+                                        ? 'Seña (50%)'
+                                        : 'Pago total (100%)'}
+                                </span>
 
-                        <div className="reserva-desglose-total">
-                            <span>Total a pagar</span>
-                            <span>${(clase.precio_individual * 0.5).toFixed(2)}</span>
-                        </div>
+                                <span>
+                                    $
+                                    {tipoPago === 'sena'
+                                        ? (clase.precio_individual * 0.5).toFixed(2)
+                                        : clase.precio_individual.toFixed(2)}
+                                </span>
+                            </div>
+
+                            <div className="reserva-desglose-total">
+                                <span>Total a pagar</span>
+                                <span>${(clase.precio_individual * (tipoPago === 'sena' ? 0.5 : 1)).toFixed(2)}</span>
+                            </div>
 
                     </div>
 
@@ -293,6 +309,37 @@ const ReservaIndividual = () => {
                                 <strong>{clase.actividad}</strong>.
                             </p>
 
+                            <div className="reserva-tipo-pago"
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '12px',
+                                    marginBottom: '20px'
+                                }}
+                            >
+
+                                <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="radio"
+                                        value="sena"
+                                        checked={tipoPago === 'sena'}
+                                        onChange={(e) => setTipoPago(e.target.value)}
+                                    />
+                                    Pagar seña (50%)
+                                </label>
+
+                                <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="radio"
+                                        value="total"
+                                        checked={tipoPago === 'total'}
+                                        onChange={(e) => setTipoPago(e.target.value)}
+                                    />
+                                    Pagar total (100%)
+                                </label>
+
+                            </div>
+
                             <button
                                 className="boton-accion"
                                 onClick={handleCrearReserva}
@@ -300,7 +347,7 @@ const ReservaIndividual = () => {
                             >
                                 {cargando
                                     ? <span className="reserva-spinner" />
-                                    : 'Reservar turno'}
+                                    : 'Confirmar y pagar →'}
                             </button>
 
                         </div>
@@ -491,9 +538,9 @@ const ReservaIndividual = () => {
 
                             <button
                                 className="pago-btn-ghost"
-                                onClick={() => navigate('/clases')}
+                                onClick={() => navigate('/home')}
                             >
-                                Volver a clases
+                                Volver al home
                             </button>
 
                         </div>

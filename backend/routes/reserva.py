@@ -101,20 +101,7 @@ def crear_reserva_membresia(
             status_code=400,
             detail="Ya tiene una reserva confirmada o pendiente para este horario en los días solicitados."
         )
-
-    # 1. Primero definís total_clases
-    total_clases = datos.total_clases_mes or len(datos.fechas_clase)
-
-    # 2. Después calculás las perdidas
-    clases_perdidas = total_clases - len(datos.fechas_clase)
-
-    # 3. Precio y descuento
-    precio_por_clase = clase.precio_individual
-    descuento = clases_perdidas * (precio_por_clase * 0.20)
-
-    # 4. Monto final: solo pagás las futuras, con descuento
-    monto_total = (precio_por_clase * len(datos.fechas_clase)) - descuento
-
+    
     # Verificar cupos solo en fechas futuras
     fechas_con_cupo = []
     fechas_sin_cupo = []
@@ -133,34 +120,45 @@ def crear_reserva_membresia(
 
     if not fechas_con_cupo:
         return {
-            "fechas_con_cupo":    fechas_con_cupo,
-            "fechas_sin_cupo":    fechas_sin_cupo,
-            "fechas_pasadas":     fechas_pasadas,
-            "clases_perdidas":    clases_perdidas,
-            "descuento_aplicado": round(descuento, 2),
-            "monto_total":        round(monto_total, 2),
-            "hay_lista_espera":   True,
-            "mensaje_espera":     f"¿Desea estar en lista de espera?"
+            "fechas_con_cupo": fechas_con_cupo,
+            "fechas_sin_cupo": fechas_sin_cupo,
+            "fechas_pasadas": fechas_pasadas,
+            "hay_lista_espera": True,
+            "mensaje_espera": "¿Desea estar en lista de espera?"
         }
 
-    # Créditos: solo cuenta las clases futuras con cupo
-    cantidad_clases_a_reservar = len(fechas_con_cupo)
-    if socio.creditos_disponibles >= cantidad_clases_a_reservar:
-        monto_total = 0.0
+    total_clases = len(datos.fechas_clase) # para la información que se ve en el front, se cuentan todas las fechas, no solo las futuras
+
+    clases_validas = len(fechas_futuras)
+
+    clases_perdidas = total_clases - clases_validas #para la informacion que se ve en el front
+
+    cantidad_clases = len(fechas_con_cupo) #solo las clases validas
+
+    creditos_disponibles = socio.creditos_disponibles
+
+    creditos_a_usar = min(creditos_disponibles, cantidad_clases)
+
+    clases_a_pagar_en_dinero = cantidad_clases - creditos_a_usar
+
+    socio.creditos_disponibles -= creditos_a_usar #deberia estar en el pago pero bueno
+
+    precio_por_clase = clase.precio_individual
+
+    monto_base = clases_a_pagar_en_dinero * precio_por_clase
+    descuento_total = clases_perdidas * (precio_por_clase * 0.20)
+    monto_total = max(0, monto_base - descuento_total)
 
     respuesta = {
         "fechas_con_cupo":    fechas_con_cupo,
         "fechas_sin_cupo":    fechas_sin_cupo,
         "fechas_pasadas":     fechas_pasadas,
         "clases_perdidas":    clases_perdidas,
-        "descuento_aplicado": round(descuento, 2),
+        "descuento_aplicado": round(descuento_total, 2),
         "monto_total":        round(monto_total, 2),
         "hay_lista_espera":   len(fechas_sin_cupo) > 0,
         **({"mensaje_espera": f"¿Desea estar en lista de espera?"} if fechas_sin_cupo else {})
     }
-
-    if fechas_sin_cupo:
-        respuesta["mensaje_espera"] = f"¿Desea estar en lista de espera?"
 
     return respuesta
 
@@ -362,11 +360,8 @@ def ver_lista_espera(
 
 @router.post("/individual/crear")
 def crear_reserva_individual(
-
     datos: ReservaIndividualCreate,
-
     token: str = Depends(oauth2_scheme),
-
     db: Session = Depends(get_db)
 ):
 
@@ -375,7 +370,6 @@ def crear_reserva_individual(
 
     # Solo miembros y no_miembros pueden reservar
     if socio.rol not in [Rol.Miembro.value, Rol.NoMiembro.value]:
-
         raise HTTPException(
             status_code=403,
             detail="No tiene permisos para reservar"
@@ -387,7 +381,6 @@ def crear_reserva_individual(
     ).first()
 
     if not clase:
-
         raise HTTPException(
             status_code=404,
             detail="Clase no encontrada"
@@ -405,7 +398,6 @@ def crear_reserva_individual(
     )
 
     if datetime.now() >= fecha_hora:
-
         raise HTTPException(
             status_code=400,
             detail="La clase ya comenzó"
@@ -417,21 +409,15 @@ def crear_reserva_individual(
     # ─────────────────────────────────────────────
 
     conflicto = db.query(Reserva).join(Clase).filter(
-
         Reserva.socio_id == socio.id,
-
         Clase.dia == clase.dia,
-
         Clase.horario == clase.horario,
-
         Reserva.fecha_clase == datos.fecha_clase,
-
         Reserva.estado.in_(["pendiente_pago", "confirmada"])
 
     ).first()
 
     if conflicto:
-
         raise HTTPException(
             status_code=400,
             detail="Ya tiene una reserva en ese horario"
@@ -444,21 +430,15 @@ def crear_reserva_individual(
     # ─────────────────────────────────────────────
 
     membresia_existente = db.query(Reserva).filter(
-
         Reserva.socio_id == socio.id,
-
         Reserva.clase_id == clase.id,
-
         Reserva.fecha_clase == datos.fecha_clase,
-
         Reserva.tipo == "membresia",
-
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
 
     ).first()
 
     if membresia_existente:
-
         raise HTTPException(
             status_code=400,
             detail="Ya posee una membresía para esta clase"
@@ -469,11 +449,8 @@ def crear_reserva_individual(
     # ─────────────────────────────────────────────
 
     ocupadas = db.query(Reserva).filter(
-
         Reserva.clase_id == clase.id,
-
         Reserva.fecha_clase == datos.fecha_clase,
-
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
 
     ).count()
@@ -485,24 +462,30 @@ def crear_reserva_individual(
     # individual paga solo el 50%
     # ─────────────────────────────────────────────
 
-    monto = clase.precio_individual * 0.5
+    # Validamos tipo de pago
+    if datos.tipo_pago not in ["sena", "total"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Tipo de pago inválido"
+        )
+    
+    if datos.tipo_pago == "sena":
+        monto = clase.precio_individual * 0.5
+    else:
+        monto = clase.precio_individual
 
     # Creamos reserva pendiente
     reserva = Reserva(
-
         socio_id=socio.id,
-
         clase_id=clase.id,
-
         tipo="individual",
-
         estado="pendiente_pago",
-
         fecha_clase=datos.fecha_clase,
 
         monto_total=clase.precio_individual,
+        monto_pagado=monto,
 
-        monto_pagado=monto
+        tipo_pago=datos.tipo_pago
     )
 
     db.add(reserva)
@@ -704,8 +687,11 @@ async def pagar_reserva_individual(
     except Exception as e:
         print(f"⚠️ Mail no enviado: {e}")
 
+    alerta = None
+
     return {
-        "mensaje": "El pago se realizó correctamente"
+        "mensaje": "El pago se realizó correctamente",
+        "alerta": alerta,
     }
 
 @router.delete("/individual/cancelar/{reserva_id}")
@@ -746,3 +732,26 @@ def cancelar_reserva_individual(
     return {
         "mensaje": "Reserva cancelada"
     }
+
+@router.get("/alertas-individuales")
+def obtener_alertas_individuales(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    alertas = db.query(Reserva).filter(
+        Reserva.socio_id == socio.id,
+        Reserva.tipo == "individual",
+        Reserva.mensaje_admin != None
+    ).order_by(Reserva.id.desc()).all()
+
+    return [
+        {
+            "reserva_id": r.id,
+            "mensaje": r.mensaje_admin,
+            "clase_id": r.clase_id,
+            "fecha": r.fecha_clase
+        }
+        for r in alertas
+    ]

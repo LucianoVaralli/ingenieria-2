@@ -197,6 +197,9 @@
             filas.push(<tr key={i}>{celdas.slice(i, i + 7)}</tr>);
         }
 
+        const capitalizar = (texto) => texto.charAt(0).toUpperCase() + texto.slice(1);
+
+
         return (
             <div className="clases-wrapper">
 
@@ -246,7 +249,16 @@
                                     className={`clase-card ${claseElegida?.id === clase.id ? 'elegida' : ''}`}
                                     onClick={() => handleElegirClase(clase)}
                                 >
-                                    <p className="clase-nombre">{clase.actividad}</p>
+                                    <p
+                                        className="clase-nombre"
+                                        style={{
+                                            fontSize: '1.2rem',
+                                            textTransform: 'capitalize',
+                                            color: '#2e8b57',
+                                        }}
+                                    >
+                                        {clase.actividad}
+                                    </p>
                                     <p>Profesor: <strong>{clase.profesor_nombre}</strong></p>
                                     <p>Comienza a las: <strong>{formatearHora(clase.horario)}</strong></p>
                                     <p>Duración de la clase: <strong>{" "}{clase.duracion} min</strong></p>
@@ -260,7 +272,7 @@
                         {claseElegida && (
                             <div className="reserva-opciones">
                                 <p className="reserva-titulo">
-                                    Reservar <strong>{claseElegida.actividad}</strong> a las {formatearHora(claseElegida.horario)}:
+                                    Reservar <strong>{capitalizar(claseElegida.actividad)}</strong> a las {formatearHora(claseElegida.horario)}:
                                 </p>
                                 <div className="reserva-modos">
                                     <label className={`modo-btn ${modoReserva === 'membresia' ? 'activo' : ''}`}>
