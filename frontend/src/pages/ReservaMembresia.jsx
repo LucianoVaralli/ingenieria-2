@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
@@ -15,6 +15,7 @@ const ReservaMembresia = () => {
     const [mensaje,      setMensaje]      = useState('');
     const [cargando,     setCargando]     = useState(false);
     const [datosReserva, setDatosReserva] = useState(null);
+    const [creditos, setCreditos] = useState(0);
 
     if (!clase || !fechasDelMes) {
         return (
@@ -27,6 +28,19 @@ const ReservaMembresia = () => {
             </div>
         );
     }
+
+    useEffect(() => {
+        const cargarPerfil = async () => {
+            try {
+                const res = await api.get('/socios/me');
+                setCreditos(res.data.creditos_disponibles || 0);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        cargarPerfil();
+    }, []);
 
     const handleReservar = async () => {
         setCargando(true);
@@ -196,6 +210,13 @@ const ReservaMembresia = () => {
                                     }
                                 </div>
                             </div>
+
+                            {creditos > 0 && (
+                                <div className="reserva-creditos-alert">
+                                    🎟️ Tenés {creditos} crédito{creditos > 1 ? 's' : ''} disponible{creditos > 1 ? 's' : ''}. 
+                                    Esta reserva se descontará automáticamente sin cobrarte nuevamente.
+                                </div>
+                            )}
 
                             <button
                                 className="boton-accion"

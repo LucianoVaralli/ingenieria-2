@@ -18,7 +18,7 @@ const Perfil = ({ token, setToken }) => {
                     api.get('/reservas/mis-reservas'),
                 ]);
                 setUser(resUser.data);
-                
+  
                 const hoy = new Date();
                 hoy.setHours(0, 0, 0, 0);
                 const activas = resReservas.data.filter(r =>
@@ -94,6 +94,14 @@ const Perfil = ({ token, setToken }) => {
                                 <span className="dato-label">Teléfono</span>
                                 <span className="dato-valor">{user.telefono || '—'}</span>
                             </div> 
+                            {user.rol === 'Miembro' && (
+                                <div className="dato-item">
+                                    <span className="dato-label">Créditos disponibles</span>
+                                    <span className="dato-valor">
+                                        🎟️ {user.creditos_disponibles || 0}
+                                    </span>
+                                </div>
+                            )}
                             <button className="btn-cambiar-pass" disabled>
                                 🔒 Cambiar Contraseña
                             </button>
@@ -121,7 +129,15 @@ const Perfil = ({ token, setToken }) => {
                             )}
                         </div>
                     </div>
-
+                    {/* ALERTA GLOBAL */}
+                    {r.tipo === "individual" && r.mensaje_admin && (
+                        <div className="alerta-reembolso">
+                            {r.mensaje_admin}
+                            <button onClick={() => {/* opcional */}}>
+                                OK
+                            </button>
+                        </div>
+                    )}
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
                     <div className="perfil-calendar-block">
                         <div className="perfil-reservas-section">

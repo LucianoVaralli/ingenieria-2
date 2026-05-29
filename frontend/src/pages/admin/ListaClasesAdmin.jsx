@@ -33,9 +33,14 @@ function ListaClasesAdmin() {
         setErrorBackend("");
         setMensajeExito("");
         try {
-            await api.put(`/clases/eliminar/${claseAEliminar}`, {
+            const res = await api.put(`/clases/eliminar/${claseAEliminar}`, {
                 motivo: "Clase eliminada por administrador"
             });
+
+
+            if (res.data.alertas?.length) {
+                alert(res.data.alertas.join("\n"));
+            }
 
             await cargarClases();
             setMensajeExito("Eliminación completada");
