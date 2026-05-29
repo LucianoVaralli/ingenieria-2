@@ -101,20 +101,7 @@ def crear_reserva_membresia(
             status_code=400,
             detail="Ya tiene una reserva confirmada o pendiente para este horario en los días solicitados."
         )
-
-    # 1. Primero definís total_clases
-    total_clases = datos.total_clases_mes or len(datos.fechas_clase)
-
-    # 2. Después calculás las perdidas
-    clases_perdidas = total_clases - len(datos.fechas_clase)
-
-    # 3. Precio y descuento
-    precio_por_clase = clase.precio_individual
-    descuento = clases_perdidas * (precio_por_clase * 0.20)
-
-    # 4. Monto final: solo pagás las futuras, con descuento
-    monto_total = (precio_por_clase * len(datos.fechas_clase)) - descuento
-
+    
     # Verificar cupos solo en fechas futuras
     fechas_con_cupo = []
     fechas_sin_cupo = []
@@ -133,45 +120,45 @@ def crear_reserva_membresia(
 
     if not fechas_con_cupo:
         return {
-            "fechas_con_cupo":    fechas_con_cupo,
-            "fechas_sin_cupo":    fechas_sin_cupo,
-            "fechas_pasadas":     fechas_pasadas,
-            "clases_perdidas":    clases_perdidas,
-            "descuento_aplicado": round(descuento, 2),
-            "monto_total":        round(monto_total, 2),
-            "hay_lista_espera":   True,
-            "mensaje_espera":     f"¿Desea estar en lista de espera?"
+            "fechas_con_cupo": fechas_con_cupo,
+            "fechas_sin_cupo": fechas_sin_cupo,
+            "fechas_pasadas": fechas_pasadas,
+            "hay_lista_espera": True,
+            "mensaje_espera": "¿Desea estar en lista de espera?"
         }
 
-    # Créditos: solo cuenta las clases futuras con cupo
-    cantidad_clases_a_reservar = len(fechas_con_cupo)
-    creditos_a_usar = min(
-        socio.creditos_disponibles,
-        cantidad_clases_a_reservar
-    )
+    total_clases = len(datos.fechas_clase) # para la información que se ve en el front, se cuentan todas las fechas, no solo las futuras
 
-    clases_pagadas = cantidad_clases_a_reservar - creditos_a_usar
+    clases_validas = len(fechas_futuras)
 
-    socio.creditos_disponibles -= creditos_a_usar
+    clases_perdidas = total_clases - clases_validas #para la informacion que se ve en el front
 
-    monto_total = max(
-        0,
-        clases_pagadas * precio_por_clase - descuento
-    )
+    cantidad_clases = len(fechas_con_cupo) #solo las clases validas
+
+    creditos_disponibles = socio.creditos_disponibles
+
+    creditos_a_usar = min(creditos_disponibles, cantidad_clases)
+
+    clases_a_pagar_en_dinero = cantidad_clases - creditos_a_usar
+
+    socio.creditos_disponibles -= creditos_a_usar #deberia estar en el pago pero bueno
+
+    precio_por_clase = clase.precio_individual
+
+    monto_base = clases_a_pagar_en_dinero * precio_por_clase
+    descuento_total = clases_perdidas * (precio_por_clase * 0.20)
+    monto_total = max(0, monto_base - descuento_total)
 
     respuesta = {
         "fechas_con_cupo":    fechas_con_cupo,
         "fechas_sin_cupo":    fechas_sin_cupo,
         "fechas_pasadas":     fechas_pasadas,
         "clases_perdidas":    clases_perdidas,
-        "descuento_aplicado": round(descuento, 2),
+        "descuento_aplicado": round(descuento_total, 2),
         "monto_total":        round(monto_total, 2),
         "hay_lista_espera":   len(fechas_sin_cupo) > 0,
         **({"mensaje_espera": f"¿Desea estar en lista de espera?"} if fechas_sin_cupo else {})
     }
-
-    if fechas_sin_cupo:
-        respuesta["mensaje_espera"] = f"¿Desea estar en lista de espera?"
 
     return respuesta
 
