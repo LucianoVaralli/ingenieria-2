@@ -16,7 +16,6 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import CrearClase from "./pages/admin/CrearClase";
 import ListaClasesAdmin from "./pages/admin/ListaClasesAdmin";
 import EditarCapacidad from "./pages/admin/EditarCapacidad";
-import ResetPassword from './pages/ResetPassword';
 import { Navigate } from "react-router-dom";
 import ReservaIndividual from './pages/ReservaIndividual';
 
@@ -57,7 +56,6 @@ function AppContent({ token, setToken }) {
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Rutas de Administración (Limpiadas las duplicadas) */}
         <Route path="/admin" element={<AdminDashboard />} />

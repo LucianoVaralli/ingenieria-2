@@ -1,28 +1,18 @@
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from dotenv import load_dotenv
-import os
 
 from models.socio import Socio
 from models.clase import Clase
 from models.reserva_MIO import Reserva
 
-load_dotenv(dotenv_path=".env")
-
-print("MAIL_USERNAME:", os.getenv("MAIL_USERNAME"))
-print("MAIL_PASSWORD:", os.getenv("MAIL_PASSWORD"))
-print("MAIL_SERVER:", os.getenv("MAIL_SERVER"))
-
-load_dotenv()
-
 conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME", "tu_usuario@gmail.com"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", "tu_contraseña_de_app"),
-    MAIL_FROM=os.getenv("MAIL_FROM", "tu_usuario@gmail.com"),
-    MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
-    MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
-    MAIL_STARTTLS=os.getenv("MAIL_STARTTLS", "True") == "True",
-    MAIL_SSL_TLS=os.getenv("MAIL_SSL_TLS", "False") == "True",
-    USE_CREDENTIALS=os.getenv("USE_CREDENTIALS", "True") == "True"
+    MAIL_USERNAME="ingenieriagrupo19@gmail.com",
+    MAIL_PASSWORD="dpaf mvhx eypl kzpe",
+    MAIL_FROM="ingenieriagrupo19@gmail.com",
+    MAIL_PORT=587,
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True
 )
 
 async def send_email(email: str, asunto: str, cuerpo: str):
@@ -32,15 +22,10 @@ async def send_email(email: str, asunto: str, cuerpo: str):
         body=cuerpo,
         subtype="plain"
     )
-    
     fm = FastMail(conf)
     await fm.send_message(mensaje)
 
-async def enviar_mail_pago_exitoso(
-    socio: Socio,
-    clase: Clase,
-    reserva: Reserva
-):
+async def enviar_mail_pago_exitoso(socio: Socio, clase: Clase, reserva: Reserva):
     cuerpo = f"""
     Pago realizado correctamente.
 
@@ -52,22 +37,16 @@ async def enviar_mail_pago_exitoso(
 
     Estado: {reserva.estado}
     """
-
     mensaje = MessageSchema(
         subject="Comprobante de reserva - Sportify",
         recipients=[socio.email],
         body=cuerpo,
         subtype="plain"
     )
-
     fm = FastMail(conf)
     await fm.send_message(mensaje)
 
-async def enviar_mail_lista_espera(
-    socio: Socio,
-    clase: Clase,
-    fecha_clase: str
-):
+async def enviar_mail_lista_espera(socio: Socio, clase: Clase, fecha_clase: str):
     cuerpo = f"""
     Usted ingresó correctamente a la lista de espera.
 
@@ -75,30 +54,24 @@ async def enviar_mail_lista_espera(
     Fecha: {fecha_clase}
     Horario: {clase.horario}
     """
-
     mensaje = MessageSchema(
         subject="Lista de espera - Sportify",
         recipients=[socio.email],
         body=cuerpo,
         subtype="plain"
     )
-
     fm = FastMail(conf)
     await fm.send_message(mensaje)
 
-async def enviar_mail_error_pago(
-    socio: Socio
-):
+async def enviar_mail_error_pago(socio: Socio):
     cuerpo = """
     El pago no pudo realizarse correctamente.
     """
-
     mensaje = MessageSchema(
         subject="Error en el pago - Sportify",
         recipients=[socio.email],
         body=cuerpo,
         subtype="plain"
     )
-
     fm = FastMail(conf)
     await fm.send_message(mensaje)

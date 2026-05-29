@@ -25,7 +25,7 @@ async def send_recovery_code(email: str, db: Session):
     if ultima_request:
         if datetime.now() < ultima_request + timedelta(minutes=1):
             raise HTTPException(
-                status_code=400,
+                status_code=429,
                 detail="Debes esperar 1 minuto antes de solicitar otro código"
             )
 
