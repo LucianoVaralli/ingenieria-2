@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import api from '../api/api.js';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+// ── IMPORTACIÓN DEL CSS NUEVO ──
+import '../assets/css/ForgotPassword.css';
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
@@ -25,6 +27,9 @@ const ForgotPassword = () => {
                 },
             });
 
+            // 🌟 CAMBIO CLAVE: Guardamos el email en el navegador antes de irnos
+            localStorage.setItem('reset_email', email);
+
             // Redirige a la nueva pantalla después de 2 segundos
             setTimeout(() => {
                 navigate('/reset-password');
@@ -47,20 +52,35 @@ const ForgotPassword = () => {
     };
 
     return (
-        <div>
-            <h1>Recuperar contraseña</h1>
-            <form onSubmit={handleForgotPassword}>
-                <input
-                    type="email"
-                    placeholder="Ingresar email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                />
-                <button type="submit">
-                    Enviar código
-                </button>
-            </form>
+        // ── CONTENEDOR PRINCIPAL OSCURO ──
+        <div className="forgot-container">
+            {/* ── TARJETA CENTRAL ENVOLVENTE ── */}
+            <div className="forgot-card">
+
+                <h2 className="forgot-title">Recuperar contraseña</h2>
+
+                <form className="forgot-form" onSubmit={handleForgotPassword}>
+
+                    {/* ── GRUPO DE ENTRADA CON LABEL ESTILIZADA ── */}
+                    <div className="forgot-input-group">
+                        <label className="forgot-label">Correo Electrónico</label>
+                        <input
+                            type="email"
+                            className="forgot-input"
+                            placeholder="Ejemplo@gmail.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    {/* ── BOTÓN VERDE SPORTIFY ── */}
+                    <button type="submit" className="forgot-button">
+                        Enviar código
+                    </button>
+
+                </form>
+            </div>
         </div>
     );
 };
