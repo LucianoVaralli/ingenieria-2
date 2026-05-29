@@ -19,6 +19,7 @@ import EditarCapacidad from "./pages/admin/EditarCapacidad";
 import ResetPassword from './pages/ResetPassword';
 import { Navigate } from "react-router-dom";
 import ReservaIndividual from './pages/ReservaIndividual';
+import CambiarPassword from "./pages/CambiarPassword";
 
 // 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
@@ -58,6 +59,7 @@ function AppContent({ token, setToken }) {
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/cambiar-password" element={<CambiarPassword />} />
 
         {/* Rutas de Administración (Limpiadas las duplicadas) */}
         <Route path="/admin" element={<AdminDashboard />} />

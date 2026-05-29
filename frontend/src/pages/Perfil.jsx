@@ -88,9 +88,12 @@ const Perfil = ({ token, setToken }) => {
                             <span className="dato-label">Teléfono</span>
                             <span className="dato-valor">{user.telefono || '—'}</span>
                         </div> 
-                        <button className="btn-cambiar-pass" disabled>
-                            🔒 Cambiar Contraseña
-                        </button>
+                            <button
+                                className="btn-cambiar-pass"
+                                onClick={() => navigate('/cambiar-password')}
+                            >
+                                🔒 Cambiar Contraseña
+                            </button>
                     </div>
 
                     {/* ── ACTA MÉDICA ── */}
