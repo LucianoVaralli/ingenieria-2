@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
@@ -15,6 +15,7 @@ const ReservaMembresia = () => {
     const [mensaje,      setMensaje]      = useState('');
     const [cargando,     setCargando]     = useState(false);
     const [datosReserva, setDatosReserva] = useState(null);
+    const [creditos, setCreditos] = useState(0);
 
     if (!clase || !fechasDelMes) {
         return (
@@ -27,6 +28,19 @@ const ReservaMembresia = () => {
             </div>
         );
     }
+
+    useEffect(() => {
+        const cargarPerfil = async () => {
+            try {
+                const res = await api.get('/socios/me');
+                setCreditos(res.data.creditos_disponibles || 0);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        cargarPerfil();
+    }, []);
 
     const handleReservar = async () => {
         setCargando(true);
@@ -197,6 +211,13 @@ const ReservaMembresia = () => {
                                 </div>
                             </div>
 
+                            {creditos > 0 && (
+                                <div className="reserva-creditos-alert">
+                                    🎟️ Tenés {creditos} crédito{creditos > 1 ? 's' : ''} disponible{creditos > 1 ? 's' : ''}. 
+                                    Esta reserva se descontará automáticamente sin cobrarte nuevamente.
+                                </div>
+                            )}
+
                             <button
                                 className="boton-accion"
                                 onClick={handleReservar}
@@ -215,9 +236,9 @@ const ReservaMembresia = () => {
                     {paso === 'confirmar_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
-                            <h3 className="reserva-accion-titulo">Algunas fechas sin cupo</h3>
+                            <h3 className="reserva-accion-titulo">Clases sin cupos</h3>
                             <p className="reserva-accion-desc">
-                                Las siguientes fechas no tienen cupos disponibles:
+                                Las siguientes clases no tienen cupos disponibles:
                             </p>
                             <div className="reserva-fechas-lista reserva-fechas-lista--sin-cupo">
                                 {datosReserva.fechas_sin_cupo.map(f => {
@@ -238,14 +259,14 @@ const ReservaMembresia = () => {
                                     onClick={() => handleResponderEspera(true)}
                                     disabled={cargando}
                                 >
-                                    Sí, anotarme en lista de espera
+                                    Confirmar lista de espera
                                 </button>
                                 <button
                                     className="boton-cancelar"
                                     onClick={() => handleResponderEspera(false)}
                                     disabled={cargando}
                                 >
-                                    No, solo las fechas con cupo
+                                    Rechazar lista de espera
                                 </button>
                             </div>
                         </div>

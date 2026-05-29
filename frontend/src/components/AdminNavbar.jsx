@@ -1,62 +1,62 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import "../assets/css/AdminNavbar.css";
 import logoSportify from "../assets/logo.png";
 
-function AdminNavbar({ setToken }) {
+const NAV_ITEMS = [
+    { to: "/admin",                 label: "Dashboard",       icon: "⬛" },
+    { to: "/admin/crear-clase",     label: "Crear Clase",     icon: "＋" },
+    { to: "/admin/eliminar-clase",  label: "Clases",          icon: "☰" },
+    { to: "/admin/editar-capacidad",label: "Capacidad",       icon: "◎" },
+];
 
-    const navigate = useNavigate();
+function AdminNavbar({ setToken }) {
+    const navigate  = useNavigate();
+    const location  = useLocation();
 
     const handleLogout = () => {
         localStorage.removeItem("token");
-
-        if (setToken) {
-            setToken(null);
-        }
-
+        if (setToken) setToken(null);
         navigate("/login");
     };
 
     return (
-        <nav className="admin-navbar">
+        <aside className="admin-sidebar">
 
-            <div className="admin-navbar-logo">
-                <img
-                    src={logoSportify}
-                    alt="Sportify Logo"
-                    className="admin-navbar-logo-img"
-                />
-
-                <span>SPORTIFY ADMIN</span>
+            {/* Logo */}
+            <div className="admin-sidebar-brand">
+                <img src={logoSportify} alt="Sportify" className="admin-sidebar-logo" />
+                <div>
+                    <span className="admin-sidebar-name">SPORTIFY</span>
+                    <span className="admin-sidebar-tag">Admin</span>
+                </div>
             </div>
 
-            <div className="admin-navbar-links">
+            {/* Separador */}
+            <div className="admin-sidebar-sep" />
 
-                <Link to="/admin" className="admin-link">
-                    Home
-                </Link>
+            {/* Navegación */}
+            <nav className="admin-sidebar-nav">
+                <span className="admin-sidebar-section">Gestión</span>
+                {NAV_ITEMS.map(item => (
+                    <Link
+                        key={item.to}
+                        to={item.to}
+                        className={`admin-sidebar-link ${location.pathname === item.to ? 'admin-sidebar-link--active' : ''}`}
+                    >
+                        <span className="admin-sidebar-link-icon">{item.icon}</span>
+                        {item.label}
+                    </Link>
+                ))}
+            </nav>
 
-                <Link to="/admin/crear-clase" className="admin-link">
-                    Crear Clase
-                </Link>
-                
-                <Link to="/admin/eliminar-clase" className="admin-link">
-                    Eliminar Clase
-                </Link>
-
-                <Link to="/admin/editar-capacidad" className="admin-link">
-                    Editar Capacidad
-                </Link>
-
-                <button
-                    onClick={handleLogout}
-                    className="admin-logout-btn"
-                >
-                    Cerrar Sesión
+            {/* Footer del sidebar */}
+            <div className="admin-sidebar-footer">
+                <button onClick={handleLogout} className="admin-sidebar-logout">
+                    ↩ Cerrar Sesión
                 </button>
-
             </div>
 
-        </nav>
+        </aside>
     );
 }
 

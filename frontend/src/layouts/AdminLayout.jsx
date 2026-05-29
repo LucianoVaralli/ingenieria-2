@@ -1,14 +1,12 @@
-import AdminNavbar from "../components/AdminNavbar";
+import AdminSidebar from "../components/AdminNavbar";
 
 function AdminLayout({ children }) {
-
     return (
-        <div>
-
-            <AdminNavbar />
-
-            {children}
-
+        <div className="admin-layout">
+            <AdminSidebar />
+            <main className="admin-main">
+                {children}
+            </main>
         </div>
     );
 }

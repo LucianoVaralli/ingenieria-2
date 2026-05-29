@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import os
 import shutil # Para guardar el archivo en el disco
 from models.enums import Rol
-
+import re
 from dependencies.database import get_db
 from models.socio import Socio
 from schemas.socio import SocioCreate
@@ -26,12 +26,30 @@ async def registrar_socio(
     confirmar_password: str = Form(...),
     db: Session = Depends(get_db)
 ):
+    
+    # Validar DNI
+    if not dni.isdigit() or len(dni) not in [7, 8]:
+        raise HTTPException(status_code=400,detail="El DNI debe tener 7 u 8 dígitos números")
+    
+    # Teléfono
+    if not telefono.isdigit() or len(telefono) != 10:
+        raise HTTPException(status_code=400,detail="El teléfono debe tener 10 dígitos (ej: 2211234567).")
+
+    if not apto_fisico or not apto_fisico.filename:
+        raise HTTPException(status_code=400,detail="Debe adjuntar un apto físico en PDF")
+
     # 1. Validaciones de existencia (DNI y Email)
     if db.query(Socio).filter(Socio.dni == dni).first():
         raise HTTPException(status_code=400, detail="DNI ya registrado")
     
     if db.query(Socio).filter(Socio.email == email).first():
-        raise HTTPException(status_code=400, detail="correo ya registrado")
+        raise HTTPException(status_code=400, detail="Correo ya registrado")
+
+    # Password fuerte: 6-16 caracteres, al menos una mayúscula y un carácter especial
+    pass_regex = r"^(?=.*[A-Z])(?=.*[!@#$%^&*]).{6,16}$"
+
+    if not re.match(pass_regex, password):
+        raise HTTPException(status_code=400,detail="Debe tener 6-16 caracteres, una mayúscula y un especial.")
 
     # Validar contraseñas
     if password != confirmar_password:
@@ -97,7 +115,8 @@ def obtener_mi_perfil(
         "cuota_al_dia": usuario.cuota_al_dia,
         "apto_fisico": usuario.apto_fisico_path,
         "telefono": usuario.telefono,
-        "dni": usuario.dni
+        "dni": usuario.dni,
+        "creditos_disponibles": usuario.creditos_disponibles
     }
 """ esto se agregara luego, es para que el admin pueda ver la lista de profesores y me servira para la lista desplegable al crear una clase, para asignarle un profesor a esa clase
 @router.get("/profesores")

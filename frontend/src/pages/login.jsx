@@ -67,14 +67,14 @@ const Login = ({ setToken }) => {
                             <span className="login-stat-num">+2K</span>
                             <span className="login-stat-label">Miembros</span>
                         </div>
-                        <div className="login-stat">
+                        {/*<div className="login-stat">
                             <span className="login-stat-num">30+</span>
                             <span className="login-stat-label">Clases</span>
                         </div>
                         <div className="login-stat">
                             <span className="login-stat-num">5★</span>
                             <span className="login-stat-label">Rating</span>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>
@@ -98,13 +98,22 @@ const Login = ({ setToken }) => {
                     />
 
                     <label className="login-label">Contraseña</label>
-                    <input 
-                        type="password" 
-                        className="login-input"
-                        placeholder="••••••••" 
-                        onChange={(e) => setPassword(e.target.value)} 
-                        required
-                    />
+                    <div className="password-wrapper">
+                        <input 
+                            type={showPassword ? "text" : "password"}
+                            className="login-input"
+                            placeholder="••••••••" 
+                            onChange={(e) => setPassword(e.target.value)} 
+                            required
+                        />
+                        <button 
+                            type="button" 
+                            className="toggle-password" 
+                            onClick={() => setShowPassword(!showPassword)}
+                        >
+                            {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                        </button>
+                    </div>
 
                     <button type="submit" className="   boton-login">
                         INICIAR SESIÓN

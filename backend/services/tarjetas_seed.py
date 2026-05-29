@@ -16,6 +16,8 @@ def crear_tarjetas_simuladas(db: Session):
         # Crédito OK
         TarjetaSimulada(
             numero="1111",
+            titular="Juan Perez",
+            cvv="111",
             tipo="credito",
             saldo=999999,
             conexion_exitosa=True
@@ -24,6 +26,8 @@ def crear_tarjetas_simuladas(db: Session):
         # Débito OK
         TarjetaSimulada(
             numero="2222",
+            titular="Maria Lopez",
+            cvv="222",
             tipo="debito",
             saldo=999999,
             conexion_exitosa=True
@@ -32,6 +36,8 @@ def crear_tarjetas_simuladas(db: Session):
         # Sin saldo
         TarjetaSimulada(
             numero="3333",
+            titular="Pedro Gomez",
+            cvv="333",
             tipo="credito",
             saldo=0,
             conexion_exitosa=True
@@ -40,6 +46,8 @@ def crear_tarjetas_simuladas(db: Session):
         # Error banco
         TarjetaSimulada(
             numero="4444",
+            titular="Ana Torres",
+            cvv="444",
             tipo="credito",
             saldo=999999,
             conexion_exitosa=False

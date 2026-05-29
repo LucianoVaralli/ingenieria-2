@@ -16,7 +16,7 @@ html, body, #root {
     color: #fff;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 26px;
     max-width: 100%;   /* ← cambiá 1000px por 100% */
     margin: 0;  
     min-height: 100vh;
@@ -78,6 +78,20 @@ html, body, #root {
     color: #000;
     flex-shrink: 0;
     box-shadow: 0 0 0 3px rgba(92,184,77,0.2), 0 0 20px rgba(92,184,77,0.1);
+}
+
+.perfil-info-block {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px; /* Evita que los datos se estiren infinitamente en pantallas anchas */
+    margin: 0 auto;
+}
+
+.perfil-calendar-block {
+    width: 100%;
+    margin-top: 10px;
 }
 
 .perfil-hero-info { flex: 1; }
@@ -448,4 +462,216 @@ html, body, #root {
 .acta-faltante {
     color: rgba(255,255,255,0.35);
     font-style: italic;
+}
+
+.perfil-agenda-container {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    margin-top: 20px;
+    width: 100%;
+}
+.agenda-columna {
+    flex: 1;
+    min-width: 200px;
+    background: #141414;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #222;
+}
+.agenda-columna-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #292929;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+.agenda-badge {
+    background: #222;
+    color: #888;
+    font-size: 12px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: bold;
+}
+.agenda-badge.active {
+    background: #00ff1e;
+    color: black;
+}
+.agenda-columna-vacio {
+    color: #555;
+    font-style: italic;
+    font-size: 13px;
+    text-align: center;
+    margin: auto 0;
+    padding: 15px 0;
+}
+.reserva-card-mini {
+    background: #1c1c1c;
+    border-radius: 8px;
+    padding: 10px;
+    border-left: 4px solid #00ff1e;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.reserva-mini-fecha {
+    font-size: 11px;
+    font-weight: bold;
+    color: #00ff1e;
+}
+
+.reserva-mini-horario {
+    font-size: 13px;
+    color: #bbb;
+}
+.reserva-mini-tipo {
+    font-size: 11px;
+    color: #777;
+}
+.reserva-mini-espera {
+    background: #ffcc00;
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    width: fit-content;
+}
+
+.perfil-agenda-container {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto; /* Scroll de las columnas si no entran en el ancho */
+    padding-bottom: 12px;
+    margin-top: 20px;
+    width: 100%;
+    scrollbar-width: thin; /* Barra sutil en navegadores modernos */
+}
+
+/* Estilo para cada columna de día */
+.agenda-columna {
+    flex: 1;
+    min-width: 200px; /* Evita que las columnas colapsen en pantallas chicas */
+    background: #141414; /* Tono oscuro integrado al dashboard */
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #222;
+}
+
+/* Cabecera del día (Nombre + Círculo con contador) */
+.agenda-columna-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #292929;
+}
+
+.agenda-columna-header h4 {
+    margin: 0;
+    font-size: 16px;
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Círculo indicador de cantidad de reservas */
+.agenda-badge {
+    background: #222;
+    color: #888;
+    font-size: 12px;
+    font-weight: bold;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.agenda-badge.active {
+    background: #00ff1e; /* El verde Sportify que venís usando */
+    color: #000;
+}
+
+/* Espacio interno donde se apilan las reservas */
+.agenda-columna-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+/* Estado de "Sin clases" opaco */
+.agenda-columna-vacio {
+    color: #555;
+    font-style: italic;
+    font-size: 13px;
+    text-align: center;
+    margin: auto 0;
+    padding: 20px 0;
+}
+
+/* Diseño compacto y optimizado de la Card del socio */
+.reserva-card-mini {
+    background: #1c1c1c;
+    border-radius: 8px;
+    padding: 10px;
+    border-left: 4px solid #00ff1e; /* Línea de acento verde */
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.reserva-mini-fecha {
+    font-size: 22px;
+    font-weight: bold;
+    color: #00ff1e;
+    text-transform: uppercase;
+}
+
+.reserva-mini-detalles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.reserva-mini-actividad {
+    font-size: 20px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.reserva-mini-horario {
+    font-size: 16px;
+    color: #bbb;
+}
+
+.reserva-mini-tipo {
+    font-size: 15px;
+    color: #888;
+    margin-top: 2px;
+}
+
+/* Etiqueta de la lista de espera adaptada al tamaño mini */
+.reserva-mini-espera {
+    background: #ffcc00;
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    width: fit-content;
+    margin-top: 4px;
 }
