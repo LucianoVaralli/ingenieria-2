@@ -7,28 +7,39 @@ const Perfil = ({ token, setToken }) => {
     const [user,     setUser]     = useState(null);
     const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
+    const [alertaIndividual, setAlertaIndividual] = useState([]);
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
 
         const fetchData = async () => {
             try {
-                const [resUser, resReservas, resAlertas] = await Promise.all([
+                const [resUser, resReservas] = await Promise.all([
                     api.get('/socios/me'),
                     api.get('/reservas/mis-reservas'),
-                    api.get('/alertas-individuales')
                 ]);
+
                 setUser(resUser.data);
 
                 const hoy = new Date();
                 hoy.setHours(0, 0, 0, 0);
+
                 const activas = resReservas.data.filter(r =>
                     r.estado === 'confirmada' &&
                     new Date(r.fecha_clase) >= hoy
                 );
+
                 setReservas(activas);
 
-                setAlertaIndividual(resAlertas.data);
+                // ALERTAS EN OTRO TRY (IMPORTANTE)
+                try {
+                    const resAlertas = await api.get('/reservas/alertas-individuales');
+                    setAlertaIndividual(resAlertas.data);
+                } catch (e) {
+                    console.log("sin alertas, no rompe sesión");
+                    setAlertaIndividual([]);
+                }
+
             } catch (err) {
                 console.error("Error cargando perfil", err);
                 localStorage.removeItem('token');
@@ -36,7 +47,6 @@ const Perfil = ({ token, setToken }) => {
                 navigate('/login');
             }
         };
-
         fetchData();
     }, [token, navigate, setToken]);
 
