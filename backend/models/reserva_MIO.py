@@ -39,6 +39,7 @@ class Reserva(Base):
     motivo_cancelacion = Column(String, nullable=True)
     mensaje_admin = Column(String, nullable=True)
     tipo_cancelacion = Column(String, nullable=True)
+    tipo_pago = Column(String, nullable=True)
 
     # Relaciones para acceder fácil a los datos en la lógica del backend
     socio = relationship("Socio")
