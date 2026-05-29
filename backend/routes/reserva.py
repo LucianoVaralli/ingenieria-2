@@ -145,9 +145,17 @@ def crear_reserva_membresia(
 
     precio_por_clase = clase.precio_individual
 
-    monto_base = clases_a_pagar_en_dinero * precio_por_clase
-    descuento_total = clases_perdidas * (precio_por_clase * 0.20)
-    monto_total = max(0, monto_base - descuento_total)
+    # 1. El monto base se calcula sobre el total de clases del mes (5 * 123 = 615)
+    monto_base_mes = total_clases * precio_por_clase
+    
+    # 2. Sacamos el 20% a ese total mensual (615 * 0.20 = 123)
+    veinte_porciento_monto = monto_base_mes * 0.20
+    
+    # 3. Multiplicamos por las clases perdidas (4 * 123 = 492)
+    descuento_total = clases_perdidas * veinte_porciento_monto
+    
+    # 4. Restamos para obtener el total (615 - 492 = 123)
+    monto_total = max(0, monto_base_mes - descuento_total)
 
     respuesta = {
         "fechas_con_cupo":    fechas_con_cupo,
