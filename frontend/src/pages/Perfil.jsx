@@ -7,6 +7,7 @@ const Perfil = ({ token, setToken }) => {
     const [user,     setUser]     = useState(null);
     const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
+    const [alerta, setAlerta] = useState(null);
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
@@ -94,6 +95,14 @@ const Perfil = ({ token, setToken }) => {
                                 <span className="dato-label">Teléfono</span>
                                 <span className="dato-valor">{user.telefono || '—'}</span>
                             </div> 
+                            {user.rol === 'Miembro' && (
+                                <div className="dato-item">
+                                    <span className="dato-label">Créditos disponibles</span>
+                                    <span className="dato-valor">
+                                        🎟️ {user.creditos_disponibles || 0}
+                                    </span>
+                                </div>
+                            )}
                             <button className="btn-cambiar-pass" disabled>
                                 🔒 Cambiar Contraseña
                             </button>
@@ -121,7 +130,15 @@ const Perfil = ({ token, setToken }) => {
                             )}
                         </div>
                     </div>
-
+                    {/* ALERTA GLOBAL */}
+                    {alerta && (
+                        <div className="alerta-reembolso">
+                            {alerta.mensaje}
+                            <button onClick={() => setAlerta(null)}>
+                                OK
+                            </button>
+                        </div>
+                    )}
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
                     <div className="perfil-calendar-block">
                         <div className="perfil-reservas-section">
