@@ -128,6 +128,18 @@ def obtener_profesores(db: Session = Depends(get_db)):
 
     return profesores
 """
+
+@router.get("/profesores")
+def obtener_profesores(db: Session = Depends(get_db)):
+    profesores = db.query(Socio).filter(Socio.rol == "profesor").all()
+    return [
+        {
+            "id":     p.id,
+            "nombre": f"{p.nombre} {p.apellido}"
+        }
+        for p in profesores
+    ]
+
 @router.get("/")
 def obtener_socios(
     db: Session = Depends(get_db),
