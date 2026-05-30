@@ -4,7 +4,7 @@ import api from '../api/api.js';
 import '../assets/css/Perfil.css';
 
 const Perfil = ({ token, setToken }) => {
-    const [user, setUser] = useState(null);
+    const [user,     setUser]     = useState(null);
     const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
@@ -92,62 +92,56 @@ const Perfil = ({ token, setToken }) => {
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* ── DATOS PERSONALES (Unificado sin duplicaciones) ── */}
-                    <div className="perfil-datos-row">
-                        <div className="dato-item">
-                            <span className="dato-label">Email</span>
-                            <span className="dato-valor">{user.email || 'No registrado'}</span>
-                        </div>
-                        <div className="dato-item">
-                            <span className="dato-label">DNI</span>
-                            <span className="dato-valor">{user.dni || '—'}</span>
-                        </div>
-                        <div className="dato-item">
-                            <span className="dato-label">Teléfono</span>
-                            <span className="dato-valor">{user.telefono || '—'}</span>
-                        </div>
-                        {user.rol === 'Miembro' && (
+                        {/* DATOS PERSONALES */}
+                        <div className="perfil-datos-row">
                             <div className="dato-item">
-                                <span className="dato-label">Créditos disponibles</span>
-                                <span className="dato-valor">
-                                    🎟️ {user.creditos_disponibles || 0}
-                                </span>
+                                <span className="dato-label">Email</span>
+                                <span className="dato-valor">{user.email || 'No registrado'}</span>
                             </div>
-                        )}
-                        <div className="dato-item btn-container">
-                            <button
-                                className="btn-cambiar-pass"
-                                onClick={() => navigate('/cambiar-password')}
-                            >
+                            <div className="dato-item">
+                                <span className="dato-label">DNI</span>
+                                <span className="dato-valor">{user.dni || '—'}</span>
+                            </div>
+                            <div className="dato-item">
+                                <span className="dato-label">Teléfono</span>
+                                <span className="dato-valor">{user.telefono || '—'}</span>
+                            </div> 
+                            {user.rol === 'Miembro' && (
+                                <div className="dato-item">
+                                    <span className="dato-label">Créditos disponibles</span>
+                                    <span className="dato-valor">
+                                        🎟️ {user.creditos_disponibles || 0}
+                                    </span>
+                                </div>
+                            )}
+                            <button className="btn-cambiar-pass" disabled>
                                 🔒 Cambiar Contraseña
                             </button>
                         </div>
-                    </div>
 
-                    {/* APTO FÍSICO */}
-                    <div className="perfil-acta-section">
-                        <div className="perfil-section-header">
-                            <span className="perfil-section-icon">🩺</span>
-                            <h3 className="perfil-section-title">Apto Físico</h3>
+                        {/* APTO FÍSICO */}
+                        <div className="perfil-acta-section">
+                            <div className="perfil-section-header">
+                                <span className="perfil-section-icon">🩺</span>
+                                <h3 className="perfil-section-title">Apto Físico</h3>
+                            </div>
+                            {user.apto_fisico ? (
+                                <a
+                                    href={`http://localhost:8000/${user.apto_fisico}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn-ver-acta"
+                                >
+                                    Ver PDF
+                                </a>
+                            ) : (
+                                <p className="acta-faltante">
+                                    No tenés un apto físico cargado.
+                                </p>
+                            )}
                         </div>
-                        {user.apto_fisico ? (
-                            <a
-                                href={`http://localhost:8000/${user.apto_fisico}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="btn-ver-acta"
-                            >
-                                Ver PDF
-                            </a>
-                        ) : (
-                            <p className="acta-faltante">
-                                No tenés un apto físico cargado.
-                            </p>
-                        )}
                     </div>
-
                     {/* ALERTA GLOBAL */}
                     {alertaIndividual?.length > 0 && alertaIndividual.map((a, i) => (
                         <div className="alerta-reembolso" key={i}>
@@ -159,7 +153,6 @@ const Perfil = ({ token, setToken }) => {
                             </button>
                         </div>
                     ))}
-
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
                     <div className="perfil-calendar-block">
                         <div className="perfil-reservas-section">
@@ -204,7 +197,7 @@ const Perfil = ({ token, setToken }) => {
                                                                         month: 'short',
                                                                     })}
                                                                 </div>
-
+                                                                
                                                                 <div className="reserva-mini-detalles">
                                                                     <span className="reserva-mini-actividad">
                                                                         {r.clase?.actividad || `Clase #${r.clase_id}`}
@@ -215,7 +208,7 @@ const Perfil = ({ token, setToken }) => {
                                                                     <span className="reserva-mini-tipo">
                                                                         {r.tipo === 'membresia' ? '📋 Memb.' : '🎫 Indiv.'}
                                                                     </span>
-
+                                                                    
                                                                     {r.lista_espera && (
                                                                         <span className="reserva-mini-espera">
                                                                             En Espera

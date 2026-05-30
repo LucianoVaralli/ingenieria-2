@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import api from '../api/api.js';
-import '../assets/css/Login.css';
+import api from '../api/api.js'; 
+import '../assets/css/Login.css';           
 import logoSportify from '../assets/logo.png';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; 
 import { Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { Eye, EyeOff } from 'lucide-react';
 
 
-const Login = ({ setToken }) => {
+const Login = ({ setToken }) => { 
     const navigate = useNavigate();
-
+    
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -27,20 +27,20 @@ const Login = ({ setToken }) => {
             data.append('password', password);
 
             const res = await api.post('/auth/login', data);
-
+            
             localStorage.setItem('token', res.data.access_token);
             localStorage.setItem("rol", res.data.rol);
-            setToken(res.data.access_token);
+            setToken(res.data.access_token); 
 
             const tokenRecibido = res.data.access_token;
             const decoded = jwtDecode(tokenRecibido);
-
+            
             if (decoded.rol === 'admin') {
                 navigate('/admin'); // Si es admin, al panel de control
             } else {
                 navigate('/home');  // Si es socio/profesor, al home común
             }
-
+            
         } catch (err) {
             console.error(err);
 
@@ -89,47 +89,46 @@ const Login = ({ setToken }) => {
 
                 <form onSubmit={handleLogin} className="login-form">
                     <label className="login-label">Correo Electrónico</label>
-                    <input
-                        type="email"
+                    <input 
+                        type="email" 
                         className="login-input"
-                        placeholder="usuario@email.com"
-                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="usuario@email.com" 
+                        onChange={(e) => setEmail(e.target.value)} 
                         required
                     />
 
                     <label className="login-label">Contraseña</label>
                     <div className="password-wrapper">
-                        <input
+                        <input 
                             type={showPassword ? "text" : "password"}
                             className="login-input"
-                            placeholder="••••••••"
-                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••" 
+                            onChange={(e) => setPassword(e.target.value)} 
                             required
                         />
-                        <button
-                            type="button"
-                            className="toggle-password"
+                        <button 
+                            type="button" 
+                            className="toggle-password" 
                             onClick={() => setShowPassword(!showPassword)}
                         >
                             {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                         </button>
                     </div>
 
-                    <button type="submit" className="boton-login">
+                    <button type="submit" className="   boton-login">
                         INICIAR SESIÓN
                     </button>
-
-                    {/* 🌟 CAMBIO AQUÍ: Link de recuperar contraseña integrado con su nueva clase estilizada 🌟 */}
-                    <Link to="/forgot-password" className="login-forgot-link">
-                        ¿Olvidaste tu contraseña?
-                    </Link>
-
+                    
                     {error && (
                         <p className="login-error">
                             {error}
                         </p>
-                    )}
+                    )}                    
                 </form>
+
+                <p className="registro-link-container">
+                    ¿Sos nuevo? <Link to="/registro" className="registro-link">Registrate acá</Link>
+                </p>
             </div>
         </div>
     );
