@@ -1,0 +1,37 @@
+.notificaciones-page {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.notificaciones-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.notificacion-card {
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid #ddd;
+}
+
+.notificacion-card:hover {
+    transform: translateY(-2px);
+}
+
+.notificacion-card.no-leida {
+    border-left: 5px solid #007bff;
+}
+
+.notificacion-card.leida {
+    opacity: 0.8;
+}
+
+.notificacion-detalle {
+    margin-top: 30px;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
