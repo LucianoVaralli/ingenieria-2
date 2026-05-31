@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
+from models.enums import TipoReserva
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from database import Base
@@ -11,7 +12,7 @@ class Reserva(Base):
     clase_id     = Column(Integer, ForeignKey("clases.id"), nullable=False)
 
     # "membresia" o "individual"
-    tipo         = Column(String, nullable=False)
+    tipo = Column(Enum(TipoReserva))
 
     estado       = Column(String, default="pendiente_pago")
 
