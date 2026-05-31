@@ -1,0 +1,202 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+ 
+.notificaciones-page {
+    max-width: 860px;
+    margin: 48px auto;
+    padding: 0 24px 80px;
+    font-family: 'Lora', serif;
+    color: #fff;
+}
+ 
+/* ── ENCABEZADO ── */
+.notificaciones-header {
+    margin-bottom: 32px;
+}
+ 
+.notificaciones-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: #5CB84D;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+ 
+.notificaciones-titulo {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: -0.3px;
+}
+ 
+/* ── LISTA ── */
+.notificaciones-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+ 
+/* ── CARD ── */
+.notificacion-card {
+    background: #0c0c0c;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 18px 22px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s, background 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+ 
+.notificacion-card:hover {
+    border-color: rgba(92,184,77,0.2);
+    transform: translateY(-1px);
+}
+ 
+/* No leída — borde izquierdo verde */
+.notificacion-card.no-leida {
+    border-left: 3px solid #5CB84D;
+    background: rgba(92,184,77,0.03);
+}
+ 
+/* Leída — más apagada */
+.notificacion-card.leida {
+    opacity: 0.55;
+}
+ 
+.notificacion-card.leida:hover {
+    opacity: 0.8;
+}
+ 
+.notificacion-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+ 
+.notificacion-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+ 
+.notificacion-badge-nueva {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #5CB84D;
+    background: rgba(92,184,77,0.1);
+    border: 1px solid rgba(92,184,77,0.25);
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+ 
+.notificacion-card p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    margin: 0;
+    line-height: 1.5;
+    font-style: italic;
+}
+ 
+.notificacion-card small {
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.3px;
+}
+ 
+/* ── ESTADO VACÍO ── */
+.notificaciones-vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    border: 1px dashed rgba(255,255,255,0.07);
+    border-radius: 14px;
+    gap: 12px;
+    text-align: center;
+}
+ 
+.notificaciones-vacio-icon {
+    font-size: 32px;
+    opacity: 0.2;
+}
+ 
+.notificaciones-vacio p {
+    font-size: 14px;
+    font-style: italic;
+    color: rgba(255,255,255,0.25);
+    margin: 0;
+}
+ 
+/* ── MODAL DETALLE ── */
+.notificacion-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    backdrop-filter: blur(4px);
+    padding: 24px;
+}
+ 
+.notificacion-detalle {
+    background: #0f0f0f;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    padding: 36px;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-family: 'Lora', serif;
+}
+ 
+.notificacion-detalle h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+ 
+.notificacion-detalle p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.7;
+    margin: 0;
+}
+ 
+.notificacion-detalle small {
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+}
+ 
+.notificacion-detalle-cerrar {
+    align-self: flex-end;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.35);
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 4px;
+}
+ 
+.notificacion-detalle-cerrar:hover {
+    border-color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.6);
+}

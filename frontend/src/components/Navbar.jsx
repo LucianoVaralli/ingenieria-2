@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'; // El cambio está aquí
 import { Link, useNavigate } from 'react-router-dom';
 import '../assets/css/Navbar.css'; 
 import logo from '../assets/logo.png';
+import api from '../api/api';
 
 const Navbar = ({ setToken }) => {
     const navigate = useNavigate();
@@ -33,12 +34,31 @@ const Navbar = ({ setToken }) => {
     const esAdmin = rol === "Admin"; //verifico si el rol es ADMIN
 
     const [scrolled, setScrolled] = useState(false);
+    const [cantidadNoLeidas, setCantidadNoLeidas] = useState(0);
+
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', onScroll);
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
+
+    useEffect(() => {
+
+        if (!token) return;
+
+        if (rol === "profesor") return;
+
+        api.get("/notificaciones/no-leidas")
+            .then(res => {
+                setCantidadNoLeidas(res.data.cantidad);
+            })
+            .catch(err => {
+                console.error("Error obteniendo notificaciones", err);
+            });
+
+    }, [token, rol]);
+
     return (
         <nav className={`navbar-container ${scrolled ? 'navbar-scrolled' : ''}`}>
             <div className="navbar-logo">
@@ -62,6 +82,14 @@ const Navbar = ({ setToken }) => {
                 )}
                 {token ? (
                     <div className="navbar-auth">
+                        {rol !== "profesor" && (
+                            <Link
+                                to="/notificaciones"
+                                className="navbar-link"
+                            >
+                                🔔 {cantidadNoLeidas > 0 && `(${cantidadNoLeidas})`}
+                            </Link>
+                        )}
                         <Link to="/perfil" className="navbar-link">Mi Perfil</Link>
                         <button onClick={handleLogout} className="navbar-link-highlight">
                             Cerrar Sesión
