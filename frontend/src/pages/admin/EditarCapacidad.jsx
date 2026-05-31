@@ -9,11 +9,14 @@ function EditarCapacidad() {
     const [nuevaCapacidad,      setNuevaCapacidad]      = useState("");
     const [errorBackend,        setErrorBackend]        = useState("");
     const [mensajeExito,        setMensajeExito]        = useState("");
-    
+    const [dropdownAbierto, setDropdownAbierto] = useState(false);
+    const [ocupacionHoras, setocupacionHoras] = useState([]);
+
     // Estado para guardar el pico máximo de concurrencia por cada día
     const [picosPorDia, setPicosPorDia] = useState({
         Lunes: 0, Martes: 0, Miercoles: 0, Jueves: 0, Viernes: 0, Sabado: 0, Domingo: 0
     });
+    const [diaSeleccionado, setDiaSeleccionado] = useState("Lunes");
 
     useEffect(() => { cargarDatos(); }, []);
 
@@ -28,6 +31,23 @@ function EditarCapacidad() {
         } catch (error) {
             console.error("Error cargando datos del gimnasio:", error);
         }
+    };
+
+    useEffect(() => {
+        if (!diaSeleccionado) return;
+
+        api.get(`/clases/ocupacion/${diaSeleccionado}`)
+            .then(res => setocupacionHoras(res.data));
+    }, [diaSeleccionado]);
+
+
+    const getEstadoDia = (pico, total) => {
+        const porcentaje = total > 0 ? (pico / total) * 100 : 0;
+
+        if (porcentaje >= 90) return "CRITICO";
+        if (porcentaje >= 60) return "ALTO";
+        if (porcentaje > 0) return "MEDIO";
+        return "LIBRE";
     };
 
     // Función mágica para calcular la superposición horaria en el Frontend
@@ -91,6 +111,14 @@ function EditarCapacidad() {
         }
     };
 
+    const pico = picosPorDia[diaSeleccionado] || 0;
+    const porcentaje = capacidadTotal > 0 ? (pico / capacidadTotal) * 100 : 0;
+
+    let estadoColor = "dia-vacio";
+    if (porcentaje >= 90) estadoColor = "dia-peligro";
+    else if (porcentaje > 50) estadoColor = "dia-advertencia";
+    else if (pico > 0) estadoColor = "dia-ok";
+
     return (
         <AdminLayout>
             <div className="capacidad-page">
@@ -105,45 +133,82 @@ function EditarCapacidad() {
                         <div className="capacidad-stat-label">Capacidad Total</div>
                         <div className="capacidad-stat-value">{capacidadTotal}</div>
                     </div>
-                    <div className="capacidad-stat">
-                        <div className="capacidad-stat-label">Disponible</div>
-                        <div className="capacidad-stat-value">{capacidadDisponible}</div>
-                    </div>
                 </div>
 
-                {/* NUEVA SECCIÓN DE CUADRADITOS VISUALES */}
+                {/* SECCIÓN OCUPACIÓN */}
                 <div className="capacidad-dias-section">
-                    <h2 className="seccion-subtitulo">Ocupación Máxima Simultánea por Día</h2>
-                    <div className="capacidad-dias-grid">
-                        {Object.keys(picosPorDia).map((dia) => {
-                            const pico = picosPorDia[dia];
-                            // Calculamos el porcentaje para pintar el cuadradito según qué tan lleno esté
-                            const porcentaje = capacidadTotal > 0 ? (pico / capacidadTotal) * 100 : 0;
-                            
-                            let estadoColor = "dia-vacio";
-                            if (porcentaje >= 90) estadoColor = "dia-peligro"; // Casi lleno o lleno
-                            else if (porcentaje > 50) estadoColor = "dia-advertencia"; // Mitad de capacidad
-                            else if (pico > 0) estadoColor = "dia-ok"; // Con clases pero tranqui
+                    <h2 className="seccion-subtitulo">
+                        Ocupación Máxima Simultánea Por Día
+                    </h2>
 
-                            return (
-                                <div key={dia} className={`dia-cuadradito ${estadoColor}`}>
-                                    <div className="dia-nombre">{dia}</div>
-                                    <div className="dia-pico-contenedor">
-                                        <span className="dia-pico-valor">{pico}</span>
-                                        <span className="dia-pico-max">/ {capacidadTotal}</span>
+                    {/* TARJETA DEL DÍA SELECCIONADO */}
+                    <div className={`dia-cuadradito ${estadoColor}`}>
+
+                        {/* HEADER CLICKEABLE (esto abre el dropdown) */}
+                        <div
+                            className="dia-nombre clickable"
+                            onClick={() => setDropdownAbierto(!dropdownAbierto)}
+                            style={{ cursor: "pointer" }}
+                        >
+                            {diaSeleccionado}
+                        </div>
+
+                        {/* DROPDOWN DENTRO DE LA TARJETA */}
+                        {dropdownAbierto && (
+                            <div className="dropdown-in-card">
+                                {Object.keys(picosPorDia).map((dia) => (
+                                    <div
+                                        key={dia}
+                                        className="dropdown-item"
+                                        onClick={() => {
+                                            setDiaSeleccionado(dia);
+                                            setDropdownAbierto(false);
+                                        }}
+                                    >
+                                        {dia}
                                     </div>
-                                    <div className="dia-progreso-bar">
-                                        <div 
-                                            className="dia-progreso-llenado" 
-                                            style={{ width: `${Math.min(porcentaje, 100)}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                ))}
+                            </div>
+                        )}
+                        {/* CONTENIDO NORMAL DE LA TARJETA, PARA MI SE BORRA PERO LO DEJO POR LAS DUDAS
+                        <div className="dia-pico-contenedor">
+                            <span className="dia-pico-valor">{pico}</span>
+                            <span className="dia-pico-max">/ {capacidadTotal}</span>
+                        </div>
+                        <div className="dia-progreso-bar">
+                            <div
+                                className="dia-progreso-llenado"
+                                style={{ width: `${Math.min(porcentaje, 100)}%` }}
+                            />
+                        </div> */}
                     </div>
+                    <div className="ocupacion-horas">
+                            {ocupacionHoras.map((hora) => (
+                                <div key={hora.hora} className="hora-row">
+
+                                    <span className="hora-label">
+                                        {hora.hora}
+                                    </span>
+
+                                    <div className="barra-container">
+                                        <div
+                                            className="barra-ocupacion"
+                                            style={{
+                                                width: `${(hora.ocupacion / hora.capacidad) * 100}%`
+                                            }}
+                                        />
+                                    </div>
+
+                                    <span className="hora-cupo">
+                                        {hora.ocupacion}/{hora.capacidad}
+                                    </span>
+
+                                </div>
+                            ))}
+                        </div>
                 </div>
 
+                {/* FORMULARIO */}
                 <div className="capacidad-card">
                     <h2>Actualizar Capacidad</h2>
 
@@ -162,7 +227,10 @@ function EditarCapacidad() {
                                 setMensajeExito("");
                             }}
                         />
-                        <button type="submit" className="capacidad-btn">Actualizar</button>
+
+                        <button type="submit" className="capacidad-btn">
+                            Actualizar
+                        </button>
                     </form>
                 </div>
 

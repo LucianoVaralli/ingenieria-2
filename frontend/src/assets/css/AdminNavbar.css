@@ -15,10 +15,15 @@
     background: #080808;
     color: #fff;
 }
-
+.admin-sidebar-toggle {
+    background: #0c0c0c;
+    border: none;
+    color: #fff;
+}
 /* ── SIDEBAR ── */
 .admin-sidebar {
-    width: 400px;
+    transition: width 0.3s ease;
+    overflow: hidden;
     min-height: 100vh;
     background: #0c0c0c;
     border-right: 1px solid rgba(255,255,255,0.06);
@@ -28,6 +33,14 @@
     position: sticky;
     top: 0;
     height: 100vh;
+}
+
+.admin-sidebar.abierto {
+    width: 260px;
+}
+
+.admin-sidebar.cerrado {
+    width: 70px;
 }
 
 /* Brand */
@@ -131,6 +144,9 @@
 .admin-sidebar-footer {
     padding: 16px 12px;
     border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: center; 
+    align-items: center;
 }
 
 .admin-sidebar-logout {
@@ -145,6 +161,10 @@
     cursor: pointer;
     text-align: left;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
 }
 
 .admin-sidebar-logout:hover {

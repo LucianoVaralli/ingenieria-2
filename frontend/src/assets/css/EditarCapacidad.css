@@ -37,11 +37,11 @@
 /* Stats */
 .capacidad-stats {
     display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 16px;
     width: 100%;
-    max-width: 560px;
+    max-width: 300px;
     margin-bottom: 20px;
+    margin: 0 auto 20px auto;
 }
 
 .capacidad-stat {
@@ -192,6 +192,10 @@
     flex: 1; /* Distribuye el espacio equitativamente */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    max-width: 450px;
+    margin: 0 auto;
+
 }
 
 .dia-cuadradito:hover {
@@ -292,4 +296,66 @@
 }
 .dia-peligro:hover {
     box-shadow: 0 6px 15px rgba(245, 101, 101, 0.2);
+}
+
+.dropdown-in-card {
+    margin-top: 10px;
+    background: #151515;
+    border-radius: 8px;
+    border: 1px solid #333;
+    overflow: hidden;
+}
+
+.dropdown-in-card .dropdown-item {
+    padding: 10px;
+    cursor: pointer;
+    color: white;
+    transition: 0.2s;
+}
+
+.dropdown-in-card .dropdown-item:hover {
+    background: #2a2a2a;
+}
+
+.ocupacion-horas {
+    width: 100%;
+    max-width: 700px;
+    margin: 25px auto 0 auto;
+}
+
+.hora-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.hora-label {
+    width: 55px;
+    font-weight: 600;
+    color: white;
+    font-size: 14px;
+}
+
+.barra-container {
+    flex: 1;
+    height: 8px;
+    width: 220px;
+    background: #2c2c2c;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.barra-ocupacion {
+    height: 100%;
+    background: #3ddc84;
+    border-radius: 20px;
+    transition: width 0.3s ease;
+}
+
+.hora-cupo {
+    width: 55px;
+    text-align: right;
+    color: white;
+    font-size: 13px;
 }

@@ -119,6 +119,7 @@ def obtener_mi_perfil(
         "creditos_disponibles": usuario.creditos_disponibles
     }
 """ esto se agregara luego, es para que el admin pueda ver la lista de profesores y me servira para la lista desplegable al crear una clase, para asignarle un profesor a esa clase
+"""
 @router.get("/profesores")
 def obtener_profesores(db: Session = Depends(get_db)):
 
@@ -126,8 +127,16 @@ def obtener_profesores(db: Session = Depends(get_db)):
         Socio.rol == Rol.Profesor.value
     ).all()
 
-    return profesores
-"""
+    return [
+        {
+            "id": p.id,
+            "nombre": p.nombre,
+            "apellido": p.apellido,
+            "email": p.email
+        }
+        for p in profesores
+    ]
+
 @router.get("/")
 def obtener_socios(
     db: Session = Depends(get_db),
