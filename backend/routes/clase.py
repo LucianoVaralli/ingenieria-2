@@ -186,6 +186,12 @@ async def crear_clase(
 def obtener_ocupacion_dia(dia: str, db: Session = Depends(get_db)):
     gimnasio = db.query(Gimnasio).first()
 
+    if not gimnasio:
+        raise HTTPException(
+            status_code=404,
+            detail="No existe configuración del gimnasio"
+        )
+    
     clases = db.query(Clase).filter(
         Clase.activa == True,
         Clase.dia == dia

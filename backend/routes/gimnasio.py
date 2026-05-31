@@ -4,13 +4,18 @@ from dependencies.database import get_db
 from datetime import time
 from models.gimnasio import Gimnasio
 from schemas.gimnasio import CapacidadUpdate
-from routes.clase import Clase
+from models.clase import Clase
 from collections import defaultdict
 
 router = APIRouter(
     prefix="/gimnasio",
     tags=["Gimnasio"]
 )
+
+def minutos_a_hora(minutos):
+    h = minutos // 60
+    m = minutos % 60
+    return f"{h:02d}:{m:02d}"
 
 def calcular_picos_por_dia(db: Session):
     clases_activas = db.query(Clase).filter(Clase.activa == True).all()
@@ -22,8 +27,13 @@ def calcular_picos_por_dia(db: Session):
         clases_por_dia[dia_limpio].append(c)
 
     picos = {
-        "Lunes": 0, "Martes": 0, "Miercoles": 0,
-        "Jueves": 0, "Viernes": 0, "Sabado": 0, "Domingo": 0
+        "Lunes": {"max": 0, "hora": None},
+        "Martes": {"max": 0, "hora": None},
+        "Miercoles": {"max": 0, "hora": None},
+        "Jueves": {"max": 0, "hora": None},
+        "Viernes": {"max": 0, "hora": None},
+        "Sabado": {"max": 0, "hora": None},
+        "Domingo": {"max": 0, "hora": None},
     }
 
     for dia, clases in clases_por_dia.items():
@@ -41,12 +51,18 @@ def calcular_picos_por_dia(db: Session):
 
         actual = 0
         maximo = 0
+        hora_pico = None
 
-        for _, tipo, cupo in eventos:
+        for minuto ,tipo, cupo in eventos:
             actual += tipo * cupo
-            maximo = max(maximo, actual)
+            if actual > maximo:
+                maximo = actual
+                hora_pico = minuto
 
-        picos[dia] = maximo
+        picos[dia] = {
+            "max": maximo,
+            "hora": minutos_a_hora(hora_pico) if hora_pico is not None else None
+        }
 
     return picos
 
@@ -61,10 +77,14 @@ def actualizar_capacidad(datos: CapacidadUpdate, db: Session = Depends(get_db)):
     picos = calcular_picos_por_dia(db)
 
     for dia, pico in picos.items():
-        if pico > datos.capacidad_total:
+        if pico["max"] > datos.capacidad_total:
             raise HTTPException(
                 status_code=400,
-                detail=f"No puedes reducir capacidad. El {dia} hay pico de {pico}"
+                detail=(
+                        f"No puedes reducir capacidad. "
+                        f"El {dia} a las {pico['hora']} "
+                        f"hay pico de {pico['max']}"
+                    )
             )
 
     gimnasio.capacidad_total = datos.capacidad_total

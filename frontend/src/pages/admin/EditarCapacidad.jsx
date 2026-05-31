@@ -5,7 +5,6 @@ import AdminLayout from "../../layouts/AdminLayout";
 
 function EditarCapacidad() {
     const [capacidadTotal,      setCapacidadTotal]      = useState(0);
-    const [capacidadDisponible, setCapacidadDisponible] = useState(0);
     const [nuevaCapacidad,      setNuevaCapacidad]      = useState("");
     const [errorBackend,        setErrorBackend]        = useState("");
     const [mensajeExito,        setMensajeExito]        = useState("");
@@ -14,7 +13,13 @@ function EditarCapacidad() {
 
     // Estado para guardar el pico máximo de concurrencia por cada día
     const [picosPorDia, setPicosPorDia] = useState({
-        Lunes: 0, Martes: 0, Miercoles: 0, Jueves: 0, Viernes: 0, Sabado: 0, Domingo: 0
+        Lunes: { max: 0, hora: null },
+        Martes: { max: 0, hora: null },
+        Miercoles: { max: 0, hora: null },
+        Jueves: { max: 0, hora: null },
+        Viernes: { max: 0, hora: null },
+        Sabado: { max: 0, hora: null },
+        Domingo: { max: 0, hora: null }
     });
     const [diaSeleccionado, setDiaSeleccionado] = useState("Lunes");
 
@@ -24,8 +29,7 @@ function EditarCapacidad() {
         try {
             const resGimnasio = await api.get("/gimnasio/");
             setCapacidadTotal(resGimnasio.data.capacidad_total);
-            setCapacidadDisponible(resGimnasio.data.capacidad_disponible);
-            
+
             // Seteamos directamente los picos exactos que calculó el backend
             setPicosPorDia(resGimnasio.data.picos_por_dia);
         } catch (error) {
@@ -50,47 +54,6 @@ function EditarCapacidad() {
         return "LIBRE";
     };
 
-    // Función mágica para calcular la superposición horaria en el Frontend
-    const calcularPicosPorDia = (clases) => {
-        const diasSemana = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"];
-        const picosCalculados = { Lunes: 0, Martes: 0, Miercoles: 0, Jueves: 0, Viernes: 0, Sabado: 0, Domingo: 0 };
-
-        diasSemana.forEach((dia) => {
-            const clasesDelDia = clases.filter(c => {
-                const diaClase = (c.dia?.value || c.dia || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                const diaObjetivo = dia.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                return diaClase === diaObjetivo;
-            });
-
-            // Lógica de "Barrido" para encontrar el pico real de simultaneidad
-            let eventos = [];
-            clasesDelDia.forEach(c => {
-                if (!c.horario || !c.duracion) return;
-                
-                // Convertir horario "HH:MM:SS" a minutos
-                const [h, m] = c.horario.split(':').map(Number);
-                const inicio = (h * 60) + m;
-                const fin = inicio + c.duracion;
-
-                eventos.push({ tiempo: inicio, tipo: 1, cupo: c.cupo });
-                eventos.push({ tiempo: fin, tipo: -1, cupo: c.cupo });
-            });
-
-            eventos.sort((a, b) => a.tiempo - b.tiempo || a.tipo - b.tipo);
-
-            let maximo = 0;
-            let actual = 0;
-            eventos.forEach(ev => {
-                actual += (ev.tipo * ev.cupo);
-                if (actual > maximo) maximo = actual;
-            });
-
-            picosCalculados[dia] = maximo;
-        });
-
-        setPicosPorDia(picosCalculados);
-    };
-
     const actualizarCapacidad = async (e) => {
         e.preventDefault();
         if (Number(nuevaCapacidad) <= 0) {
@@ -102,7 +65,6 @@ function EditarCapacidad() {
             setMensajeExito(res.data.mensaje);
             setTimeout(() => setMensajeExito(""), 3000);
             setCapacidadTotal(res.data.capacidad_total);
-            setCapacidadDisponible(res.data.capacidad_disponible);
             setNuevaCapacidad("");
             // Recargamos datos para actualizar cualquier lógica visual
             cargarDatos();
@@ -111,9 +73,12 @@ function EditarCapacidad() {
         }
     };
 
-    const pico = picosPorDia[diaSeleccionado] || 0;
-    const porcentaje = capacidadTotal > 0 ? (pico / capacidadTotal) * 100 : 0;
+    const picoData = picosPorDia?.[diaSeleccionado] ?? { max: 0, hora: null };
+    const pico = picoData.max;
+    const horaPico = picoData.hora;
 
+    const porcentaje =capacidadTotal > 0 ? (pico / capacidadTotal) * 100 : 0;
+    
     let estadoColor = "dia-vacio";
     if (porcentaje >= 90) estadoColor = "dia-peligro";
     else if (porcentaje > 50) estadoColor = "dia-advertencia";
@@ -194,7 +159,7 @@ function EditarCapacidad() {
                                         <div
                                             className="barra-ocupacion"
                                             style={{
-                                                width: `${(hora.ocupacion / hora.capacidad) * 100}%`
+                                                width: `${hora.capacidad ? (hora.ocupacion / hora.capacidad) * 100 : 0}%`
                                             }}
                                         />
                                     </div>
