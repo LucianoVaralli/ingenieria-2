@@ -8,7 +8,7 @@ from models.lista_espera import ListaEspera
 from models.clase        import Clase
 from services.auth       import oauth2_scheme, obtener_usuario_actual
 from schemas.reserva     import ReservaMembresiaCreate, ConfirmarPagoMembresia
-from models.enums import Rol
+from models.enums import Rol, TipoReserva
 from sqlalchemy import func
 from schemas.reserva_individual import (
     ReservaIndividualCreate,
@@ -228,7 +228,7 @@ def confirmar_pago_membresia(
             r = Reserva(
                 socio_id    = socio.id,
                 clase_id    = datos.clase_id,
-                tipo        = "membresia",
+                tipo        = TipoReserva.Membresia.value,
                 estado      = "confirmada",  # directo a confirmada
                 fecha_clase = fecha,
                 monto_total = datos.monto_total,
@@ -247,7 +247,7 @@ def confirmar_pago_membresia(
                 socio_id    = socio.id,
                 clase_id    = datos.clase_id,
                 fecha_clase = fecha,
-                tipo        = "membresia",
+                tipo        = TipoReserva.Membresia.value,
                 estado      = "esperando"
             ))
 
@@ -441,7 +441,7 @@ def crear_reserva_individual(
         Reserva.socio_id == socio.id,
         Reserva.clase_id == clase.id,
         Reserva.fecha_clase == datos.fecha_clase,
-        Reserva.tipo == "membresia",
+        Reserva.tipo == TipoReserva.Membresia.value,
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
 
     ).first()
@@ -486,7 +486,7 @@ def crear_reserva_individual(
     reserva = Reserva(
         socio_id=socio.id,
         clase_id=clase.id,
-        tipo="individual",
+        tipo=TipoReserva.Individual.value,
         estado="pendiente_pago",
         fecha_clase=datos.fecha_clase,
 
@@ -537,7 +537,7 @@ async def pagar_reserva_individual(
 
         Reserva.socio_id == socio.id,
 
-        Reserva.tipo == "individual",
+        Reserva.tipo == TipoReserva.Individual.value,
 
         Reserva.estado == "pendiente_pago"
 
@@ -649,7 +649,7 @@ async def pagar_reserva_individual(
 
             fecha_clase=reserva.fecha_clase,
 
-            tipo="individual",
+            tipo=TipoReserva.Individual.value,
 
             estado="esperando"
         )
@@ -720,7 +720,7 @@ def cancelar_reserva_individual(
 
         Reserva.socio_id == socio.id,
 
-        Reserva.tipo == "individual",
+        Reserva.tipo == TipoReserva.Individual.value,
 
         Reserva.estado == "pendiente_pago"
 
@@ -750,7 +750,7 @@ def obtener_alertas_individuales(
 
     alertas = db.query(Reserva).filter(
         Reserva.socio_id == socio.id,
-        Reserva.tipo == "individual",
+        Reserva.tipo == TipoReserva.Individual.value,
         Reserva.mensaje_admin != None
     ).order_by(Reserva.id.desc()).all()
 

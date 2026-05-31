@@ -18,3 +18,4 @@ class Socio(Base):
     cuota_al_dia = Column(Boolean, default=False)
     creditos_disponibles = Column(Integer, default=0)
     apto_fisico_path = Column(String, nullable=True) # Guardamos el nombre del archivo
+    notificaciones = relationship("Notificacion", back_populates="socio")

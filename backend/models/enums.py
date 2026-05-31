@@ -20,3 +20,7 @@ class DiaSemana(str, Enum):
     Viernes = "viernes"
     Sabado = "sabado"
     Domingo = "domingo"
+
+class TipoReserva(str, Enum):
+    Membresia = "membresia"
+    Individual = "individual"
