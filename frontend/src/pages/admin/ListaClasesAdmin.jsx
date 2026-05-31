@@ -95,7 +95,7 @@ function ListaClasesAdmin() {
                                             clasesDelDia.map((clase) => (
                                                 <div key={clase.id} className="clase-admin-card-mini">
                                                     <div className="clase-mini-info">
-                                                        <h4>{clase.actividad}</h4>
+                                                        <h4>{clase.actividad.charAt(0).toUpperCase() + clase.actividad.slice(1)}</h4>
                                                         <span className="clase-mini-horario">
                                                             {clase.horario?.slice(0, 5)} hs
                                                         </span>

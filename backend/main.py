@@ -16,6 +16,7 @@ from routes.auth import router as auth_router
 from routes.gimnasio import router as gimnasio_router
 from routes.clase import router as clase_router
 from routes.reserva import router as reserva_router   
+from routes.notificacion import router as notificaciones_router
 from fastapi.staticfiles import StaticFiles
 # Crear las tablas en la base de datos
 from models.tarjeta_simulada import TarjetaSimulada
@@ -26,21 +27,18 @@ Base.metadata.create_all(bind=engine)
 # FUNCIÓN AUXILIAR SEGURA
 # =========================================
 def crear_gimnasio_por_defecto():
-    db: Session = SessionLocal()
+    db = SessionLocal()
     try:
         gimnasio = db.query(Gimnasio).first()
-        if not gimnasio:
-            nuevo_gimnasio = Gimnasio(
-                capacidad_total=50,
-                capacidad_disponible=50
-            )
-            db.add(nuevo_gimnasio)
-            db.commit()
-    except Exception as e:
-        print(f"Error al inicializar el gimnasio: {e}")
-    finally:
-        db.close() # Garantiza el cierre de la conexión pase lo que pase
 
+        if not gimnasio:
+            nuevo = Gimnasio(
+                capacidad_total=50,
+            )
+            db.add(nuevo)
+            db.commit()
+    finally:
+        db.close()
 # =========================================
 # CICLO DE VIDA DE LA APLICACIÓN (LIFESPAN)
 # =========================================
@@ -97,6 +95,7 @@ app.include_router(auth_router)
 app.include_router(gimnasio_router)
 app.include_router(clase_router)
 app.include_router(reserva_router)   
+app.include_router(notificaciones_router)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # =========================================
 # ROOT
