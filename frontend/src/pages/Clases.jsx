@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Clases.css';
@@ -49,7 +49,7 @@ const Clases = ({ token }) => {
     const [filtroHorario, setFiltroHorario]       = useState([]);   
     const [profesores, setProfesores]             = useState([]);
 
-    // Cargar clases y profesores (Hacemos los profesores públicos para que funcione el filtro siempre)
+    // Cargar clases y profesores públicos
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -88,7 +88,7 @@ const Clases = ({ token }) => {
             if (filtroDisc.length > 0 && !filtroDisc.map(d => d.toLowerCase()).includes(c.actividad?.toLowerCase()))
                 return false;
 
-            if (filtroProfesor && c.profesor_id !== parseInt(filtroProfesor))
+            if (filtroProfesor && String(c.profesor_id) !== String(filtroProfesor))
                 return false;
 
             if (filtroHorario.length > 0) {
@@ -127,7 +127,7 @@ const Clases = ({ token }) => {
         setModoReserva(null);
     };
 
-    // CÁLCULO EN TIEMPO REAL: Reemplaza al viejo estado clasesDelDia
+    // CÁLCULO EN TIEMPO REAL
     const clasesDelDiaFiltradas = (() => {
         if (!diaSelec) return [];
         const nombreDia = DIAS_SEMANA[new Date(anio, mes, diaSelec).getDay()].toLowerCase();
@@ -137,10 +137,11 @@ const Clases = ({ token }) => {
         };
         const diaDB = mapaNombre[nombreDia] ?? nombreDia;
 
-        const clasesDia = todasClases
-            .filter(c => c.dia.toLowerCase() === diaDB)
-            .sort((a, b) => a.horario.localeCompare(b.horario));
-
+        const clasesDia = todasClases.filter(c => 
+            (c.dia || '').toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, '') === diaDB
+        );  
         return aplicarFiltros(clasesDia);
     })();
 
@@ -179,59 +180,82 @@ const Clases = ({ token }) => {
     };
 
     // ── Celdas del calendario ──
-    const celdas = [];
-    for (let i = 0; i < primerDiaSemana; i++) {
-        celdas.push(<td key={`v-${i}`} className="cal-celda vacio" />);
-    }
-    for (let d = 1; d <= diasEnMes; d++) {
-        const esHoy      = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
-        const esSelec    = d === diaSelec;
-        const fechaCelda = new Date(anio, mes, d);
-        const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
-        const esPasado   = fechaCelda < hoy && !esHoyExacto;
+    const celdas = useMemo(() => {
+        const result = [];
+        for (let i = 0; i < primerDiaSemana; i++) {
+            result.push(<td key={`v-${i}`} className="cal-celda vacio" />);
+        }
+        for (let d = 1; d <= diasEnMes; d++) {
+            const esHoy       = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
+            const esSelec     = d === diaSelec;
+            const fechaCelda  = new Date(anio, mes, d);
+            const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
+            const esPasado    = fechaCelda < hoy && !esHoyExacto;
+        
+            const MAP_NUM_A_DB = {
+                0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles',
+                4: 'jueves',  5: 'viernes', 6: 'sabado'
+            };
+            const diaDB = MAP_NUM_A_DB[fechaCelda.getDay()];
+        
+            // filtro inline corregido para usar String() de forma uniforme
+            const tieneClases = todasClases.some(c => {
+                // NORMALIZAMOS EL DÍA ACÁ TAMBIÉN (Saca tildes, mayúsculas y espacios invisibles)
+                const diaClaseNormalizado = (c.dia || '').toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim();
 
-        const nombreDia  = DIAS_SEMANA[fechaCelda.getDay()].toLowerCase();
-        const mapaNombre = {
-            'dom': 'domingo', 'lun': 'lunes', 'mar': 'martes',
-            'mié': 'miercoles', 'jue': 'jueves', 'vie': 'viernes', 'sáb': 'sabado'
-        };
-        const diaDB       = mapaNombre[nombreDia] ?? nombreDia;
-        const clasesDia   = todasClases.filter(c => c.dia.toLowerCase() === diaDB);
-        const tieneClases = aplicarFiltros(clasesDia).length > 0;
+                if (diaClaseNormalizado !== diaDB) return false;
 
-        celdas.push(
-            <td
-                key={d}
-                className={`cal-celda
-                    ${esHoy      ? 'hoy'         : ''}
-                    ${esSelec    ? 'seleccionado': ''}
-                    ${esPasado   ? 'pasado'      : ''}
-                    ${tieneClases && !esPasado ? 'con-clases' : ''}`}
-                onClick={() => {
-                    if (esPasado) {
-                        setMensajeError('Esta fecha ya pasó. No podés reservar clases pasadas.');
-                        return;
-                    }
-                    setMensajeError('');
-                    handleClickDia(d);
-                }}
-            >
-                {d}
-                {tieneClases && !esPasado && <span className="cal-dot" />}
-            </td>
-        );
-    }
+                if (filtroDisc.length > 0 && !filtroDisc.map(d => d.toLowerCase()).includes(c.actividad?.toLowerCase())) return false;
+                if (filtroHorario.length > 0) {
+                    const hora = parseInt(c.horario?.split(':')[0] ?? 0, 10);
+                    const enRango = filtroHorario.some(label => {
+                        const rango = RANGOS_HORA.find(r => r.label === label);
+                        return rango && hora >= rango.desde && hora < rango.hasta;
+                    });
+                    if (!enRango) return false;
+                }
+                if (filtroProfesor && String(c.profesor_id) !== String(filtroProfesor)) return false;
+                return true;
+            });
+        
+            result.push(
+                <td
+                    key={d}
+                    className={`cal-celda ${esHoy ? 'hoy' : ''} ${esSelec ? 'seleccionado' : ''} ${esPasado ? 'pasado' : ''} ${tieneClases && !esPasado ? 'con-clases' : ''}`}
+                    onClick={() => {
+                        if (esPasado) { 
+                            setMensajeError('Esta fecha ya pasó.'); 
+                            return; 
+                        }
+                        setMensajeError('');
+                        handleClickDia(d);
+                    }}
+                >
+                    {d}
+                    {/* Renderizado condicional del puntito verde */}
+                    {tieneClases && !esPasado && <span className="cal-dot" />}
+                </td>
+            );
+        }
+        return result;
+    }, [todasClases, anio, mes, diaSelec, filtroDisc, filtroProfesor, filtroHorario]);
 
     const filas = [];
     for (let i = 0; i < celdas.length; i += 7) {
         filas.push(<tr key={i}>{celdas.slice(i, i + 7)}</tr>);
     }
 
+    // CORREGIDO: Comparación segura usando String() en vez de parseInt() para evitar desajustes de tipo
     const chipsActivos = [
         ...filtroDisc.map(d => ({ label: d, quitar: () => toggleChip(d, filtroDisc, setFiltroDisc) })),
         ...filtroHorario.map(h => ({ label: h, quitar: () => toggleChip(h, filtroHorario, setFiltroHorario) })),
         ...(filtroProfesor ? [{
-            label: profesores.find(p => p.id === parseInt(filtroProfesor))?.nombre || 'Profesor',
+            label: profesores.find(p => String(p.id) === String(filtroProfesor)) 
+                ? `${profesores.find(p => String(p.id) === String(filtroProfesor)).nombre} ${profesores.find(p => String(p.id) === String(filtroProfesor)).apellido}`
+                : 'Profesor',
             quitar: () => setFiltroProfesor('')
         }] : []),
     ];
@@ -241,7 +265,8 @@ const Clases = ({ token }) => {
             <div className="calendario-leyenda">
                 <span className="punto-leyenda"></span> Clases disponibles
             </div>
-            {/* ── FILTROS (Disponibles para todos) ── */}
+            
+            {/* ── FILTROS ── */}
             <div className="filtros-container">
                 <button
                     className={`filtros-toggle ${filtrosAbiertos ? 'filtros-toggle--open' : ''}`}
@@ -313,7 +338,7 @@ const Clases = ({ token }) => {
                             >
                                 <option value="">Todos los profesores</option>
                                 {profesores.map(p => (
-                                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                                    <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
                                 ))}
                             </select>
                         </div>
@@ -322,7 +347,6 @@ const Clases = ({ token }) => {
             </div>
 
             {/* ── CALENDARIO ── */}
-            
             <div className="cal-contenedor">
                 <div className="cal-header">
                     <button
@@ -364,7 +388,7 @@ const Clases = ({ token }) => {
                                 onClick={() => handleElegirClase(clase)}
                             >
                                 <p className="clase-nombre">{capitalizar(clase.actividad)}</p>
-                                <p>Profesor: <strong>{clase.profesor_nombre}</strong></p>
+                                <p>Profesor: <strong>{clase.profesor_nombre && clase.profesor_nombre !== 'None None' ? clase.profesor_nombre : 'Sin asignar'}</strong></p>
                                 <p>Comienza a las: <strong>{formatearHora(clase.horario)}</strong></p>
                                 <p>Duración: <strong>{clase.duracion} min</strong></p>
                                 <p>Finaliza a las: <strong>{calcularHoraFin(clase.horario, clase.duracion)}</strong></p>
