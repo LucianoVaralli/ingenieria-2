@@ -26,21 +26,18 @@ Base.metadata.create_all(bind=engine)
 # FUNCIÓN AUXILIAR SEGURA
 # =========================================
 def crear_gimnasio_por_defecto():
-    db: Session = SessionLocal()
+    db = SessionLocal()
     try:
         gimnasio = db.query(Gimnasio).first()
-        if not gimnasio:
-            nuevo_gimnasio = Gimnasio(
-                capacidad_total=50,
-                capacidad_disponible=50
-            )
-            db.add(nuevo_gimnasio)
-            db.commit()
-    except Exception as e:
-        print(f"Error al inicializar el gimnasio: {e}")
-    finally:
-        db.close() # Garantiza el cierre de la conexión pase lo que pase
 
+        if not gimnasio:
+            nuevo = Gimnasio(
+                capacidad_total=50,
+            )
+            db.add(nuevo)
+            db.commit()
+    finally:
+        db.close()
 # =========================================
 # CICLO DE VIDA DE LA APLICACIÓN (LIFESPAN)
 # =========================================
