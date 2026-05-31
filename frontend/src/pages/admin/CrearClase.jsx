@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../../api/api";
 import "../../assets/css/CrearClase.css";
 import AdminLayout from "../../layouts/AdminLayout";
@@ -22,11 +22,27 @@ const dias = [
 const CrearClase = () => {
     const [formData, setFormData] = useState({
         actividad: "", dia: "", horario: "",
-        profesor_email: "", cupo: "", duracion: "", precio_individual: ""
+        profesor_id: "", cupo: "", duracion: "", precio_individual: ""
     });
     const [errores,       setErrores]       = useState({});
     const [errorBackend,  setErrorBackend]  = useState("");
     const [mensajeExito,  setMensajeExito]  = useState("");
+    const [profesores, setProfesores] = useState([]);
+    const [horariosSugeridos, setHorariosSugeridos] = useState([]);
+    const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+
+    useEffect(() => {
+        cargarProfesores();
+    }, []);
+
+    const cargarProfesores = async () => {
+        try {
+            const res = await api.get("/socios/profesores");
+            setProfesores(res.data);
+        } catch (error) {
+            console.error("Error cargando profesores:", error);
+        }
+    };
 
     const handleChange = (e) => {
         setErrorBackend("");
@@ -51,10 +67,6 @@ const CrearClase = () => {
             else if (isNaN(value)) nuevosErrores.precio_individual = "El precio debe ser numérico";
             else if (Number(value) <= 0) nuevosErrores.precio_individual = "El precio debe ser mayor a 0";
             else delete nuevosErrores.precio_individual;
-        }
-        if (name === "profesor_email") {
-            if (value && !value.includes("@")) nuevosErrores.profesor_email = "Email inválido";
-            else delete nuevosErrores.profesor_email;
         }
         
         // NOTA: Se eliminó por completo el bloque "if (name === 'duracion')" de aquí
@@ -87,18 +99,47 @@ const CrearClase = () => {
 
         try {
             await api.post("/clases/crear", formData);
-            setMensajeExito("¡Clase creada exitosamente!");
+            setMensajeExito("Clase creada exitosamente");
             setTimeout(() => setMensajeExito(""), 3000);
-            setFormData({ actividad: "", dia: "", horario: "", profesor_email: "", cupo: "", duracion: "", precio_individual: "" });
+            setFormData({ actividad: "", dia: "", horario: "", profesor_id: "", cupo: "", duracion: "", precio_individual: "" });
         } catch (error) {
+
+            const data = error.response?.data;
+
+            // si viene con sugerencias del backend
+            if (data?.horarios_libres) {
+                setHorariosSugeridos(data.horarios_libres || []);
+                setMostrarSugerencias(true);
+
+                setErrorBackend(data.error || "No hay disponibilidad en ese horario, pero te mostramos alternativas");
+                return;
+            }
+
             // Manejo de errores de negocio del backend (ej: Profesor inexistente, horario ocupado, etc.)
             const detail = error.response?.data?.detail || "Error al crear clase";
             
             if (detail.toLowerCase().includes("profesor")) {
-                setErrores(prev => ({ ...prev, profesor_email: detail }));
+                setErrores(prev => ({ ...prev, profesor_id: detail }));
             } else {
                 setErrorBackend(detail);
             }
+        }
+    };
+
+    const pedirSugerencias = async () => {
+        try {
+            const res = await api.get("/gimnasio/sugerencias", {
+                params: {
+                    dia: formData.dia,
+                    duracion: formData.duracion
+                }
+            });
+
+            setHorariosSugeridos(res.data || []);
+            setMostrarSugerencias(true);
+
+        } catch (error) {
+            console.error("Error sugerencias:", error);
         }
     };
 
@@ -106,10 +147,11 @@ const CrearClase = () => {
         !formData.actividad ||
         !formData.dia ||
         !formData.horario ||
-        !formData.profesor_email ||
+        !formData.profesor_id ||
         !formData.cupo ||
         !formData.duracion ||
         !formData.precio_individual;
+
 
     return (
         <AdminLayout>
@@ -153,9 +195,22 @@ const CrearClase = () => {
                                 <input type="time" name="horario" value={formData.horario} onChange={handleChange} className="crear-clase-input" />
                             </div>
                             <div className="crear-clase-field">
-                                <label className="crear-clase-field-label">Email del Profesor</label>
-                                <input type="email" name="profesor_email" placeholder="profesor@email.com" value={formData.profesor_email} onChange={handleChange} className={`crear-clase-input ${errores.profesor_email ? 'error' : ''}`} />
-                                {errores.profesor_email && <p className="crear-clase-error-field">{errores.profesor_email}</p>}
+                                <label className="crear-clase-field-label">Profesor</label>
+
+                                <select
+                                    name="profesor_id"
+                                    value={formData.profesor_id}
+                                    onChange={handleChange}
+                                    className="crear-clase-select"
+                                >
+                                    <option value="">Seleccione profesor</option>
+
+                                    {profesores.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.email} ({p.nombre} {p.apellido})
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
@@ -179,6 +234,29 @@ const CrearClase = () => {
                             <input type="number" name="precio_individual" placeholder="Ej: 1500" value={formData.precio_individual} onChange={handleChange} className={`crear-clase-input ${errores.precio_individual ? 'error' : ''}`} />
                             {errores.precio_individual && <p className="crear-clase-error-field">{errores.precio_individual}</p>}
                         </div>
+
+                        {mostrarSugerencias && horariosSugeridos.length > 0 && (
+                            <div className="sugerencias-box">
+                                <h4>Horarios sugeridos</h4>
+
+                                {horariosSugeridos.map((h, index) => (
+                                    <button
+                                        key={index}
+                                        type="button"
+                                        className="sugerencia-btn"
+                                        onClick={() => {
+                                            setFormData({
+                                                ...formData,
+                                                horario: h.desde
+                                            });
+                                            setMostrarSugerencias(false);
+                                        }}
+                                    >
+                                        {h.desde} - {h.hasta}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
 
                         <button type="submit" className="crear-clase-btn" disabled={deshabilitado}>
                             Crear Clase

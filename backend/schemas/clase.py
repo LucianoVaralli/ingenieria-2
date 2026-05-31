@@ -7,7 +7,7 @@ class ClaseCreate(BaseModel):
     actividad: TipoActividad
     dia: DiaSemana
     horario: time
-    profesor_email: EmailStr
+    profesor_id: int
     cupo: int
     precio_individual: float
     duracion: int

@@ -9,7 +9,7 @@ const NAV_ITEMS = [
     { to: "/admin/editar-capacidad",label: "Capacidad",       icon: "◎" },
 ];
 
-function AdminNavbar({ setToken }) {
+function AdminNavbar({ setToken, abierto, setAbierto }) {
     const navigate  = useNavigate();
     const location  = useLocation();
 
@@ -20,15 +20,24 @@ function AdminNavbar({ setToken }) {
     };
 
     return (
-        <aside className="admin-sidebar">
-
+        <aside className={`admin-sidebar ${
+        abierto ? "abierto" : "cerrado"
+    }`} >
+            <button
+                className="admin-sidebar-toggle"
+                onClick={() => setAbierto(!abierto)}
+            >
+                ☰
+            </button>
             {/* Logo */}
             <div className="admin-sidebar-brand">
                 <img src={logoSportify} alt="Sportify" className="admin-sidebar-logo" />
-                <div>
-                    <span className="admin-sidebar-name">SPORTIFY</span>
-                    <span className="admin-sidebar-tag">Admin</span>
-                </div>
+                    {abierto && (
+                        <div>
+                            <span className="admin-sidebar-name">SPORTIFY</span>
+                            <span className="admin-sidebar-tag">Admin</span>
+                        </div>
+                    )}
             </div>
 
             {/* Separador */}
@@ -36,7 +45,11 @@ function AdminNavbar({ setToken }) {
 
             {/* Navegación */}
             <nav className="admin-sidebar-nav">
-                <span className="admin-sidebar-section">Gestión</span>
+                {abierto && (
+                    <span className="admin-sidebar-section">
+                        Gestión
+                    </span>
+                )}
                 {NAV_ITEMS.map(item => (
                     <Link
                         key={item.to}
@@ -44,7 +57,10 @@ function AdminNavbar({ setToken }) {
                         className={`admin-sidebar-link ${location.pathname === item.to ? 'admin-sidebar-link--active' : ''}`}
                     >
                         <span className="admin-sidebar-link-icon">{item.icon}</span>
-                        {item.label}
+
+                        {abierto && (
+                            <span>{item.label}</span>
+                        )}
                     </Link>
                 ))}
             </nav>
@@ -52,7 +68,7 @@ function AdminNavbar({ setToken }) {
             {/* Footer del sidebar */}
             <div className="admin-sidebar-footer">
                 <button onClick={handleLogout} className="admin-sidebar-logout">
-                    ↩ Cerrar Sesión
+                    {abierto ? "↩ Cerrar Sesión" : "↩"}
                 </button>
             </div>
 
