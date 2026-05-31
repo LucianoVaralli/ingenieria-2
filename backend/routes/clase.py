@@ -286,7 +286,7 @@ async def eliminar_clase(
                 db,
                 reserva.socio_id,
                 "Clase Eliminada",
-                f"La clase de los {clase.dia} a las {clase.horario.strftime('%H:%M')} fue eliminada antes de tu pago."
+                f"La clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')} fue eliminada antes de tu pago."
             )
             reserva.mensaje_admin = "Cancelada sin impacto económico"
             continue 
@@ -301,7 +301,7 @@ async def eliminar_clase(
                     db,
                     socio.id,
                     "Clase Eliminada",
-                    f"Se eliminó la clase de los {clase.dia} a las {clase.horario.strftime('%H:%M')}. "
+                    f"Se eliminó la clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')}. "
                     f"Se te otorgó 1 crédito como compensación por cada clase faltante de mes."
                 )
 
@@ -317,7 +317,7 @@ async def eliminar_clase(
                     db,
                     socio.id,
                     "Clase Eliminada",
-                    f"Se eliminó la clase de los {clase.dia} a las {clase.horario.strftime('%H:%M')}. "
+                    f"Se eliminó la clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')}. "
                     f"Se te devolvió el {reserva.porcentaje_pagado}% del pago."
                 )
 
@@ -338,7 +338,7 @@ async def eliminar_clase(
             db,
             item.socio_id,
             "Clase Eliminada",
-            f"La clase de los {clase.dia} a las {clase.horario.strftime('%H:%M')} fue eliminada y ya no estará disponible."
+            f"La clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')} fue eliminada y ya no estará disponible."
         )
 
     db.commit()
@@ -380,9 +380,9 @@ async def cancelar_clase_dia(
                 db,
                 reserva.socio_id,
                 "Clase cancelada",
-                f"La clase del día {clase.dia} {datos.fecha_clase} fue cancelada. La actividad continúa normalmente en los próximos días."
+                f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. La actividad continúa normalmente en los próximos días."
             )
-            reserva.mensaje_admin = f"La clase del día {clase.dia} {datos.fecha_clase} fue cancelada por el administrador antes de tu pago."
+            reserva.mensaje_admin = f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada por el administrador antes de tu pago."
             continue
         
         # Si estaba CONFIRMADA, aplicamos devoluciones según tipo de usuario
@@ -395,12 +395,12 @@ async def cancelar_clase_dia(
                     db,
                     socio.id,
                     "Clase cancelada",
-                    f"Se canceló la clase del día {clase.dia} {datos.fecha_clase}. "
+                    f"Se canceló la clase del día {clase.dia.value} {datos.fecha_clase}. "
                     f"Se te otorgó 1 crédito como compensación. La clase sigue activa en el resto del calendario."
                 )
 
             reserva.credito_generado = True
-            reserva.mensaje_admin = f"La clase del día {clase.dia} {datos.fecha_clase} fue cancelada. Tenés 1 crédito pendiente disponible."
+            reserva.mensaje_admin = f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. Tenés 1 crédito pendiente disponible."
             
         elif reserva.tipo == TipoReserva.Individual:
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
@@ -410,12 +410,12 @@ async def cancelar_clase_dia(
                     db,
                     socio.id,
                     "Clase cancelada",
-                    f"La clase del día {clase.dia} {datos.fecha_clase} fue cancelada. "
+                    f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. "
                     f"Se devolvió el {reserva.porcentaje_pagado}% del pago. La actividad continúa normalmente."
                 )
 
             reserva.reembolso_realizado = True
-            reserva.mensaje_admin = f"La clase del día {clase.dia} {datos.fecha_clase} fue cancelada. Se devolvió el pago del {reserva.porcentaje_pagado}%."
+            reserva.mensaje_admin = f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. Se devolvió el pago del {reserva.porcentaje_pagado}%."
     
     # Cancelar la lista de espera de ese día específico
     espera = db.query(ListaEspera).filter(
@@ -431,12 +431,12 @@ async def cancelar_clase_dia(
             db,
             item.socio_id,
             "Clase cancelada",
-            f"La clase del día {clase.dia} {datos.fecha_clase} fue cancelada. Podés inscribirte en próximas fechas"
+            f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. Podés inscribirte en próximas fechas"
         )
     # No alteramos 'gimnasio.capacidad_disponible' porque la clase base sigue activa en la grilla.
 
     db.commit()
-    return {"mensaje": f"Clase del día {clase.dia} {datos.fecha_clase} cancelada correctamente. Alumnos notificados y base de datos actualizada."}
+    return {"mensaje": f"Clase del día {clase.dia.value} {datos.fecha_clase} cancelada correctamente. Alumnos notificados y base de datos actualizada."}
 
 @router.get("/")
 def obtener_clases(db: Session = Depends(get_db)):
