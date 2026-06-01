@@ -362,6 +362,53 @@ def ver_lista_espera(
         })
     return resultado
 
+# Endpoint: para la lista de espera
+@router.post("/individual/verificar-cupo")
+def verificar_cupo(
+    datos: ReservaIndividualCreate,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    clase = db.query(Clase).filter(
+        Clase.id == datos.clase_id
+    ).first()
+
+    if not clase:
+        raise HTTPException(
+            status_code=404,
+            detail="Clase no encontrada"
+        )
+    
+    conflicto = db.query(Reserva).join(Clase).filter(
+        Reserva.socio_id == socio.id,
+        Clase.dia == clase.dia,
+        Clase.horario == clase.horario,
+        Reserva.fecha_clase == datos.fecha_clase,
+        Reserva.estado.in_(["pendiente_pago", "confirmada"])
+    ).first()
+
+    if conflicto:
+        raise HTTPException(
+            status_code=400,
+            detail="Ya tiene una reserva en ese horario"
+        )
+
+
+    ocupadas = db.query(Reserva).filter(
+        Reserva.clase_id == clase.id,
+        Reserva.fecha_clase == datos.fecha_clase,
+        Reserva.estado.in_(["confirmada", "pendiente_pago"])
+    ).count()
+
+    hay_cupo = ocupadas < clase.cupo
+
+    return {
+        "hay_cupo": hay_cupo,
+        "debe_lista_espera": not hay_cupo
+    }
+
 # ──────────────────────────────────────────────────────────────
 # Endpoint: crear reserva individual
 # ──────────────────────────────────────────────────────────────
@@ -518,7 +565,6 @@ def crear_reserva_individual(
 # ──────────────────────────────────────────────────────────────
 # Endpoint: confirmar pago individual
 # ──────────────────────────────────────────────────────────────
-
 @router.post("/individual/pagar")
 async def pagar_reserva_individual(
 
@@ -558,9 +604,15 @@ async def pagar_reserva_individual(
     # Buscamos tarjeta simulada
     # ─────────────────────────────────────────────
 
-    primeros_4 = datos.numero_tarjeta.replace(" ", "")[:4]
+    numero_limpio = datos.numero_tarjeta.replace(" ", "")
+
+    titular_normalizado = " ".join(datos.titular.split())
+
     tarjeta = db.query(TarjetaSimulada).filter(
-         TarjetaSimulada.numero == primeros_4
+         TarjetaSimulada.numero == numero_limpio,
+         func.lower(TarjetaSimulada.titular) == titular_normalizado.lower(),
+         TarjetaSimulada.cvv == datos.cvv,
+         TarjetaSimulada.fecha_vencimiento == datos.fecha_vencimiento
     ).first()
 
     if not tarjeta:

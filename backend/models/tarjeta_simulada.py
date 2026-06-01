@@ -17,6 +17,8 @@ class TarjetaSimulada(Base):
     # NUEVO
     cvv = Column(String, nullable=False)
 
+    fecha_vencimiento = Column(String, nullable=False)  # 12/28
+
     # credito o debito
     tipo = Column(String, nullable=False)
 
