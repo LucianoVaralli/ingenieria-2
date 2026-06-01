@@ -1,14 +1,14 @@
 import os
 import re
 import shutil  # Para guardar el archivo en el disco
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status
 from sqlalchemy.orm import Session
 
 from dependencies.database import get_db
 from models.enums import Rol
 from models.socio import Socio
-from schemas.socio import SocioCreate
-from services.auth import get_password_hash, oauth2_scheme, obtener_usuario_actual
+from schemas.socio import SocioCreate, CambiarPasswordRequest
+from services.auth import get_password_hash, oauth2_scheme, obtener_usuario_actual, verificar_password
 
 router = APIRouter(prefix="/socios", tags=["Socios"])
 
@@ -125,6 +125,8 @@ def obtener_mi_perfil(
         "dni": usuario.dni,
         "creditos_disponibles": usuario.creditos_disponibles,
     }
+
+
 """ esto se agregara luego, es para que el admin pueda ver la lista de profesores y me servira para la lista desplegable al crear una clase, para asignarle un profesor a esa clase
 """
 @router.get("/profesores")
@@ -166,3 +168,29 @@ def obtener_socios(
         )
 
     return db.query(Socio).all()
+
+@router.post("/cambiar-password")
+def cambiar_contrasena_perfil(
+    datos: CambiarPasswordRequest,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    usuario = obtener_usuario_actual(token, db)
+    
+    if not verificar_password(datos.password_actual, usuario.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="La contraseña actual es incorrecta"
+        )
+    
+    if datos.password_actual == datos.password_nueva:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La nueva contraseña no puede ser igual a la actual"
+        )
+        
+    usuario.hashed_password = get_password_hash(datos.password_nueva)
+    db.commit()
+    db.refresh(usuario)
+    
+    return {"mensaje": "Contraseña actualizada con éxito"}
