@@ -1,7 +1,12 @@
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# Cargar variables de entorno al principio por seguridad
+load_dotenv()
 
 from database import engine, Base, SessionLocal
 from models.gimnasio import Gimnasio
@@ -9,14 +14,24 @@ from models.gimnasio import Gimnasio
 # Importar los modelos para que SQLAlchemy cree las tablas
 from models.reserva_MIO import Reserva      
 from models.lista_espera import ListaEspera   
+from models.password_recovery import PasswordRecovery
+from models.tarjeta_simulada import TarjetaSimulada
+
+# Importar Servicios y Routers
 from services.scheduler import scheduler
+from services.tarjetas_seed import crear_tarjetas_simuladas
 
 from routes.socios import router as socios_router
 from routes.auth import router as auth_router
 from routes.gimnasio import router as gimnasio_router
 from routes.clase import router as clase_router
 from routes.reserva import router as reserva_router   
+<<<<<<< HEAD
 from routes.notificacion import router as notificaciones_router
+=======
+
+# Crear las tablas en la base de datos si no existen
+>>>>>>> parent of 486aa10 (Revert "Merge branch 'feature-recuperar-password' into 'main'")
 from fastapi.staticfiles import StaticFiles
 # Crear las tablas en la base de datos
 from models.tarjeta_simulada import TarjetaSimulada
@@ -24,12 +39,35 @@ from models.tarjeta_simulada import TarjetaSimulada
 Base.metadata.create_all(bind=engine)
 
 # =========================================
-# FUNCIÓN AUXILIAR SEGURA
+# FUNCIONES AUXILIARES DE INICIALIZACIÓN
 # =========================================
 def crear_gimnasio_por_defecto():
     db = SessionLocal()
     try:
         gimnasio = db.query(Gimnasio).first()
+<<<<<<< HEAD
+=======
+        if not gimnasio:
+            nuevo_gimnasio = Gimnasio(
+                capacidad_total=50,
+                capacidad_disponible=50
+            )
+            db.add(nuevo_gimnasio)
+            db.commit()
+    except Exception as e:
+        print(f"Error al inicializar el gimnasio: {e}")
+    finally:
+        db.close()
+
+def inicializar_tarjetas_semilla():
+    db: Session = SessionLocal()
+    try:
+        crear_tarjetas_simuladas(db)
+    except Exception as e:
+        print(f"Error al inicializar tarjetas simuladas: {e}")
+    finally:
+        db.close()
+>>>>>>> parent of 486aa10 (Revert "Merge branch 'feature-recuperar-password' into 'main'")
 
         if not gimnasio:
             nuevo = Gimnasio(
@@ -46,9 +84,10 @@ def crear_gimnasio_por_defecto():
 async def lifespan(app: FastAPI):
     # Lo que se ejecuta AL ARRANCAR la app:
     crear_gimnasio_por_defecto()
+    inicializar_tarjetas_semilla()
     
     if not scheduler.running:
-        scheduler.start() # Inicia el scheduler de forma segura
+        scheduler.start() # Inicia el planificador de tareas (ej: liberar listas de espera)
     
     yield # Aquí la app se queda corriendo libremente
     
@@ -56,21 +95,16 @@ async def lifespan(app: FastAPI):
     if scheduler.running:
         scheduler.shutdown()
 
-# Inicializar FastAPI con el lifespan
+# =========================================
+# INICIALIZACIÓN DE FASTAPI (¡Esto faltaba!)
+# =========================================
 app = FastAPI(
     title="Sportify API",
     lifespan=lifespan
 )
 
-from services.tarjetas_seed import crear_tarjetas_simuladas
-
-db = SessionLocal()
-
-crear_tarjetas_simuladas(db)
-
-db.close()
 # =========================================
-# CORS
+# CORS (Ahora 'app' ya existe y no fallará)
 # =========================================
 origins = [
     "http://localhost:5173",
