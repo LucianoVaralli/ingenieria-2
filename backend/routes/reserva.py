@@ -321,13 +321,15 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
         ).first()
 
         resultado.append({
-            "id":         r.id,
-            "clase_id":   r.clase_id,
-            "tipo":       r.tipo,
-            "estado":     r.estado,
+            "id":           r.id,
+            "clase_id":     r.clase_id,
+            "tipo":         r.tipo,
+            "estado":       r.estado,
             "lista_espera": lista_espera is not None,
-            "fecha_clase": str(r.fecha_clase),
-            "monto_total": r.monto_total,
+            "fecha_clase":  str(r.fecha_clase),
+            "monto_total":  r.monto_total,
+            "monto_pagado": r.monto_pagado,        # ← agregar
+            "fecha_pago":   str(r.fecha_creacion) if r.fecha_creacion else None,  # ← agregar
             "clase": {
                 "actividad": clase.actividad if clase else None,
                 "horario":   str(clase.horario) if clase else None,

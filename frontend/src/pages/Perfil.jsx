@@ -226,6 +226,9 @@ const Perfil = ({ token, setToken }) => {
                             )}
                         </div>
                     </div>
+                    <Link to="/historial-pagos" className="btn-historial">
+                        💳 Ver historial de pagos
+                    </Link>
                 </>
             ) : (
                 <div className="perfil-loading">

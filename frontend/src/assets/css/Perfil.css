@@ -675,3 +675,23 @@ html, body, #root {
     width: fit-content;
     margin-top: 4px;
 }
+
+.btn-historial {
+    background: transparent;
+    border: 1px solid rgba(92,184,77,0.25);
+    color: rgba(92,184,77,0.7);
+    font-family: 'Lora', serif;
+    font-size: 11px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-historial:hover {
+    border-color: rgba(92,184,77,0.5);
+    color: #5CB84D;
+    background: rgba(92,184,77,0.05);
+}

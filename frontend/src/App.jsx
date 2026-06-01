@@ -16,6 +16,7 @@ import EditarCapacidad from "./pages/admin/EditarCapacidad";
 import { Navigate } from "react-router-dom";
 import ReservaIndividual from './pages/ReservaIndividual';
 import Notificaciones from "./pages/Notificaciones";
+import HistorialPagos from './pages/HistorialPagos';
 
 // 🌟 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
@@ -42,6 +43,7 @@ function AppContent({ token, setToken }) {
         <Route path="/login" element={<Login setToken={setToken} />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
+        <Route path="/historial-pagos" element={<HistorialPagos />} />
         <Route path="/admin" element={<AdminDashboard />} /> {/* usado por ahora para mostrar los paneles admin */}
         {/*<Route path="/admin" element={
           localStorage.getItem("rol") === "admin"
