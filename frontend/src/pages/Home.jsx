@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import '../assets/css/Home.css';
 import Clases from './Clases';
 import { Dumbbell, Check, ChevronDown, MapPin, Zap } from 'lucide-react';
+import ProfesorRojo from '../components/ProfesorRojo';
 // ─────────────────────────────────────────────
 // DATOS DEL SLIDESHOW
 // Reemplazá las URLs por fotos propias del gimnasio cuando las tengas
@@ -189,9 +190,18 @@ const Home = ({ token }) => {
             </section>
 
         <section id="seccion-clases" className="home-section">
-        <div className="home-section-label">Reservá tu lugar</div>
-        <Clases />
-        </section>
+    <div className="home-section-label">Reservá tu lugar</div>
+
+    {/* Contenedor flex para ponerlos a la par */}
+    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', wrap: 'wrap' }}>
+        <div style={{ flex: 1 }}>
+            <Clases />
+        </div>
+        <div>
+            <ProfesorRojo />
+        </div>
+    </div>
+</section>
             {/* ════════════════════════════════════════
                 SECCIÓN: DISCIPLINAS
                 Cards con descripción y beneficios

@@ -1,0 +1,86 @@
+.contenedor-animacion-personaje {
+    position: relative;
+    width: 320px; 
+    height: 450px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: visible;
+    margin-left: auto; 
+}
+
+/* Animación: entra desde el lateral derecho corriendo */
+.personaje-rojo.corriendo {
+    animation: entrarDesdeCostado 3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.personaje-rojo.hablando {
+    transform: translateX(0);
+    position: relative;
+    animation: flotarSutil 3s ease-in-out infinite; 
+}
+
+/* Renderizado de la imagen */
+.personaje-rojo img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    background: transparent !important; 
+}
+
+/* ❌ SE REMOVIÓ EL EFECTO DE PALPITAR EN LA IMAGEN */
+.boca-movimiento {
+    animation: none !important;
+}
+
+/* Bocadillo de diálogo */
+.bocadillo-texto {
+    position: absolute;
+    top: -25px; 
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    color: #000000;
+    padding: 12px 18px;
+    border-radius: 16px;
+    border: 3px solid #5CB84D; 
+    font-weight: 800;
+    font-size: 15px;
+    text-align: center;
+    white-space: nowrap;
+    box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.bocadillo-texto::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 12px 12px 0;
+    border-style: solid;
+    border-color: #ffffff transparent transparent transparent;
+    display: block;
+    width: 0;
+}
+
+/* KEYFRAMES */
+@keyframes entrarDesdeCostado {
+    0% {
+        transform: translateX(100vw) scale(0.8);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes flotarSutil {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
