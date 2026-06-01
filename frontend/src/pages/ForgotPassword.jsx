@@ -54,6 +54,16 @@ const ForgotPassword = () => {
     return (
         <div className="forgot-container">
             <div className="forgot-card">
+
+                {/* 🌟 BOTÓN VOLVER INTEGRADO AQUI 🌟 */}
+                <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="forgot-back-button"
+                >
+                    ← Volver
+                </button>
+
                 <h2 className="forgot-title">Recuperar contraseña</h2>
 
                 <form className="forgot-form" onSubmit={handleForgotPassword}>

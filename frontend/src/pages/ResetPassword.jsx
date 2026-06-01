@@ -125,6 +125,16 @@ const ResetPassword = () => {
     return (
         <div className="reset-container">
             <div className="reset-card">
+
+                {/* 🌟 BOTÓN VOLVER INTEGRADO AQUÍ 🌟 */}
+                <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="reset-back-button"
+                >
+                    ← Volver
+                </button>
+
                 <h1 className="reset-title">
                     Restablecer Contraseña
                 </h1>
