@@ -23,6 +23,8 @@ const Pago = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
+    console.log("LOCATION STATE:", location.state);
+
     const {
         monto            = 0,
         fechasConCupo     = [], 
@@ -133,7 +135,7 @@ const Pago = () => {
 
                         <div className="pago-resumen-total">
                             <span>Total</span>
-                            <span>${monto.toFixed(2)}</span>
+                            <span>${Number(monto || 0).toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -271,7 +273,7 @@ const Pago = () => {
                                                 {' '}Procesando...
                                             </>
                                         ) : (
-                                            `Pagar $${monto.toFixed(2)}`
+                                            `Pagar $${Number(monto || 0).toFixed(2)}`
                                         )}
                                     </button>
 
