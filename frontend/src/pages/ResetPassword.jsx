@@ -7,7 +7,6 @@ import '../assets/css/ResetPassword.css';
 
 const ResetPassword = () => {
 
-    // 🌟 Eliminamos 'email' del estado inicial ya que no se digita en esta pantalla
     const [formData, setFormData] = useState({
         code: '',
         newPassword: '',
@@ -35,7 +34,7 @@ const ResetPassword = () => {
 
         setFormData(updatedFormData);
 
-        // Validación contraseña
+        // Validación en tiempo real (Opcional visual)
         if (name === 'newPassword') {
             if (value.length > 0 && !passwordRegex.test(value)) {
                 setPasswordError(
@@ -46,7 +45,6 @@ const ResetPassword = () => {
             }
         }
 
-        // Validación confirmación
         if (name === 'newPassword' || name === 'confirmPassword') {
             if (
                 updatedFormData.confirmPassword.length > 0 &&
@@ -62,28 +60,33 @@ const ResetPassword = () => {
     const handleResetPassword = async (e) => {
         e.preventDefault();
 
-        // 🌟 Recuperamos el email que guardamos en la pantalla anterior
         const emailGuardado = localStorage.getItem('reset_email');
 
-        // Validaciones frontend
-        if (passwordError || matchError) {
-            toast.error('Por favor, corrige los errores antes de continuar.');
+        // 1. VALIDACIÓN: Verificar campos vacíos (quitando espacios en blanco)
+        if (!formData.code.trim() || !formData.newPassword.trim() || !formData.confirmPassword.trim()) {
+            toast.error('Todos los campos son obligatorios. Por favor, completalos.');
             return;
         }
 
-        // 🌟 Validación ajustada: controlamos que exista el email guardado en vez del input
-        if (
-            !emailGuardado ||
-            !formData.code ||
-            !formData.newPassword ||
-            !formData.confirmPassword
-        ) {
-            toast.error('Faltan datos obligatorios o expiró la sesión de recuperación.');
+        // 2. VALIDACIÓN: Que las contraseñas coincidan al presionar el botón
+        if (formData.newPassword !== formData.confirmPassword) {
+            toast.error('La confirmación de la nueva contraseña no coincide.');
+            return;
+        }
+
+        // 3. VALIDACIÓN: Regla de negocio compleja al presionar el botón
+        if (!passwordRegex.test(formData.newPassword)) {
+            toast.error('La nueva contraseña debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.');
+            return;
+        }
+
+        // 4. VALIDACIÓN: Control de sesión activa de recuperación
+        if (!emailGuardado) {
+            toast.error('Expiró la sesión de recuperación. Por favor, solicita un nuevo código.');
             return;
         }
 
         try {
-            // 🌟 Enviamos 'emailGuardado' recuperado del localStorage directo al backend
             const res = await api.post('/auth/reset-password', {
                 email: emailGuardado,
                 code: formData.code,
@@ -91,7 +94,6 @@ const ResetPassword = () => {
                 confirmar_password: formData.confirmPassword
             });
 
-            // Validación manual por si el backend responde con status 200 pero success: false
             if (res.data.success === false) {
                 toast.error(
                     res.data.message || 'Error al cambiar la contraseña'
@@ -103,7 +105,6 @@ const ResetPassword = () => {
                 res.data.message || '¡Contraseña actualizada correctamente!'
             );
 
-            // 🌟 Limpiamos el localStorage para no dejar basura en el navegador
             localStorage.removeItem('reset_email');
 
             setTimeout(() => {
@@ -118,7 +119,12 @@ const ResetPassword = () => {
                 err.response?.data?.message ||
                 'Error al cambiar la contraseña';
 
-            toast.error(mensajeError);
+            // Si el backend te devuelve un array de validaciones de Pydantic:
+            if (Array.isArray(mensajeError)) {
+                toast.error(mensajeError[0].msg);
+            } else {
+                toast.error(mensajeError);
+            }
         }
     };
 
@@ -126,7 +132,6 @@ const ResetPassword = () => {
         <div className="reset-container">
             <div className="reset-card">
 
-                {/* 🌟 BOTÓN VOLVER INTEGRADO AQUÍ 🌟 */}
                 <button
                     type="button"
                     onClick={() => navigate(-1)}
@@ -140,8 +145,6 @@ const ResetPassword = () => {
                 </h1>
 
                 <form onSubmit={handleResetPassword} className="reset-form">
-
-                    {/* 🌟 El input de EMAIL fue removido por completo de acá */}
 
                     {/* CÓDIGO */}
                     <input
@@ -178,7 +181,7 @@ const ResetPassword = () => {
                         </div>
 
                         {passwordError && (
-                            <div className="reset-error">
+                            <div className="reset-error" style={{ color: '#ff4d4d', textAlign: 'left', fontSize: '14px', marginTop: '5px', fontFamily: 'Lora' }}>
                                 {passwordError}
                             </div>
                         )}
@@ -207,13 +210,12 @@ const ResetPassword = () => {
                         </div>
 
                         {matchError && (
-                            <div className="reset-error">
+                            <div className="reset-error" style={{ color: '#ff4d4d', textAlign: 'left', fontSize: '14px', marginTop: '5px', fontFamily: 'Lora' }}>
                                 {matchError}
                             </div>
                         )}
                     </div>
 
-                    {/* BOTÓN */}
                     <button type="submit" className="reset-button">
                         Actualizar Contraseña
                     </button>

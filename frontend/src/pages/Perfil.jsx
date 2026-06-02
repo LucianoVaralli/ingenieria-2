@@ -121,7 +121,7 @@ const Perfil = ({ token, setToken }) => {
                                 className="btn-cambiar-pass"
                                 onClick={() => navigate('/cambiar-password')}
                             >
-                                🔒 Cambiar Contraseña
+                                Cambiar Contraseña
                             </button>
                         </div>
                     </div>
