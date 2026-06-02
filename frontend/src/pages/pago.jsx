@@ -23,6 +23,8 @@ const Pago = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
+    console.log("LOCATION STATE:", location.state);
+
     const {
         monto            = 0,
         fechasConCupo     = [], 
@@ -35,6 +37,7 @@ const Pago = () => {
     const [nroTarjeta, setNroTarjeta] = useState('');
     const [titular,    setTitular]    = useState('');
     const [cvv,        setCvv]        = useState('');
+    const [vencimiento, setVencimiento] = useState('');
     
     const [estado,     setEstado]     = useState('inicial');  // inicial | exito | error
     const [mensaje,    setMensaje]    = useState('');
@@ -54,7 +57,7 @@ const Pago = () => {
 
     const handlePagar = async () => {
         // Validación frontend simple (solo si requiere pago en dinero)
-        if (monto > 0 && (!nroTarjeta.trim() || !titular.trim() || !cvv.trim())) {
+        if (monto > 0 && (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim() )) {
             setMensaje('Por favor, completá todos los datos de la tarjeta.');
             return;
         }
@@ -71,8 +74,9 @@ const Pago = () => {
                 pago_exitoso:        true,
                 monto_total:         monto,
                 numero_tarjeta:      nroTarjeta,
-                nombre_titular:      titular,  // 👈 Enviamos el nombre
+                titular:      titular,  // 👈 Enviamos el nombre
                 cvv:                 cvv,
+                fecha_vencimiento: vencimiento,
             });
 
             setMensaje('Reserva exitosa');
@@ -131,7 +135,7 @@ const Pago = () => {
 
                         <div className="pago-resumen-total">
                             <span>Total</span>
-                            <span>${monto.toFixed(2)}</span>
+                            <span>${Number(monto || 0).toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -184,7 +188,17 @@ const Pago = () => {
                                             autoComplete="cc-number"
                                             placeholder="1111 2222 3333 4444"
                                             value={nroTarjeta}
-                                            onChange={e => setNroTarjeta(formatearNumero(e.target.value))}
+                                            onChange={(e) => {
+                                                const numeros = e.target.value.replace(/\D/g, '');
+
+                                                const parts = [];
+
+                                                for (let i = 0; i < numeros.length; i += 4) {
+                                                    parts.push(numeros.substring(i, i + 4));
+                                                }
+
+                                                setNroTarjeta(parts.join(' '));
+                                            }}
                                             maxLength={19}
                                         />
                                     </div>
@@ -198,7 +212,10 @@ const Pago = () => {
                                             autoComplete="cc-name"
                                             placeholder="Tal como aparece en la tarjeta"
                                             value={titular}
-                                            onChange={e => setTitular(e.target.value)}
+                                            onChange={(e) => {
+                                                const valor = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+                                                setTitular(valor);
+                                            }}
                                         />
                                     </div>
                                                                             
@@ -217,6 +234,28 @@ const Pago = () => {
                                         />
                                     </div>
 
+
+                                    <div className="pago-field">
+                                        <label className="pago-label">Fecha de vencimiento</label>
+                                        <input
+                                            className="pago-input"
+                                            type="text"
+                                            placeholder="MM/AA"
+                                            value={vencimiento}
+                                            onChange={(e) => {
+                                                let valor = e.target.value.replace(/\D/g, '');
+
+                                                if (valor.length > 2) {
+                                                    valor = valor.slice(0, 2) + '/' + valor.slice(2, 4);
+                                                }
+
+                                                setVencimiento(valor);
+                                            }}
+                                        />
+                                    </div>
+
+
+
                                     {mensaje && (
                                         <p className="pago-error-msg">
                                             {mensaje}
@@ -234,7 +273,7 @@ const Pago = () => {
                                                 {' '}Procesando...
                                             </>
                                         ) : (
-                                            `Pagar $${monto.toFixed(2)}`
+                                            `Pagar $${Number(monto || 0).toFixed(2)}`
                                         )}
                                     </button>
 
