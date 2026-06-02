@@ -350,6 +350,8 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
 
         ListaEspera.clase_id == r.clase_id,
 
+        ListaEspera.fecha_clase == r.fecha_clase,
+
         ListaEspera.estado == "esperando"
 
         ).first()
