@@ -62,6 +62,8 @@ const ReservaMembresia = () => {
                 total_clases_mes: fechasDelMes.length,
             });
 
+            console.log("RESPUESTA MEMBRESIA:", res.data); // lo uso para ver el error
+
             setDatosReserva(res.data);
 
             if (res.data.hay_lista_espera) {
@@ -97,6 +99,9 @@ const ReservaMembresia = () => {
     };
 
     const navegarAlPago = (datos, aceptaEspera) => {
+
+        console.log("DATOS A PAGO:", datos);
+
         navigate('/pago', {
             state: {
                 monto:             datos.monto_total,
