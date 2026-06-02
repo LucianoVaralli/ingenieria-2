@@ -187,9 +187,14 @@ def confirmar_pago_membresia(
 
     #  VALIDACIÓN DE TARJETA 
     if datos.numero_tarjeta:
-        primeros_4 = datos.numero_tarjeta.replace(" ", "")[:4]
+        numero_limpio = datos.numero_tarjeta.replace(" ", "")
+        titular_normalizado = " ".join(datos.titular.split())
+
         tarjeta = db.query(TarjetaSimulada).filter(
-            TarjetaSimulada.numero == primeros_4
+            TarjetaSimulada.numero == numero_limpio,
+            func.lower(TarjetaSimulada.titular) == titular_normalizado.lower(),
+            TarjetaSimulada.cvv == datos.cvv,
+            TarjetaSimulada.fecha_vencimiento == datos.fecha_vencimiento
         ).first()
 
         if not tarjeta:
