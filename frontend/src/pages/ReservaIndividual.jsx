@@ -613,6 +613,16 @@ const ReservaIndividual = () => {
 
                             <button
                                 className="pago-btn-ghost"
+                                onClick={() => {
+                                    setPaso('confirmacion');
+                                    setMensaje('');
+                                }}
+                            >
+                                Intentar de nuevo
+                            </button>
+
+                            <button
+                                className="pago-btn-ghost"
                                 onClick={() => navigate('/home')}
                             >
                                 Volver al home
