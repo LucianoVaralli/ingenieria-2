@@ -50,3 +50,26 @@ class SocioResponse(BaseModel):  # O el nombre de la clase que use tu endpoint
 class EsquemaLogin(BaseModel):
     email: str
     password: str
+
+# 🌟 NUEVO ESQUEMA REQUERIDO PARA EL ENDPOINT DE SÓCIOS 🌟
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str
+    password_nueva: str = Field(..., min_length=6, max_length=16)
+    confirmar_password_nueva: str
+
+    @field_validator("password_nueva")
+    @classmethod
+    def validar_complejidad_nueva_password(cls, v: str) -> str:
+        # Reutilizamos las reglas de complejidad que ya definiste en tu app
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La nueva contraseña debe incluir al menos una mayúscula")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("La nueva contraseña debe incluir al menos un carácter especial")
+        return v
+
+    @model_validator(mode="after")
+    def verificar_nuevas_claves_coinciden(self) -> "CambiarPasswordRequest":
+        # Validación de que la nueva contraseña y su confirmación sean idénticas
+        if self.password_nueva != self.confirmar_password_nueva:
+            raise ValueError("La confirmación de la nueva contraseña no coincide")
+        return self
