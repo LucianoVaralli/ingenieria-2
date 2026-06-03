@@ -6,6 +6,7 @@ import { FiEye, FiEyeOff } from 'react-icons/fi';
 import '../assets/css/ResetPassword.css';
 
 const ResetPassword = () => {
+    const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
         code: '',
@@ -16,45 +17,17 @@ const ResetPassword = () => {
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const [passwordError, setPasswordError] = useState('');
-    const [matchError, setMatchError] = useState('');
-
-    const navigate = useNavigate();
-
+    // Expresión regular oficial (6-16 caracteres, mayúscula y carácter especial)
     const passwordRegex =
         /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{6,16}$/;
 
+    // Manejo de inputs limpio y directo
     const handleChange = (e) => {
         const { name, value } = e.target;
-
-        const updatedFormData = {
+        setFormData({
             ...formData,
             [name]: value
-        };
-
-        setFormData(updatedFormData);
-
-        // Validación en tiempo real (Opcional visual)
-        if (name === 'newPassword') {
-            if (value.length > 0 && !passwordRegex.test(value)) {
-                setPasswordError(
-                    'Debe tener 6-16 caracteres, una mayúscula y un caracter especial.'
-                );
-            } else {
-                setPasswordError('');
-            }
-        }
-
-        if (name === 'newPassword' || name === 'confirmPassword') {
-            if (
-                updatedFormData.confirmPassword.length > 0 &&
-                updatedFormData.newPassword !== updatedFormData.confirmPassword
-            ) {
-                setMatchError('Las contraseñas no coinciden.');
-            } else {
-                setMatchError('');
-            }
-        }
+        });
     };
 
     const handleResetPassword = async (e) => {
@@ -62,25 +35,25 @@ const ResetPassword = () => {
 
         const emailGuardado = localStorage.getItem('reset_email');
 
-        // 1. VALIDACIÓN: Verificar campos vacíos (quitando espacios en blanco)
+        // 1. VALIDACIÓN: Campos vacíos
         if (!formData.code.trim() || !formData.newPassword.trim() || !formData.confirmPassword.trim()) {
             toast.error('Todos los campos son obligatorios. Por favor, completalos.');
             return;
         }
 
-        // 2. VALIDACIÓN: Que las contraseñas coincidan al presionar el botón
-        if (formData.newPassword !== formData.confirmPassword) {
-            toast.error('La confirmación de la nueva contraseña no coincide.');
-            return;
-        }
-
-        // 3. VALIDACIÓN: Regla de negocio compleja al presionar el botón
+        // 2. VALIDACIÓN: Regla de negocio compleja (6-16, Mayúscula, Especial)
         if (!passwordRegex.test(formData.newPassword)) {
             toast.error('La nueva contraseña debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.');
             return;
         }
 
-        // 4. VALIDACIÓN: Control de sesión activa de recuperación
+        // 3. VALIDACIÓN: Coincidencia mutua
+        if (formData.newPassword !== formData.confirmPassword) {
+            toast.error('Las contraseñas no coinciden.');
+            return;
+        }
+
+        // 4. VALIDACIÓN: Sesión activa de recuperación
         if (!emailGuardado) {
             toast.error('Expiró la sesión de recuperación. Por favor, solicita un nuevo código.');
             return;
@@ -95,16 +68,11 @@ const ResetPassword = () => {
             });
 
             if (res.data.success === false) {
-                toast.error(
-                    res.data.message || 'Error al cambiar la contraseña'
-                );
+                toast.error(res.data.message || 'Error al cambiar la contraseña');
                 return;
             }
 
-            toast.success(
-                res.data.message || '¡Contraseña actualizada correctamente!'
-            );
-
+            toast.success(res.data.message || '¡Contraseña actualizada correctamente!');
             localStorage.removeItem('reset_email');
 
             setTimeout(() => {
@@ -113,13 +81,11 @@ const ResetPassword = () => {
 
         } catch (err) {
             console.error('Error capturado en ResetPassword:', err);
-
             const mensajeError =
                 err.response?.data?.detail ||
                 err.response?.data?.message ||
                 'Error al cambiar la contraseña';
 
-            // Si el backend te devuelve un array de validaciones de Pydantic:
             if (Array.isArray(mensajeError)) {
                 toast.error(mensajeError[0].msg);
             } else {
@@ -146,7 +112,7 @@ const ResetPassword = () => {
 
                 <form onSubmit={handleResetPassword} className="reset-form">
 
-                    {/* CÓDIGO */}
+                    {/* CÓDIGO DE VERIFICACIÓN */}
                     <input
                         type="text"
                         name="code"
@@ -158,64 +124,47 @@ const ResetPassword = () => {
                         className="reset-input"
                     />
 
-                    {/* NUEVA PASSWORD */}
-                    <div>
-                        <div className="reset-input-wrapper">
-                            <input
-                                type={showNewPassword ? 'text' : 'password'}
-                                name="newPassword"
-                                placeholder="Nueva Contraseña"
-                                value={formData.newPassword}
-                                onChange={handleChange}
-                                required
-                                className="reset-input"
-                            />
-
-                            <button
-                                type="button"
-                                className="reset-eye-btn"
-                                onClick={() => setShowNewPassword(!showNewPassword)}
-                            >
-                                {showNewPassword ? <FiEyeOff size={22} /> : <FiEye size={22} />}
-                            </button>
-                        </div>
-
-                        {passwordError && (
-                            <div className="reset-error" style={{ color: '#ff4d4d', textAlign: 'left', fontSize: '14px', marginTop: '5px', fontFamily: 'Lora' }}>
-                                {passwordError}
-                            </div>
-                        )}
+                    {/* NUEVA CONTRASEÑA */}
+                    <div className="reset-input-wrapper">
+                        <input
+                            type={showNewPassword ? 'text' : 'password'}
+                            name="newPassword"
+                            placeholder="Nueva Contraseña"
+                            value={formData.newPassword}
+                            onChange={handleChange}
+                            required
+                            className="reset-input"
+                        />
+                        <button
+                            type="button"
+                            className="reset-eye-btn"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                            {showNewPassword ? <FiEyeOff size={22} /> : <FiEye size={22} />}
+                        </button>
                     </div>
 
-                    {/* CONFIRMAR PASSWORD */}
-                    <div>
-                        <div className="reset-input-wrapper">
-                            <input
-                                type={showConfirmPassword ? 'text' : 'password'}
-                                name="confirmPassword"
-                                placeholder="Confirmar Nueva Contraseña"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                required
-                                className="reset-input"
-                            />
-
-                            <button
-                                type="button"
-                                className="reset-eye-btn"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            >
-                                {showConfirmPassword ? <FiEyeOff size={22} /> : <FiEye size={22} />}
-                            </button>
-                        </div>
-
-                        {matchError && (
-                            <div className="reset-error" style={{ color: '#ff4d4d', textAlign: 'left', fontSize: '14px', marginTop: '5px', fontFamily: 'Lora' }}>
-                                {matchError}
-                            </div>
-                        )}
+                    {/* CONFIRMAR NUEVA CONTRASEÑA */}
+                    <div className="reset-input-wrapper">
+                        <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            name="confirmPassword"
+                            placeholder="Confirmar Nueva Contraseña"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            required
+                            className="reset-input"
+                        />
+                        <button
+                            type="button"
+                            className="reset-eye-btn"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                            {showConfirmPassword ? <FiEyeOff size={22} /> : <FiEye size={22} />}
+                        </button>
                     </div>
 
+                    {/* BOTÓN DE ACCIÓN */}
                     <button type="submit" className="reset-button">
                         Actualizar Contraseña
                     </button>
