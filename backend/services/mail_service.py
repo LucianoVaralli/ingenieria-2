@@ -6,31 +6,41 @@ from models.socio import Socio
 from models.clase import Clase
 from models.reserva_MIO import Reserva
 
+load_dotenv(dotenv_path=".env")
+
+print("MAIL_USERNAME:", os.getenv("MAIL_USERNAME"))
+print("MAIL_PASSWORD:", os.getenv("MAIL_PASSWORD"))
+print("MAIL_SERVER:", os.getenv("MAIL_SERVER"))
+
 load_dotenv()
 
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("MAIL_USERNAME", "tu_usuario@gmail.com"),
     MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", "tu_contraseña_de_app"),
     MAIL_FROM=os.getenv("MAIL_FROM", "tu_usuario@gmail.com"),
-
-    # Usamos 587 como puerto por defecto si MAIL_PORT no existe
     MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
-    
     MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.gmail.com"),
-
     MAIL_STARTTLS=os.getenv("MAIL_STARTTLS", "True") == "True",
     MAIL_SSL_TLS=os.getenv("MAIL_SSL_TLS", "False") == "True",
-
     USE_CREDENTIALS=os.getenv("USE_CREDENTIALS", "True") == "True"
 )
 
+async def send_email(email: str, asunto: str, cuerpo: str):
+    mensaje = MessageSchema(
+        subject=asunto,
+        recipients=[email],
+        body=cuerpo,
+        subtype="plain"
+    )
+    
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
 
 async def enviar_mail_pago_exitoso(
     socio: Socio,
     clase: Clase,
     reserva: Reserva
 ):
-
     cuerpo = f"""
     Pago realizado correctamente.
 
@@ -51,16 +61,13 @@ async def enviar_mail_pago_exitoso(
     )
 
     fm = FastMail(conf)
-
     await fm.send_message(mensaje)
-
 
 async def enviar_mail_lista_espera(
     socio: Socio,
     clase: Clase,
     fecha_clase: str
 ):
-
     cuerpo = f"""
     Usted ingresó correctamente a la lista de espera.
 
@@ -77,14 +84,11 @@ async def enviar_mail_lista_espera(
     )
 
     fm = FastMail(conf)
-
     await fm.send_message(mensaje)
-
 
 async def enviar_mail_error_pago(
     socio: Socio
 ):
-
     cuerpo = """
     El pago no pudo realizarse correctamente.
     """
