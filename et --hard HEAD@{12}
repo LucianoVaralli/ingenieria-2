@@ -1,0 +1,28 @@
+[33ma747b9d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mtesteo_de_la_clave_JWT[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: pull origin main: Fast-forward
+[33m85a8cec[m[33m ([m[1;31morigin/inicio-de-sesion[m[33m, [m[1;32minicio-de-sesion[m[33m)[m HEAD@{1}: checkout: moving from inicio-de-sesion to testeo_de_la_clave_JWT
+[33m85a8cec[m[33m ([m[1;31morigin/inicio-de-sesion[m[33m, [m[1;32minicio-de-sesion[m[33m)[m HEAD@{2}: commit: agregue clave JWT para mantener la sesion iniciada
+[33m3b4c2a7[m HEAD@{3}: commit: inicio y registro
+[33m80842ff[m HEAD@{4}: commit: avanze con el apto fisico
+[33m6336a7e[m HEAD@{5}: commit: avanze con la re del inicio de sesion
+[33md6fc1a2[m[33m ([m[1;32mmain[m[33m)[m HEAD@{6}: checkout: moving from main to inicio-de-sesion
+[33md6fc1a2[m[33m ([m[1;32mmain[m[33m)[m HEAD@{7}: pull origin main: Fast-forward
+[33m0adee4f[m HEAD@{8}: checkout: moving from luchito to main
+[33m50a6d8c[m[33m ([m[1;32mluchito[m[33m)[m HEAD@{9}: checkout: moving from main to luchito
+[33m0adee4f[m HEAD@{10}: merge luchito: Merge made by the 'ort' strategy.
+[33m4455843[m HEAD@{11}: checkout: moving from luchito to main
+[33m50a6d8c[m[33m ([m[1;32mluchito[m[33m)[m HEAD@{12}: checkout: moving from main to luchito
+[33m4455843[m HEAD@{13}: checkout: moving from luchito to main
+[33m50a6d8c[m[33m ([m[1;32mluchito[m[33m)[m HEAD@{14}: checkout: moving from main to luchito
+[33m4455843[m HEAD@{15}: pull origin main: Fast-forward
+[33m8c031ec[m HEAD@{16}: checkout: moving from luchito to main
+[33m50a6d8c[m[33m ([m[1;32mluchito[m[33m)[m HEAD@{17}: commit: avance en el login y la informacion del usuario(mirar el requirements.txt)
+[33m6401938[m HEAD@{18}: checkout: moving from luchito to luchito
+[33m6401938[m HEAD@{19}: commit: creacion de rama
+[33m8c031ec[m HEAD@{20}: checkout: moving from main to luchito
+[33m8c031ec[m HEAD@{21}: pull origin main: Fast-forward
+[33m31626e5[m HEAD@{22}: checkout: moving from gimenezruizjoa-main-patch-36507 to main
+[33mc6f9b0a[m[33m ([m[1;31morigin/gimenezruizjoa-main-patch-36507[m[33m, [m[1;32mgimenezruizjoa-main-patch-36507[m[33m)[m HEAD@{23}: checkout: moving from main to gimenezruizjoa-main-patch-36507
+[33m31626e5[m HEAD@{24}: commit: creacion de base de datos y prueba con un alumno
+[33meb0f98a[m HEAD@{25}: commit: primeros pasos
+[33mf2bf32f[m HEAD@{26}: commit: hola
+[33mf3a5444[m HEAD@{27}: clone: from https://gitlab.com/luchito233/ingenieria-2.git
