@@ -45,7 +45,6 @@ def crear_gimnasio_por_defecto():
         if not gimnasio:
             nuevo_gimnasio = Gimnasio(
                 capacidad_total=50,
-                capacidad_disponible=50
             )
             db.add(nuevo_gimnasio)
             db.commit()
