@@ -73,7 +73,9 @@ const Perfil = ({ token, setToken }) => {
             }
         });
 
+
     return (
+        
         <div className="perfil-container">
             {user ? (
                 <>
@@ -119,116 +121,112 @@ const Perfil = ({ token, setToken }) => {
                                 🔒 Cambiar Contraseña
                             </button>
                         </div>
-
+                        
                         {/* APTO FÍSICO */}
-                        <div className="perfil-acta-section">
-                            <div className="perfil-section-header">
-                                <span className="perfil-section-icon">🩺</span>
-                                <h3 className="perfil-section-title">Apto Físico</h3>
-                            </div>
-                            {user.apto_fisico ? (
-                                <a
-                                    href={`http://localhost:8000/${user.apto_fisico}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="btn-ver-acta"
-                                >
-                                    Ver PDF
-                                </a>
-                            ) : (
-                                <p className="acta-faltante">
-                                    No tenés un apto físico cargado.
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                    {/* ALERTA GLOBAL */}
-                    {alertaIndividual?.length > 0 && alertaIndividual.map((a, i) => (
-                        <div className="alerta-reembolso" key={i}>
-                            {a.mensaje}
-                            <button onClick={() =>
-                                setAlertaIndividual(prev => prev.filter((_, idx) => idx !== i))
-                            }>
-                                OK
-                            </button>
-                        </div>
-                    ))}
-                    {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
-                    <div className="perfil-calendar-block">
-                        <div className="perfil-reservas-section">
-                            <div className="perfil-section-header">
-                                <span className="perfil-section-icon">📅</span>
-                                <h3 className="perfil-section-title">Mis Reservas Activas</h3>
-                                {reservas.length > 0 && (
-                                    <span className="perfil-reservas-count">{reservas.length}</span>
+                        {!user.rol === 'Profesor' && (
+                            <div className="perfil-acta-section">
+                                <div className="perfil-section-header">
+                                    <span className="perfil-section-icon">🩺</span>
+                                    <h3 className="perfil-section-title">Apto Físico</h3>
+                                </div>
+                                {user.apto_fisico ? (
+                                    <a
+                                        href={`http://localhost:8000/${user.apto_fisico}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn-ver-acta"
+                                    >
+                                        Ver PDF
+                                    </a>
+                                ) : (
+                                    <p className="acta-faltante">
+                                        No tenés un apto físico cargado.
+                                    </p>
                                 )}
                             </div>
-
-                            {reservas.length === 0 ? (
-                                <div className="reserva-empty">
-                                    <span className="reserva-empty-icon">🏋️</span>
-                                    <p>No tenés turnos reservados para esta semana.</p>
-                                    <Link to="/" className="reserva-empty-link">
-                                        Andá al inicio para agendar una clase
-                                    </Link>
-                                </div>
-                            ) : (
-                                <div className="perfil-agenda-container">
-                                    {diasSemana.map(dia => {
-                                        const clasesDelDia = reservasPorDia[dia];
-                                        return (
-                                            <div className="agenda-columna" key={dia}>
-                                                <div className="agenda-columna-header">
-                                                    <h4>{dia}</h4>
-                                                    <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
-                                                        {clasesDelDia.length}
-                                                    </span>
-                                                </div>
-
-                                                <div className="agenda-columna-body">
-                                                    {clasesDelDia.length === 0 ? (
-                                                        <p className="agenda-columna-vacio">Sin clases</p>
-                                                    ) : (
-                                                        clasesDelDia.map(r => (
-                                                            <div className="reserva-card-mini" key={r.id}>
-                                                                <div className="reserva-mini-fecha">
-                                                                    {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
-                                                                        day: 'numeric',
-                                                                        month: 'short',
-                                                                    })}
-                                                                </div>
-                                                                
-                                                                <div className="reserva-mini-detalles">
-                                                                    <span className="reserva-mini-actividad">
-                                                                        {r.clase?.actividad || `Clase #${r.clase_id}`}
-                                                                    </span>
-                                                                    <span className="reserva-mini-horario">
-                                                                        {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
-                                                                    </span>
-                                                                    <span className="reserva-mini-tipo">
-                                                                        {r.tipo === 'membresia' ? '📋 Memb.' : '🎫 Indiv.'}
-                                                                    </span>
-                                                                    
-                                                                    {r.lista_espera && (
-                                                                        <span className="reserva-mini-espera">
-                                                                            En Espera
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
-                    <Link to="/historial-pagos" className="btn-historial">
-                        💳 Ver historial de pagos
-                    </Link>
+                    
+                    {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
+                    {!user.rol === 'Profesor' && (
+                        <div className="perfil-calendar-block">
+                            <div className="perfil-reservas-section">
+                                <div className="perfil-section-header">
+                                    <span className="perfil-section-icon">📅</span>
+                                    <h3 className="perfil-section-title">Mis Reservas Activas</h3>
+                                    {reservas.length > 0 && (
+                                        <span className="perfil-reservas-count">{reservas.length}</span>
+                                    )}
+                                </div>
+
+                                {reservas.length === 0 ? (
+                                    <div className="reserva-empty">
+                                        <span className="reserva-empty-icon">🏋️</span>
+                                        <p>No tenés turnos reservados para esta semana.</p>
+                                        <Link to="/" className="reserva-empty-link">
+                                            Andá al inicio para agendar una clase
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <div className="perfil-agenda-container">
+                                        {diasSemana.map(dia => {
+                                            const clasesDelDia = reservasPorDia[dia];
+                                            return (
+                                                <div className="agenda-columna" key={dia}>
+                                                    <div className="agenda-columna-header">
+                                                        <h4>{dia}</h4>
+                                                        <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
+                                                            {clasesDelDia.length}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="agenda-columna-body">
+                                                        {clasesDelDia.length === 0 ? (
+                                                            <p className="agenda-columna-vacio">Sin clases</p>
+                                                        ) : (
+                                                            clasesDelDia.map(r => (
+                                                                <div className="reserva-card-mini" key={r.id}>
+                                                                    <div className="reserva-mini-fecha">
+                                                                        {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                                            day: 'numeric',
+                                                                            month: 'short',
+                                                                        })}
+                                                                    </div>
+                                                                    
+                                                                    <div className="reserva-mini-detalles">
+                                                                        <span className="reserva-mini-actividad">
+                                                                            {r.clase?.actividad || `Clase #${r.clase_id}`}
+                                                                        </span>
+                                                                        <span className="reserva-mini-horario">
+                                                                            {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
+                                                                        </span>
+                                                                        <span className="reserva-mini-tipo">
+                                                                            {r.tipo === 'membresia' ? '📋 Memb.' : '🎫 Indiv.'}
+                                                                        </span>
+
+                                                                        {r.lista_espera && (
+                                                                            <span className="reserva-mini-espera">
+                                                                                En Espera
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {!user.rol === 'Profesor' && (
+                        <Link to="/historial-pagos" className="btn-historial">
+                            💳 Ver historial de pagos
+                        </Link>
+                    )}
                 </>
             ) : (
                 <div className="perfil-loading">

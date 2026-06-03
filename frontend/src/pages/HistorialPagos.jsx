@@ -23,13 +23,11 @@ const HistorialPagos = () => {
         fetchReservas();
     }, []);
 
-    // Individual = pagó 50%, Membresía = pagó 100%
-    const esPagoParcial = (r) => r.tipo === 'individual';
-
+    // Filtramos estrictamente por el tipo de reserva para los botones superiores
     const reservasFiltradas = reservas.filter(r => {
         if (filtro === 'todos')    return true;
-        if (filtro === 'completo') return !esPagoParcial(r);
-        if (filtro === 'parcial')  return esPagoParcial(r);
+        if (filtro === 'completo') return r.tipo === 'membresia';
+        if (filtro === 'parcial')  return r.tipo === 'individual';
         return true;
     });
 
@@ -113,7 +111,10 @@ const HistorialPagos = () => {
                     {reservasFiltradas.map(r => {
                         const actividad = r.clase?.actividad || 'Clase';
                         const emoji     = emojiActividad[actividad.toLowerCase()] || '🏋️';
-                        const parcial   = esPagoParcial(r);
+                        
+                        // Una clase es pago parcial SOLO si es individual Y todavía debe plata
+                        const parcial   = r.tipo === 'individual' && (r.monto_pagado < r.monto_total);
+                        
                         const descuento = (r.monto_total > r.monto_pagado && !parcial)
                             ? r.monto_total - r.monto_pagado
                             : 0;
@@ -131,7 +132,7 @@ const HistorialPagos = () => {
                                             {actividad.charAt(0).toUpperCase() + actividad.slice(1)}
                                         </span>
                                         <span className="historial-card-tipo">
-                                            {parcial ? 'Clase individual' : 'Membresía mensual'}
+                                            {r.tipo === 'individual' ? 'Clase individual' : 'Membresía mensual'}
                                         </span>
                                         <span className="historial-card-fecha">
                                             {r.clase?.dia
@@ -155,7 +156,7 @@ const HistorialPagos = () => {
                                         </span>
                                     )}
 
-                                    {/* Individual: falta pagar el 50% restante */}
+                                    {/* Individual parcial: falta pagar el 50% restante */}
                                     {parcial && (
                                         <>
                                             <span className="historial-card-porcentaje">
@@ -167,7 +168,7 @@ const HistorialPagos = () => {
                                         </>
                                     )}
 
-                                    {/* Badge de estado */}
+                                    {/* Badge de estado dinámico */}
                                     {parcial ? (
                                         <span className="historial-card-estado historial-card-estado--pendiente">
                                             ⏳ Pago parcial
