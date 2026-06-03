@@ -741,3 +741,37 @@ body,
     width: fit-content;
     margin-top: 4px;
 }
+
+.mensaje-exito {
+    background-color: #d1e7dd;
+    color: #0f5132;
+
+    border: 1px solid #badbcc;
+    border-radius: 10px;
+
+    padding: 12px;
+    margin-bottom: 15px;
+
+    font-weight: 600;
+}
+
+
+.btn-salir-espera {
+    margin-top: 8px;
+    padding: 6px 10px;
+
+    background-color: #dc3545;
+    color: white;
+
+    border: none;
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.btn-salir-espera:hover {
+    background-color: #bb2d3b;
+}

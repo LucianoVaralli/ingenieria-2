@@ -101,4 +101,57 @@ async def enviar_mail_error_pago(
     )
 
     fm = FastMail(conf)
+<<<<<<< HEAD
+=======
+
+    await fm.send_message(mensaje)
+
+
+async def enviar_mail_membresia(
+    socio: Socio,
+    clase: Clase,
+    fechas_confirmadas: list[str],
+    fechas_lista_espera: list[str],
+    monto_total: float
+):
+
+    texto_fechas_confirmadas = "\n".join(
+        [f"• {fecha}" for fecha in fechas_confirmadas]
+    )
+
+    cuerpo = f"""
+Pago realizado correctamente.
+
+Tipo de reserva: Membresía mensual
+
+Actividad: {clase.actividad}
+Horario: {clase.horario}
+
+Fechas reservadas:
+{texto_fechas_confirmadas}
+
+Monto pagado: ${monto_total}
+"""
+
+    if fechas_lista_espera:
+        texto_lista_espera = "\n".join(
+            [f"• {fecha}" for fecha in fechas_lista_espera]
+        )
+
+        cuerpo += f"""
+
+Fechas ingresadas en lista de espera:
+{texto_lista_espera}
+"""
+
+    mensaje = MessageSchema(
+        subject="Comprobante de membresía - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+
+>>>>>>> main
     await fm.send_message(mensaje)
