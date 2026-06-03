@@ -33,6 +33,26 @@ const Clases = ({ token }) => {
     const navigate = useNavigate();
     const hoy      = new Date();
 
+    // ── Usuario logueado ──
+    const [user, setUser] = useState(null);
+    const [userCargado, setUserCargado] = useState(false);
+
+    // Mientras no cargó, bloqueamos (asumimos profesor para evitar gap de timing)
+    const esProfesor = !userCargado || user?.rol?.toLowerCase() === 'profesor';
+
+    useEffect(() => {
+        // No depende del prop token — api.js manda el token del localStorage automáticamente
+        api.get('/socios/me')
+            .then(res => {
+                setUser(res.data);
+                setUserCargado(true);
+            })
+            .catch(() => {
+                // Sin sesión activa: userCargado=true, user=null → esProfesor=false
+                setUserCargado(true);
+            });
+    }, []);
+
     // ── Calendario ──
     const [anio, setAnio] = useState(hoy.getFullYear());
     const [mes, setMes]   = useState(hoy.getMonth());
@@ -145,7 +165,12 @@ const Clases = ({ token }) => {
         return aplicarFiltros(clasesDia);
     })();
 
-    const handleElegirClase  = (clase) => { setClaseElegida(clase); setModoReserva(null); };
+    const handleElegirClase = (clase) => {
+        // Si es profesor, puede ver el detalle pero no reservar
+        if (esProfesor) return;
+        setClaseElegida(clase);
+        setModoReserva(null);
+    };
 
     const handleReservar = () => {
         if (!claseElegida || !modoReserva) return;
@@ -198,9 +223,7 @@ const Clases = ({ token }) => {
             };
             const diaDB = MAP_NUM_A_DB[fechaCelda.getDay()];
         
-            // filtro inline corregido para usar String() de forma uniforme
             const tieneClases = todasClases.some(c => {
-                // NORMALIZAMOS EL DÍA ACÁ TAMBIÉN (Saca tildes, mayúsculas y espacios invisibles)
                 const diaClaseNormalizado = (c.dia || '').toLowerCase()
                     .normalize("NFD")
                     .replace(/[\u0300-\u036f]/g, '')
@@ -235,7 +258,6 @@ const Clases = ({ token }) => {
                     }}
                 >
                     {d}
-                    {/* Renderizado condicional del puntito verde */}
                     {tieneClases && !esPasado && <span className="cal-dot" />}
                 </td>
             );
@@ -248,7 +270,6 @@ const Clases = ({ token }) => {
         filas.push(<tr key={i}>{celdas.slice(i, i + 7)}</tr>);
     }
 
-    // CORREGIDO: Comparación segura usando String() en vez de parseInt() para evitar desajustes de tipo
     const chipsActivos = [
         ...filtroDisc.map(d => ({ label: d, quitar: () => toggleChip(d, filtroDisc, setFiltroDisc) })),
         ...filtroHorario.map(h => ({ label: h, quitar: () => toggleChip(h, filtroHorario, setFiltroHorario) })),
@@ -384,7 +405,7 @@ const Clases = ({ token }) => {
                         clasesDelDiaFiltradas.map(clase => (
                             <div
                                 key={clase.id}
-                                className={`clase-card ${claseElegida?.id === clase.id ? 'elegida' : ''}`}
+                                className={`clase-card ${claseElegida?.id === clase.id ? 'elegida' : ''} ${esProfesor ? 'clase-card--solo-vista' : ''}`}
                                 onClick={() => handleElegirClase(clase)}
                             >
                                 <p className="clase-nombre">{capitalizar(clase.actividad)}</p>
@@ -400,7 +421,8 @@ const Clases = ({ token }) => {
                         ))
                     )}
 
-                    {claseElegida && (
+                    {/* Solo se muestra si NO es profesor */}
+                    {claseElegida && !esProfesor && (
                         <div className="reserva-opciones">
                             <p className="reserva-titulo">
                                 Reservar <strong>{capitalizar(claseElegida.actividad)}</strong> a las {formatearHora(claseElegida.horario)}:
@@ -423,6 +445,13 @@ const Clases = ({ token }) => {
                                 Reservar
                             </button>
                         </div>
+                    )}
+
+                    {/* Mensaje informativo para el profesor */}
+                    {esProfesor && (
+                        <p className="profesor-aviso">
+                            👁️ Estás viendo las clases en modo consulta.
+                        </p>
                     )}
                 </div>
             )}

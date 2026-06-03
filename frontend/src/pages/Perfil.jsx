@@ -96,7 +96,6 @@ const Perfil = ({ token, setToken }) => {
             }
         });
 
-
     return (
         
         <div className="perfil-container">
@@ -146,7 +145,7 @@ const Perfil = ({ token, setToken }) => {
                         </div>
                         
                         {/* APTO FÍSICO */}
-                        {!user.rol === 'Profesor' && (
+                        {user.rol !== 'profesor' && (
                             <div className="perfil-acta-section">
                                 <div className="perfil-section-header">
                                     <span className="perfil-section-icon">🩺</span>
@@ -171,7 +170,7 @@ const Perfil = ({ token, setToken }) => {
                     </div>
                     
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
-                    {!user.rol === 'Profesor' && (
+                    {user.rol !== 'profesor' && (
                         <div className="perfil-calendar-block">
                             <div className="perfil-reservas-section">
                                 <div className="perfil-section-header">
@@ -224,7 +223,7 @@ const Perfil = ({ token, setToken }) => {
                                                                             {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
                                                                         </span>
                                                                         <span className="reserva-mini-tipo">
-                                                                            {r.tipo === 'membresia' ? '📋 Memb.' : '🎫 Indiv.'}
+                                                                            {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
                                                                         </span>
 
                                                                         {r.lista_espera && (
@@ -245,9 +244,9 @@ const Perfil = ({ token, setToken }) => {
                             </div>
                         </div>
                     )}
-                    {!user.rol === 'Profesor' && (
+                    {user.rol !== 'profesor' && (
                         <Link to="/historial-pagos" className="btn-historial">
-                            💳 Ver historial de pagos
+                            Ver historial de pagos
                         </Link>
                     )}
                 </>

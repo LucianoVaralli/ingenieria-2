@@ -35,7 +35,7 @@ function AppContent({ token, setToken }) {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
-        <Route path="/clases" element={<Clases />} />    
+        <Route path="/clases" element={<Clases token={token} />} />   
         <Route path="/reservar/membresia" element={<ReservaMembresia />} />
         <Route path="/reservar/individual" element={<ReservaIndividual />} />
         <Route path="/pago" element={<Pago />} /> 

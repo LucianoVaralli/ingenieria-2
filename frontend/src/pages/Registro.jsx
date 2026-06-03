@@ -19,10 +19,14 @@ const Registro = () => {
     });
     const [file, setFile] = useState(null);
     const navigate = useNavigate();
-    const [successMessage, setSuccessMessage] = useState(''); // Mensaje de éxito integrado en el HTML
+    const [successMessage, setSuccessMessage] = useState('');
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        // Opcional: limpiar el error del campo cuando el usuario empieza a escribir de nuevo
+        if (errors[e.target.name]) {
+            setErrors(prev => ({ ...prev, [e.target.name]: null }));
+        }
     };
 
     const handleFileChange = (e) => {
@@ -51,29 +55,49 @@ const Registro = () => {
     const validate = () => {
         let tempErrors = {};
 
+        // Validar campos obligatorios vacíos primero
+        if (!formData.nombre.trim()) tempErrors.nombre = "El nombre es obligatorio.";
+        if (!formData.apellido.trim()) tempErrors.apellido = "El apellido es obligatorio.";
+
+        // Validación de DNI
         const dniRegex = /^\d{7,8}$/;
-        if (!dniRegex.test(formData.dni)) {
+        if (!formData.dni.trim()) {
+            tempErrors.dni = "El DNI es obligatorio.";
+        } else if (!dniRegex.test(formData.dni)) {
             tempErrors.dni = "El DNI debe tener entre 7 y 8 números.";
         }
 
-        if (!/^\d{10}$/.test(formData.telefono)) {
+        // Validación de Teléfono
+        if (!formData.telefono.trim()) {
+            tempErrors.telefono = "El teléfono es obligatorio.";
+        } else if (!/^\d{10}$/.test(formData.telefono)) {
             tempErrors.telefono = "El teléfono debe tener 10 dígitos (ej: 2211234567).";
         }
 
+        // Validación de Email
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (!emailRegex.test(formData.email)) {
+        if (!formData.email.trim()) {
+            tempErrors.email = "El correo electrónico es obligatorio.";
+        } else if (!emailRegex.test(formData.email)) {
             tempErrors.email = "Ingresá un correo válido con extensión (ej: .com o .ar).";
         }
 
+        // Validación de Contraseña
         const passRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.{6,16})/;
-        if (!passRegex.test(formData.password)) {
+        if (!formData.password) {
+            tempErrors.password = "La contraseña es obligatoria.";
+        } else if (!passRegex.test(formData.password)) {
             tempErrors.password = "Debe tener 6-16 caracteres, una mayúscula y un especial.";
         }
 
-        if (formData.password !== formData.confirmar_password) {
+        // Confirmar Contraseña
+        if (!formData.confirmar_password) {
+            tempErrors.confirmar_password = "Debés confirmar la contraseña.";
+        } else if (formData.password !== formData.confirmar_password) {
             tempErrors.confirmar_password = "Las contraseñas no coinciden.";
         }
 
+        // Archivo
         if (!file) {
             tempErrors.apto_fisico = "Debés subir un apto físico en PDF.";
         }    
@@ -87,7 +111,7 @@ const Registro = () => {
         setErrors({});
         setSuccessMessage('');
 
-        if (!validate()) return; 
+        // if (!validate()) return; // Valida el frente primero (si hay errores locales, frena acá)
 
         const data = new FormData();
         data.append('nombre', formData.nombre);
@@ -115,26 +139,37 @@ const Registro = () => {
 
         } catch (err) {
             const detail = err.response?.data?.detail;
-            
-            if (err.response && err.response.status === 400) {
-                if (detail?.includes("DNI")) {
-                    setErrors(prev => ({ ...prev, dni: detail }));
+
+            if (err.response && [400, 409, 422].includes(err.response.status)) {
+
+                // NUEVO: Si 'detail' es un objeto, cargamos todos los errores de una sola vez
+                if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+                    setErrors(prev => ({
+                        ...prev,
+                        ...detail // Esto es magia pura: mapea automáticamente 'dni' y 'email' a sus inputs
+                    }));
                 } 
-                else if (detail?.includes("correo")) {
-                    setErrors(prev => ({ ...prev, email: detail }));
-                } 
-                else if (detail?.includes("contraseñas")) {
-                    setErrors(prev => ({ ...prev, confirmar_password: detail }));
-                } 
-                else if (detail?.includes("PDF") || detail?.includes("archivo") || detail?.includes("adjuntar")) {
-                    setErrors(prev => ({ ...prev, apto_fisico: detail }));
-                } 
-                else {
-                    // Error general del backend pero controlado en el HTML
-                    setErrors(prev => ({ ...prev, general: detail || "Error al registrar usuario" }));
+                // Por las dudas, dejamos el soporte si el backend llega a mandar un string suelto
+                else if (detail && typeof detail === 'string') {
+                    if (detail.includes("DNI")) {
+                        setErrors(prev => ({ ...prev, dni: detail }));
+                    } 
+                    else if (detail.includes("correo") || detail.includes("email")) {
+                        setErrors(prev => ({ ...prev, email: detail }));
+                    } 
+                    else if (detail.includes("contraseñas")) {
+                        setErrors(prev => ({ ...prev, confirmar_password: detail }));
+                    } 
+                    else if (detail.includes("PDF") || detail.includes("archivo") || detail.includes("adjuntar")) {
+                        setErrors(prev => ({ ...prev, apto_fisico: detail }));
+                    } 
+                    else {
+                        setErrors(prev => ({ ...prev, general: detail }));
+                    }
+                } else {
+                    setErrors(prev => ({ ...prev, general: "Error al registrar usuario." }));
                 }
             } else {
-                // Error inesperado controlado en el HTML
                 setErrors(prev => ({ ...prev, general: "Ocurrió un error inesperado. Intentalo más tarde." }));
             }
         }
@@ -168,16 +203,30 @@ const Registro = () => {
                     <p className="registro-subtitle">Completá los datos para registrarte</p>
                 </div>
                 
-                <form onSubmit={handleRegistro} className="registro-form">
+                {/* AGREGADO: noValidate para evitar los carteles uno por uno del navegador */}
+                <form onSubmit={handleRegistro} className="registro-form" noValidate>
+                    
                     {/* nombre y apellido */}
                     <div className="registro-row">
                         <div className="registro-field">
                             <label className="registro-label">Nombre</label>
-                            <input name="nombre" className="registro-input" placeholder="Ej: Luciano" onChange={handleChange} required />
+                            <input 
+                                name="nombre" 
+                                className={`registro-input ${errors.nombre ? 'error' : ''}`} 
+                                placeholder="Ej: Luciano" 
+                                onChange={handleChange} 
+                            />
+                            {errors.nombre && <span className="error-message">{errors.nombre}</span>}
                         </div>
                         <div className="registro-field">
                             <label className="registro-label">Apellido</label>
-                            <input name="apellido" className="registro-input" placeholder="Ej: Pérez" onChange={handleChange} required />
+                            <input 
+                                name="apellido" 
+                                className={`registro-input ${errors.apellido ? 'error' : ''}`} 
+                                placeholder="Ej: Pérez" 
+                                onChange={handleChange} 
+                            />
+                            {errors.apellido && <span className="error-message">{errors.apellido}</span>}
                         </div>
                     </div>
                     
@@ -193,7 +242,6 @@ const Registro = () => {
                                 placeholder="Ej: 12345678"
                                 onChange={handleChange}
                                 maxLength="8"
-                                required
                             />
                             {errors.dni && <span className="error-message">{errors.dni}</span>}
                         </div>
@@ -204,7 +252,6 @@ const Registro = () => {
                                 className={`registro-input ${errors.telefono ? 'error' : ''}`}
                                 placeholder="Ej: 2215556677"
                                 onChange={handleChange}
-                                required
                             />
                             {errors.telefono && <span className="error-message">{errors.telefono}</span>}
                         </div>
@@ -219,7 +266,6 @@ const Registro = () => {
                             className={`registro-input ${errors.email ? 'error' : ''}`}
                             placeholder="usuario@email.com"
                             onChange={handleChange}
-                            required
                         />
                         {errors.email && <span className="error-message">{errors.email}</span>}
                     </div>
@@ -235,7 +281,6 @@ const Registro = () => {
                                     className={`registro-input ${errors.password ? 'error' : ''}`}
                                     placeholder="Mín. 6 car., 1 mayúscula y 1 especial"
                                     onChange={handleChange}
-                                    required
                                 />
                                 <button 
                                     type="button" 
@@ -257,7 +302,6 @@ const Registro = () => {
                                     className={`registro-input ${errors.confirmar_password ? 'error' : ''}`}
                                     placeholder="Repetí tu contraseña"
                                     onChange={handleChange}
-                                    required
                                 />
                                 <button 
                                     type="button" 
@@ -288,7 +332,7 @@ const Registro = () => {
                         {errors.apto_fisico && <span className="error-message">{errors.apto_fisico}</span>}
                     </div>
 
-                    {/* SECCIÓN DE ERRORES GENERALES O ÉXITO (Reemplaza a los Toasts flotantes) */}
+                    {/* SECCIÓN DE ERRORES GENERALES O ÉXITO */}
                     {errors.general && <div className="error-message-general" style={{ color: 'red', marginBottom: '15px', fontWeight: 'bold', textAlign: 'center' }}>{errors.general}</div>}
                     {successMessage && <div className="success-message-inline" style={{ color: 'green', marginBottom: '15px', fontWeight: 'bold', textAlign: 'center' }}>{successMessage}</div>}
 
