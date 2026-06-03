@@ -16,4 +16,5 @@ class ConfirmarPagoIndividual(BaseModel):
     numero_tarjeta: str
     titular: str
     cvv: str
+    fecha_vencimiento: str
     acepta_lista_espera: bool = False

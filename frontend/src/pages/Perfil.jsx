@@ -8,6 +8,29 @@ const Perfil = ({ token, setToken }) => {
     const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
+    const [mensajeExito, setMensajeExito] = useState("");
+
+    const salirListaEspera = async (reservaId) => {
+        try {
+
+            await api.delete(
+                `/reservas/lista-espera/cancelar/${reservaId}`
+            );
+
+            setReservas(prev =>
+                prev.filter(r => r.id !== reservaId)
+            );
+
+            setMensajeExito("Baja exitosa");
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert("No se pudo salir de la lista de espera");
+        }
+    };
+
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
