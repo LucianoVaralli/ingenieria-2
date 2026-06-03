@@ -183,15 +183,12 @@ const Perfil = ({ token, setToken }) => {
                         </div>
                     ))}
 
-<<<<<<< HEAD
-=======
                     {mensajeExito && (
                         <div className="mensaje-exito">
                             {mensajeExito}
                         </div>
                     )}
                     
->>>>>>> main
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
                     <div className="perfil-calendar-block">
                         <div className="perfil-reservas-section">
