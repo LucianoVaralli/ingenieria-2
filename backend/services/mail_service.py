@@ -101,8 +101,6 @@ async def enviar_mail_error_pago(
     )
 
     fm = FastMail(conf)
-<<<<<<< HEAD
-=======
 
     await fm.send_message(mensaje)
 
@@ -153,5 +151,4 @@ Fechas ingresadas en lista de espera:
 
     fm = FastMail(conf)
 
->>>>>>> main
     await fm.send_message(mensaje)
