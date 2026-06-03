@@ -851,3 +851,45 @@ def obtener_alertas_individuales(
         }
         for r in alertas
     ]
+
+
+@router.delete("/lista-espera/cancelar/{reserva_id}")
+def cancelar_lista_espera(
+    reserva_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    reserva = db.query(Reserva).filter(
+        Reserva.id == reserva_id,
+        Reserva.socio_id == socio.id
+    ).first()
+
+    if not reserva:
+        raise HTTPException(
+            status_code=404,
+            detail="Reserva no encontrada"
+        )
+
+    entrada_lista = db.query(ListaEspera).filter(
+        ListaEspera.socio_id == socio.id,
+        ListaEspera.clase_id == reserva.clase_id,
+        ListaEspera.fecha_clase == reserva.fecha_clase,
+        ListaEspera.estado == "esperando"
+    ).first()
+
+    if not entrada_lista:
+        raise HTTPException(
+            status_code=400,
+            detail="La reserva no está en lista de espera"
+        )
+
+    db.delete(entrada_lista)
+    db.delete(reserva)
+
+    db.commit()
+
+    return {
+        "mensaje": "Se dio de baja de la lista de espera"
+    }

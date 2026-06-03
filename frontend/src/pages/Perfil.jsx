@@ -8,6 +8,29 @@ const Perfil = ({ token, setToken }) => {
     const [reservas, setReservas] = useState([]);
     const navigate = useNavigate();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
+    const [mensajeExito, setMensajeExito] = useState("");
+
+    const salirListaEspera = async (reservaId) => {
+        try {
+
+            await api.delete(
+                `/reservas/lista-espera/cancelar/${reservaId}`
+            );
+
+            setReservas(prev =>
+                prev.filter(r => r.id !== reservaId)
+            );
+
+            setMensajeExito("Baja exitosa");
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert("No se pudo salir de la lista de espera");
+        }
+    };
+
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
@@ -153,6 +176,13 @@ const Perfil = ({ token, setToken }) => {
                             </button>
                         </div>
                     ))}
+
+                    {mensajeExito && (
+                        <div className="mensaje-exito">
+                            {mensajeExito}
+                        </div>
+                    )}
+                    
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
                     <div className="perfil-calendar-block">
                         <div className="perfil-reservas-section">
@@ -210,9 +240,18 @@ const Perfil = ({ token, setToken }) => {
                                                                     </span>
                                                                     
                                                                     {r.lista_espera && (
-                                                                        <span className="reserva-mini-espera">
-                                                                            En Espera
-                                                                        </span>
+                                                                        <>
+                                                                            <span className="reserva-mini-espera">
+                                                                                En Espera
+                                                                            </span>
+
+                                                                            <button
+                                                                                className="btn-salir-espera"
+                                                                                onClick={() => salirListaEspera(r.id)}
+                                                                            >
+                                                                                Salir de espera
+                                                                            </button>
+                                                                        </>
                                                                     )}
                                                                 </div>
                                                             </div>
