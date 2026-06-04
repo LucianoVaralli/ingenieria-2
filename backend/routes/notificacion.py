@@ -79,3 +79,37 @@ def leer_todas(
 
     return {"mensaje": "ok"}    
 
+@router.delete("/borrar-todas")
+def borrar_todas(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    usuario = obtener_usuario_actual(token, db)
+
+    db.query(Notificacion)\
+        .filter(Notificacion.socio_id == usuario.id)\
+        .delete()
+
+    db.commit()
+    return {"mensaje": "ok"}
+
+@router.delete("/{notificacion_id}")
+def borrar_notificacion(
+    notificacion_id: int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    usuario = obtener_usuario_actual(token, db)
+
+    notif = db.query(Notificacion).filter(
+        Notificacion.id == notificacion_id,
+        Notificacion.socio_id == usuario.id
+    ).first()
+
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notificación no encontrada")
+
+    db.delete(notif)
+    db.commit()
+    return {"mensaje": "ok"}
+

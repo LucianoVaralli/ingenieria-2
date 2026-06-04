@@ -3,7 +3,7 @@ import re
 import shutil  # Para guardar el archivo en el disco
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status
 from sqlalchemy.orm import Session
-
+from typing import Optional
 from dependencies.database import get_db
 from models.enums import Rol
 from models.socio import Socio
@@ -15,79 +15,71 @@ router = APIRouter(prefix="/socios", tags=["Socios"])
 
 @router.post("/registrar")
 async def registrar_socio(
-    apto_fisico: UploadFile = File(...),
-    nombre: str = Form(...),
-    apellido: str = Form(...),
-    dni: str = Form(...),
-    email: str = Form(...),
-    telefono: str = Form(...),
-    password: str = Form(...),
-    confirmar_password: str = Form(...),
+    apto_fisico: Optional[UploadFile] = File(None),
+    nombre: Optional[str] = Form(None),
+    apellido: Optional[str] = Form(None),
+    dni: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    telefono: Optional[str] = Form(None),
+    password: Optional[str] = Form(None),
+    confirmar_password: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    # Validar DNI
-    if not dni.isdigit() or len(dni) not in [7, 8]:
-        raise HTTPException(
-            status_code=400, detail="El DNI debe tener 7 u 8 dígitos números"
-        )
+    errores = {}
 
-    # Teléfono
-    if not telefono.isdigit() or len(telefono) != 10:
-        raise HTTPException(
-            status_code=400,
-            detail="El teléfono debe tener 10 dígitos (ej: 2211234567).",
-        )
+    # Validar Nombre y Apellido
+    if not nombre:
+        errores["nombre"] = "El nombre es obligatorio."
+    if not apellido:
+        errores["apellido"] = "El apellido es obligatorio."
 
-    if not apto_fisico or not apto_fisico.filename:
-        raise HTTPException(
-            status_code=400, detail="Debe adjuntar un apto físico en PDF"
-        )
+    # Validaciones de DNI
+    if not dni or not dni.isdigit() or len(dni) not in [7, 8]:
+        errores["dni"] = "El DNI debe tener 7 u 8 dígitos numéricos."
+    elif db.query(Socio).filter(Socio.dni == dni).first():
+        errores["dni"] = "DNI ya registrado."
 
-    # 1. Validaciones de existencia (DNI y Email)
-    if db.query(Socio).filter(Socio.dni == dni).first():
-        raise HTTPException(status_code=400, detail="DNI ya registrado")
+    # Validación de Email
+    if not email:
+        errores["email"] = "El correo electrónico es obligatorio."
+    elif db.query(Socio).filter(Socio.email == email).first():
+        errores["email"] = "Correo ya registrado."
 
-    if db.query(Socio).filter(Socio.email == email).first():
-        raise HTTPException(status_code=400, detail="Correo ya registrado")
+    # Validación de Teléfono
+    if not telefono or not telefono.isdigit() or len(telefono) != 10:
+        errores["telefono"] = "El teléfono debe tener 10 dígitos (ej: 2211234567)."
 
-    # Password fuerte: 6-16 caracteres, al menos una mayúscula y un carácter especial
+    # Validaciones de Contraseña
     pass_regex = r"^(?=.*[A-Z])(?=.*[!@#$%^&*]).{6,16}$"
-
-    if not re.match(pass_regex, password):
-        raise HTTPException(
-            status_code=400,
-            detail="Debe tener 6-16 caracteres, una mayúscula y un especial.",
-        )
-
-    # Validar contraseñas
+    if not password or not re.match(pass_regex, password):
+        errores["password"] = "Debe tener 6-16 caracteres, una mayúscula y un especial."
+        
     if password != confirmar_password:
-        raise HTTPException(
-            status_code=400, detail="Las contraseñas no coinciden"
-        )
+        errores["confirmar_password"] = "Las contraseñas no coinciden."
 
-    # 2. VALIDACIÓN DEL ARCHIVO
-    filename = apto_fisico.filename.lower()
+    # Validaciones del Archivo PDF
+    if not apto_fisico or not apto_fisico.filename:
+        errores["apto_fisico"] = "Debés subir un apto físico en PDF."
+    else:
+        filename = apto_fisico.filename.lower()
+        if not filename.endswith(".pdf"):
+            errores["apto_fisico"] = "Solo se permiten archivos con extensión .pdf"
+        elif apto_fisico.content_type != "application/pdf":
+            errores["apto_fisico"] = "El archivo no es un PDF válido."
 
-    # Validamos extensión
-    if not filename.endswith(".pdf"):
-        raise HTTPException(
-            status_code=400, detail="Solo se permiten archivos con extensión .pdf"
-        )
+    # SI HAY ERRORES ACUMULADOS (DE CUALQUIER TIPO), SE MANDAN TODOS JUNTOS
+    if errores:
+        raise HTTPException(status_code=400, detail=errores)
 
-    # Validamos tipo MIME
-    if apto_fisico.content_type != "application/pdf":
-        raise HTTPException(
-            status_code=400, detail="El archivo no es un PDF válido."
-        )
-
-    # 3. Guardar el archivo
+    # -------------------------------------------------------------
+    # SI PASÓ TODO, RECIÉN ACÁ SE GUARDA
+    # -------------------------------------------------------------
     os.makedirs("uploads", exist_ok=True)
     file_location = f"uploads/{dni}_{apto_fisico.filename}"
 
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(apto_fisico.file, buffer)
 
-    # 4. Guardar en DB
     hashed_pass = get_password_hash(password)
 
     nuevo_socio = Socio(
