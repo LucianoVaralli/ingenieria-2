@@ -405,11 +405,36 @@ const ReservaIndividual = () => {
                     {/* PASO 5: error */}
                     {paso === 'error' && (
                         <div className="pago-resultado pago-resultado--error">
+<<<<<<< HEAD
                             <div className="pago-resultado-icon pago-resultado-icon--error">✕</div>
                             <h3>Hubo un problema</h3>
                             <p className="pago-error-msg">{mensaje}</p>
                             <button className="pago-btn-ghost" onClick={() => setPaso('confirmacion')}>
                                 Intentar de nuevo
+=======
+
+                            <div className="pago-resultado-icon pago-resultado-icon--error">
+                                ✕
+                            </div>
+
+                            <h3>{mensaje}</h3>
+
+                            <button
+                                className="pago-btn-ghost"
+                                onClick={() => {
+                                    setPaso('confirmacion');
+                                    setMensaje('');
+                                }}
+                            >
+                                Intentar de nuevo
+                            </button>
+
+                            <button
+                                className="pago-btn-ghost"
+                                onClick={() => navigate('/home')}
+                            >
+                                Volver al home
+>>>>>>> main
                             </button>
                         </div>
                     )}
