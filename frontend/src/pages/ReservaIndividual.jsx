@@ -18,16 +18,15 @@ const formatearFecha = (fechaStr) => {
 };
 
 const formatearNumero = (valor) => {
-    const v = valor.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
+    const numeros = valor.replace(/\D/g, '');
+
     const parts = [];
 
-    for (let i = 0; i < match.length; i += 4) {
-        parts.push(match.substring(i, i + 4));
+    for (let i = 0; i < numeros.length; i += 4) {
+        parts.push(numeros.substring(i, i + 4));
     }
 
-    return parts.length ? parts.join(' ') : valor;
+    return parts.join(' ');
 };
 
 const ReservaIndividual = () => {
@@ -53,6 +52,7 @@ const ReservaIndividual = () => {
     const [nroTarjeta, setNroTarjeta] = useState('');
     const [titular, setTitular] = useState('');
     const [cvv, setCvv] = useState('');
+    const [vencimiento, setVencimiento] = useState('');
 
     if (!clase || !fechaSeleccionada) {
         return (
@@ -87,24 +87,21 @@ const ReservaIndividual = () => {
 
         try {
 
-            const res = await api.post('/reservas/individual/crear', {
-                clase_id: clase.id,
-                fecha_clase: fechaSeleccionada,
-                tipo_pago: tipoPago,
-            });
+            const res = await api.post(
+                '/reservas/individual/verificar-cupo',
+                {
+                    clase_id: clase.id,
+                    fecha_clase: fechaSeleccionada,
+                    tipo_pago: 'sena'
+                }
+            );
 
-            setReservaId(res.data.reserva_id);
-            setMonto(res.data.monto_a_pagar);
             setDebeListaEspera(res.data.debe_lista_espera);
 
-            // SIN CUPO
             if (res.data.debe_lista_espera) {
                 setPaso('lista_espera');
-            }
-
-            // CON CUPO
-            else {
-                setPaso('pago');
+            } else {
+                setPaso('tipo_pago');
             }
 
         } catch (err) {
@@ -128,16 +125,6 @@ const ReservaIndividual = () => {
 
     const handleRechazarLista = async () => {
 
-        try {
-
-            await api.delete(
-                `/reservas/individual/cancelar/${reservaId}`
-            );
-
-        } catch (err) {
-            console.error(err);
-        }
-
         setMensaje('Reserva cancelada');
         setPaso('error');
     };
@@ -147,7 +134,42 @@ const ReservaIndividual = () => {
     // ─────────────────────────────────────────────
 
     const handleAceptarLista = () => {
-        setPaso('pago');
+        setPaso('tipo_pago');
+    };
+
+    const handleContinuarPago = async () => {
+
+        setCargando(true);
+
+        try {
+
+            const res = await api.post(
+                '/reservas/individual/crear',
+                {
+                    clase_id: clase.id,
+                    fecha_clase: fechaSeleccionada,
+                    tipo_pago: tipoPago
+                }
+            );
+
+            setReservaId(res.data.reserva_id);
+            setMonto(res.data.monto_a_pagar);
+
+            setPaso('pago');
+
+        } catch (err) {
+
+            setMensaje(
+                typeof err.response?.data?.detail === 'string'
+                    ? err.response.data.detail
+                    : 'Error inesperado'
+            );
+
+            setPaso('error');
+
+        } finally {
+            setCargando(false);
+        }
     };
 
     // ─────────────────────────────────────────────
@@ -156,7 +178,7 @@ const ReservaIndividual = () => {
 
     const handlePagar = async () => {
 
-        if (!nroTarjeta.trim() || !titular.trim() || !cvv.trim()) {
+        if (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim()) {
             setMensaje('Por favor, completá todos los los datos de la tarjeta.');
             return;
         }
@@ -171,6 +193,7 @@ const ReservaIndividual = () => {
                 numero_tarjeta: nroTarjeta,
                 titular,
                 cvv,
+                fecha_vencimiento: vencimiento,
                 acepta_lista_espera: debeListaEspera
             });
 
@@ -309,37 +332,6 @@ const ReservaIndividual = () => {
                                 <strong>{clase.actividad}</strong>.
                             </p>
 
-                            <div className="reserva-tipo-pago"
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '12px',
-                                    marginBottom: '20px'
-                                }}
-                            >
-
-                                <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <input
-                                        type="radio"
-                                        value="sena"
-                                        checked={tipoPago === 'sena'}
-                                        onChange={(e) => setTipoPago(e.target.value)}
-                                    />
-                                    Pagar seña (50%)
-                                </label>
-
-                                <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <input
-                                        type="radio"
-                                        value="total"
-                                        checked={tipoPago === 'total'}
-                                        onChange={(e) => setTipoPago(e.target.value)}
-                                    />
-                                    Pagar total (100%)
-                                </label>
-
-                            </div>
-
                             <button
                                 className="boton-accion"
                                 onClick={handleCrearReserva}
@@ -392,6 +384,56 @@ const ReservaIndividual = () => {
 
                         </div>
                     )}
+                    {paso === 'tipo_pago' && (
+
+                        <div className="reserva-accion-card">
+
+                            <h3 className="reserva-accion-titulo">
+                                Seleccionar forma de pago
+                            </h3>
+
+                            <div
+                                className="reserva-tipo-pago"
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '12px',
+                                    marginBottom: '20px'
+                                }}
+                            >
+
+                                <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="radio"
+                                        value="sena"
+                                        checked={tipoPago === 'sena'}
+                                        onChange={(e) => setTipoPago(e.target.value)}
+                                    />
+                                    Pagar seña (50%)
+                                </label>
+
+                                <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="radio"
+                                        value="total"
+                                        checked={tipoPago === 'total'}
+                                        onChange={(e) => setTipoPago(e.target.value)}
+                                    />
+                                    Pagar total (100%)
+                                </label>
+
+                            </div>
+
+                            <button
+                                className="boton-accion"
+                                onClick={handleContinuarPago}
+                            >
+                                Continuar →
+                            </button>
+
+                        </div>
+
+                    )}
 
                     {/* PAGO */}
 
@@ -436,7 +478,14 @@ const ReservaIndividual = () => {
                                     type="text"
                                     placeholder="Tal como aparece en la tarjeta"
                                     value={titular}
-                                    onChange={(e) => setTitular(e.target.value)}
+                                    onChange={(e) => {
+                                        const valor = e.target.value.replace(
+                                            /[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g,
+                                            ''
+                                        );
+
+                                        setTitular(valor);
+                                    }}
                                 />
 
                             </div>
@@ -465,6 +514,32 @@ const ReservaIndividual = () => {
                                     }
                                 />
 
+                            </div>
+
+                            <div
+                                className="pago-field"
+                                style={{ maxWidth: '160px' }}
+                            >
+                                <label className="pago-label">
+                                    Fecha de vencimiento
+                                </label>
+
+                                <input
+                                    className="pago-input"
+                                    type="text"
+                                    placeholder="MM/AA"
+                                    value={vencimiento}
+                                    onChange={(e) => {
+                                        let valor = e.target.value.replace(/\D/g, '');
+
+                                        if (valor.length > 2) {
+                                            valor = valor.slice(0, 2) + '/' + valor.slice(2, 4);
+                                        }
+
+                                        setVencimiento(valor);
+                                    }}
+                                    maxLength={5}
+                                />
                             </div>
 
                             {mensaje && (
@@ -535,6 +610,16 @@ const ReservaIndividual = () => {
                             </div>
 
                             <h3>{mensaje}</h3>
+
+                            <button
+                                className="pago-btn-ghost"
+                                onClick={() => {
+                                    setPaso('confirmacion');
+                                    setMensaje('');
+                                }}
+                            >
+                                Intentar de nuevo
+                            </button>
 
                             <button
                                 className="pago-btn-ghost"

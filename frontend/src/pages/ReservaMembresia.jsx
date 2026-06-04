@@ -17,18 +17,6 @@ const ReservaMembresia = () => {
     const [datosReserva, setDatosReserva] = useState(null);
     const [creditos, setCreditos] = useState(0);
 
-    if (!clase || !fechasDelMes) {
-        return (
-            <div className="reserva-empty-state">
-                <span className="reserva-empty-icon">📭</span>
-                <p>No hay clase seleccionada.</p>
-                <button className="boton-accion" onClick={() => navigate('/')}>
-                    Volver al inicio
-                </button>
-            </div>
-        );
-    }
-
     useEffect(() => {
         const cargarPerfil = async () => {
             try {
@@ -41,6 +29,18 @@ const ReservaMembresia = () => {
 
         cargarPerfil();
     }, []);
+
+    if (!clase || !fechasDelMes) {
+        return (
+            <div className="reserva-empty-state">
+                <span className="reserva-empty-icon">📭</span>
+                <p>No hay clase seleccionada.</p>
+                <button className="boton-accion" onClick={() => navigate('/')}>
+                    Volver al inicio
+                </button>
+            </div>
+        );
+    }
 
     const handleReservar = async () => {
         setCargando(true);
@@ -61,6 +61,8 @@ const ReservaMembresia = () => {
                 fechas_clase:     fechasFuturas,
                 total_clases_mes: fechasDelMes.length,
             });
+
+            console.log("RESPUESTA MEMBRESIA:", res.data); // lo uso para ver el error
 
             setDatosReserva(res.data);
 
@@ -97,6 +99,9 @@ const ReservaMembresia = () => {
     };
 
     const navegarAlPago = (datos, aceptaEspera) => {
+
+        console.log("DATOS A PAGO:", datos);
+
         navigate('/pago', {
             state: {
                 monto:             datos.monto_total,
@@ -120,7 +125,7 @@ const ReservaMembresia = () => {
     // Ejemplo: Si en tu backend el descuento ahora es del 25% o es un valor fijo, cambialo acá:
     const descuentoEstimado = clase.precio_individual * fechasDelMes.length * (clasesPerdidas * 0.20);
     // ── 3. VALORES DEFINITIVOS (Prioriza siempre lo que responde el Backend) ──
-    const descuento = datosReserva ? datosReserva.descuento_applied : descuentoEstimado;
+    const descuento = Number(datosReserva ? (datosReserva.descuento_aplicado ?? descuentoEstimado) : descuentoEstimado) || 0;
     const montoFinal = datosReserva ? datosReserva.monto_total : (precioBase - descuentoEstimado);
 
     // Emoji por disciplina
@@ -176,13 +181,13 @@ const ReservaMembresia = () => {
                                 <span>
                                     Descuento ({clasesPerdidas} clase{clasesPerdidas > 1 ? 's' : ''} perdida{clasesPerdidas > 1 ? 's' : ''})
                                 </span>
-                                <span>-${descuento.toFixed(2)}</span>
+                                <span>-${Number(descuento || 0).toFixed(2)}</span>
                             </div>
                         )}
 
                         <div className="reserva-desglose-total">
                             <span>Total</span>
-                            <span>${montoFinal.toFixed(2)}</span>
+                            <span>${Number(montoFinal || 0).toFixed(2)}</span>
                         </div>
                     </div>
                 </div>

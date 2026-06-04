@@ -13,7 +13,9 @@ class ConfirmarPagoMembresia(BaseModel):
     pago_exitoso:       bool
     acepta_lista_espera: bool       = False
     numero_tarjeta:      str | None   = None
-    
+    titular: str
+    cvv: str
+    fecha_vencimiento: str
 class AgregarListaEspera(BaseModel):
     clase_id:       int
     fechas_sin_cupo: list[str] 
