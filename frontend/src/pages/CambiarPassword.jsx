@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import api from "../api/api";
-import { toast } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast"; // Agregamos Toaster para manejar el éxito
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "../assets/css/CambiarPassword.css";
@@ -11,32 +11,73 @@ const CambiarPassword = () => {
     const [passwordNueva, setPasswordNueva] = useState("");
     const [confirmarPassword, setConfirmarPassword] = useState("");
 
+    // Nuevo estado de errores individuales para renderizar abajo de cada input
+    const [errors, setErrors] = useState({
+        passwordActual: "",
+        passwordNueva: "",
+        confirmarPassword: ""
+    });
+
     const [mostrarActual, setMostrarActual] = useState(false);
     const [mostrarNueva, setMostrarNueva] = useState(false);
     const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
 
+    // Expresión regular unificada con tu backend
+    const passRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,16}$/;
+
+    // Handlers específicos para actualizar datos y limpiar el error en tiempo real al escribir
+    const handleActualChange = (val) => {
+        setPasswordActual(val);
+        setErrors((prev) => ({ ...prev, passwordActual: "" }));
+    };
+
+    const handleNuevaChange = (val) => {
+        setPasswordNueva(val);
+        setErrors((prev) => ({ ...prev, passwordNueva: "" }));
+    };
+
+    const handleConfirmarChange = (val) => {
+        setConfirmarPassword(val);
+        setErrors((prev) => ({ ...prev, confirmarPassword: "" }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // 1. VALIDACIÓN: Verificar si algún campo está vacío o contiene solo espacios
-        if (!passwordActual.trim() || !passwordNueva.trim() || !confirmarPassword.trim()) {
-            toast.error("Todos los campos son obligatorios. Por favor, completalos.");
-            return;
+        // Estructura limpia para capturar los errores de la validación actual
+        let localErrors = { passwordActual: "", passwordNueva: "", confirmarPassword: "" };
+        let hasFailed = false;
+
+        // 1. VALIDACIÓN: Verificar campos vacíos de forma independiente
+        if (!passwordActual.trim()) {
+            localErrors.passwordActual = "La contraseña actual es obligatoria.";
+            hasFailed = true;
+        }
+        if (!passwordNueva.trim()) {
+            localErrors.passwordNueva = "La nueva contraseña es obligatoria.";
+            hasFailed = true;
+        }
+        if (!confirmarPassword.trim()) {
+            localErrors.confirmarPassword = "Debés confirmar la nueva contraseña.";
+            hasFailed = true;
         }
 
-        // 2. VALIDACIÓN: Que las contraseñas nuevas coincidan
-        if (passwordNueva !== confirmarPassword) {
-            toast.error("La confirmación de la nueva contraseña no coincide");
-            return;
+        // 2. VALIDACIÓN: Regla de negocio (solo si se escribió algo)
+        if (passwordNueva.trim() && !passRegex.test(passwordNueva)) {
+            localErrors.passwordNueva = "Debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.";
+            hasFailed = true;
         }
 
-        // 3. VALIDACIÓN: Regla de negocio (6-16 caracteres, una mayúscula, un carácter especial)
-        // Usamos exactamente la misma lógica de expresiones regulares que tenés en tu backend
-        const passRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,16}$/;
+        // 3. VALIDACIÓN: Que las contraseñas nuevas coincidan
+        if (passwordNueva.trim() && confirmarPassword.trim() && passwordNueva !== confirmarPassword) {
+            localErrors.confirmarPassword = "La confirmación de la nueva contraseña no coincide.";
+            hasFailed = true;
+        }
 
-        if (!passRegex.test(passwordNueva)) {
-            toast.error("La nueva contraseña debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.");
-            return; // Frena la ejecución y no hace la petición al backend
+        // Si salta algún error de front, los renderizamos juntos y frenamos la petición
+        if (hasFailed) {
+            setErrors(localErrors);
+            return;
         }
 
         try {
@@ -47,31 +88,41 @@ const CambiarPassword = () => {
                 confirmar_password_nueva: confirmarPassword
             });
 
-            // Si el backend responde exitosamente:
+            // Éxito flotante permitido 🎉
             toast.success(res.data.mensaje || "Contraseña actualizada con éxito");
 
-            // Limpiamos los campos por seguridad
+            // Limpiamos campos por seguridad
             setPasswordActual("");
             setPasswordNueva("");
             setConfirmarPassword("");
 
-            // 3. REDIRECCIÓN: Mandamos al usuario a la pantalla de perfil
-            navigate("/perfil");
+            setTimeout(() => {
+                navigate("/perfil");
+            }, 2000);
 
         } catch (err) {
-            // Captura los errores del backend (ej: si la contraseña actual es incorrecta)
+            console.error("Error capturado en CambiarPassword:", err);
             const errorMsg = err.response?.data?.detail || "Error al cambiar contraseña";
 
+            // Si el backend rechaza los datos, los mapeamos como errores fijos en la UI
             if (Array.isArray(errorMsg)) {
-                toast.error(errorMsg[0].msg);
+                setErrors((prev) => ({ ...prev, passwordNueva: errorMsg[0].msg }));
             } else {
-                toast.error(errorMsg); // Muestra "La contraseña actual es incorrecta" directamente en la pantalla
+                // Si la contraseña actual no coincide en base de datos, el cartel se inyecta directamente abajo de ella
+                if (errorMsg.toLowerCase().includes("actual")) {
+                    setErrors((prev) => ({ ...prev, passwordActual: errorMsg }));
+                } else {
+                    setErrors((prev) => ({ ...prev, passwordNueva: errorMsg }));
+                }
             }
         }
     };
 
     return (
         <div className="reset-container">
+            {/* Montamos el Toaster pasivo esperando el success */}
+            <Toaster />
+
             <div className="reset-card">
                 <button
                     type="button"
@@ -83,63 +134,76 @@ const CambiarPassword = () => {
 
                 <h1 className="reset-title">Cambiar Contraseña</h1>
 
-                <form onSubmit={handleSubmit} className="reset-form">
+                {/* noValidate apaga los tooltips nativos del navegador */}
+                <form onSubmit={handleSubmit} className="reset-form" noValidate>
 
                     {/* CAMPO CONTRASEÑA ACTUAL */}
-                    <div className="reset-input-wrapper">
-                        <input
-                            type={mostrarActual ? "text" : "password"}
-                            placeholder="Contraseña actual"
-                            value={passwordActual}
-                            onChange={(e) => setPasswordActual(e.target.value)}
-                            className="reset-input"
-                            required
-                        />
-                        <button
-                            type="button"
-                            className="reset-eye-btn"
-                            onClick={() => setMostrarActual(!mostrarActual)}
-                        >
-                            {mostrarActual ? <FaEyeSlash /> : <FaEye />}
-                        </button>
+                    <div className="reset-input-group">
+                        <div className="reset-input-wrapper">
+                            <input
+                                type={mostrarActual ? "text" : "password"}
+                                placeholder="Contraseña actual"
+                                value={passwordActual}
+                                onChange={(e) => handleActualChange(e.target.value)}
+                                className={`reset-input ${errors.passwordActual ? "invalid-border" : ""}`}
+                            />
+                            <button
+                                type="button"
+                                className="reset-eye-btn"
+                                onClick={() => setMostrarActual(!mostrarActual)}
+                            >
+                                {mostrarActual ? <FaEyeSlash /> : <FaEye />}
+                            </button>
+                        </div>
+                        {errors.passwordActual && (
+                            <p className="reset-error-message">{errors.passwordActual}</p>
+                        )}
                     </div>
 
                     {/* CAMPO NUEVA CONTRASEÑA */}
-                    <div className="reset-input-wrapper">
-                        <input
-                            type={mostrarNueva ? "text" : "password"}
-                            placeholder="Nueva contraseña"
-                            value={passwordNueva}
-                            onChange={(e) => setPasswordNueva(e.target.value)}
-                            className="reset-input"
-                            required
-                        />
-                        <button
-                            type="button"
-                            className="reset-eye-btn"
-                            onClick={() => setMostrarNueva(!mostrarNueva)}
-                        >
-                            {mostrarNueva ? <FaEyeSlash /> : <FaEye />}
-                        </button>
+                    <div className="reset-input-group">
+                        <div className="reset-input-wrapper">
+                            <input
+                                type={mostrarNueva ? "text" : "password"}
+                                placeholder="Nueva contraseña"
+                                value={passwordNueva}
+                                onChange={(e) => handleNuevaChange(e.target.value)}
+                                className={`reset-input ${errors.passwordNueva ? "invalid-border" : ""}`}
+                            />
+                            <button
+                                type="button"
+                                className="reset-eye-btn"
+                                onClick={() => setMostrarNueva(!mostrarNueva)}
+                            >
+                                {mostrarNueva ? <FaEyeSlash /> : <FaEye />}
+                            </button>
+                        </div>
+                        {errors.passwordNueva && (
+                            <p className="reset-error-message">{errors.passwordNueva}</p>
+                        )}
                     </div>
 
                     {/* CAMPO CONFIRMAR NUEVA CONTRASEÑA */}
-                    <div className="reset-input-wrapper">
-                        <input
-                            type={mostrarConfirmar ? "text" : "password"}
-                            placeholder="Confirmar nueva contraseña"
-                            value={confirmarPassword}
-                            onChange={(e) => setConfirmarPassword(e.target.value)}
-                            className="reset-input"
-                            required
-                        />
-                        <button
-                            type="button"
-                            className="reset-eye-btn"
-                            onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
-                        >
-                            {mostrarConfirmar ? <FaEyeSlash /> : <FaEye />}
-                        </button>
+                    <div className="reset-input-group">
+                        <div className="reset-input-wrapper">
+                            <input
+                                type={mostrarConfirmar ? "text" : "password"}
+                                placeholder="Confirmar nueva contraseña"
+                                value={confirmarPassword}
+                                onChange={(e) => handleConfirmarChange(e.target.value)}
+                                className={`reset-input ${errors.confirmarPassword ? "invalid-border" : ""}`}
+                            />
+                            <button
+                                type="button"
+                                className="reset-eye-btn"
+                                onClick={() => setMostrarConfirmar(!mostrarConfirmar)}
+                            >
+                                {mostrarConfirmar ? <FaEyeSlash /> : <FaEye />}
+                            </button>
+                        </div>
+                        {errors.confirmarPassword && (
+                            <p className="reset-error-message">{errors.confirmarPassword}</p>
+                        )}
                     </div>
 
                     <button type="submit" className="reset-button">
