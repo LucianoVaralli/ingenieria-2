@@ -1,46 +1,39 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import React, { useState } from 'react';
-import { Toaster } from 'react-hot-toast';
-
-import Login from './pages/Login';
-import Home from './pages/Home';
+import Login from './pages/Login'; 
+import Home from './pages/Home'; 
 import Registro from './pages/Registro';
 import Navbar from './components/Navbar';
-import ReservaMembresia from './pages/ReservaMembresia';
-import MisReservas from './pages/MisReservas';
-import Clases from './pages/Clases';
-import Pago from './pages/Pago';
+import ReservaMembresia from './pages/ReservaMembresia';   
+import MisReservas from './pages/MisReservas';             
+import Clases from './pages/Clases';       
+import Pago from './pages/Pago';           
 import Perfil from './pages/Perfil';
-import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CrearClase from "./pages/admin/CrearClase";
 import ListaClasesAdmin from "./pages/admin/ListaClasesAdmin";
 import EditarCapacidad from "./pages/admin/EditarCapacidad";
-import ResetPassword from './pages/ResetPassword';
+import { Navigate } from "react-router-dom";
 import ReservaIndividual from './pages/ReservaIndividual';
 import Notificaciones from "./pages/Notificaciones";
 import HistorialPagos from './pages/HistorialPagos';
 import CambiarPassword from "./pages/CambiarPassword";
+import ResetPassword from './pages/ResetPassword';
+import ForgotPassword from './pages/ForgotPassword';
 
-// 1. Sub-componente para usar useLocation
+// 🌟 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
   const location = useLocation();
 
-  // 2. Definimos en qué rutas NO queremos que aparezca el Navbar común
+  // 🌟 2. Definimos en qué rutas NO queremos que aparezca el Navbar común, aca se define en todos los paneles de admin
   const esRutaAdmin = location.pathname.startsWith("/admin");
-
-  // ✅ MODIFICADO: Sacamos "/login" de acá para que SÍ muestre el Navbar con el logo en el Login
-  const esRutaAuth = ["/registro", "/forgot-password", "/reset-password"].includes(location.pathname);
 
   return (
     <>
-      {/* Mensajes flotantes estéticos */}
-      <Toaster position="top-right" reverseOrder={false} />
-
-      {/* 3. Condición para mostrar el Navbar */}
-      {!esRutaAdmin && !esRutaAuth && (
-        <Navbar token={token} setToken={setToken} />
-      )}
+      {/* 🌟 3. Condición: Si la ruta actual NO está en la lista, mostramos el Navbar */}
+      {!esRutaAdmin && (
+    <Navbar token={token} setToken={setToken} />
+    )}
 
       <Routes>
         {/* Rutas Públicas y de Clientes */}
@@ -83,7 +76,7 @@ function AppContent({ token, setToken }) {
   );
 }
 
-// 4. App principal
+// 4. Tu App principal ahora solo envuelve todo con el Router
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
 

@@ -574,10 +574,8 @@ def crear_reserva_individual(
         tipo=TipoReserva.Individual.value,
         estado="pendiente_pago",
         fecha_clase=datos.fecha_clase,
-
         monto_total=clase.precio_individual,
         monto_pagado=monto,
-
         tipo_pago=datos.tipo_pago
     )
 
@@ -771,13 +769,10 @@ async def pagar_reserva_individual(
     # ─────────────────────────────────────────────
 
     reserva.estado = "confirmada"
-
     reserva.tarjeta_ultimos = tarjeta.numero
-
     reserva.tipo_tarjeta = tarjeta.tipo
-
     tarjeta.saldo -= reserva.monto_pagado
-
+    
     db.commit()
 
     try:

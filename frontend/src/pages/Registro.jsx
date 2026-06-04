@@ -21,6 +21,13 @@ const Registro = () => {
     const navigate = useNavigate();
     const [successMessage, setSuccessMessage] = useState('');
 
+    const password = formData.password;
+    const reqs = {
+        longitud: password.length >= 6 && password.length <= 16,
+        mayuscula: /[A-Z]/.test(password),
+        especial: /[!@#$%^&*]/.test(password)
+    };
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         // Opcional: limpiar el error del campo cuando el usuario empieza a escribir de nuevo
@@ -83,11 +90,10 @@ const Registro = () => {
         }
 
         // Validación de Contraseña
-        const passRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.{6,16})/;
         if (!formData.password) {
             tempErrors.password = "La contraseña es obligatoria.";
-        } else if (!passRegex.test(formData.password)) {
-            tempErrors.password = "Debe tener 6-16 caracteres, una mayúscula y un especial.";
+        } else if (!reqs.longitud || !reqs.mayuscula || !reqs.especial) {
+            tempErrors.password = "Debés cumplir con todos los requisitos de seguridad.";
         }
 
         // Confirmar Contraseña
@@ -271,48 +277,41 @@ const Registro = () => {
                     </div>
                     
                     {/* contraseña */}
-                    <div className="registro-row">
-                        <div className="registro-field">
-                            <label className="registro-label">Contraseña</label>
-                            <div className="password-wrapper">
-                                <input
-                                    name="password"
-                                    type={showPassword ? "text" : "password"}
-                                    className={`registro-input ${errors.password ? 'error' : ''}`}
-                                    placeholder="Mín. 6 car., 1 mayúscula y 1 especial"
-                                    onChange={handleChange}
-                                />
-                                <button 
-                                    type="button" 
-                                    className="toggle-password" 
-                                    onClick={() => setShowPassword(!showPassword)}
-                                >
-                                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
-                                </button>
-                            </div>
-                            {errors.password && <span className="error-message">{errors.password}</span>}
+                    <div className="registro-field">
+                        <label className="registro-label">Contraseña</label>
+                        <div className="password-wrapper">
+                            <input
+                                name="password"
+                                type={showPassword ? "text" : "password"}
+                                className={`registro-input ${errors.password ? 'error' : ''}`}
+                                placeholder="Ingresá tu contraseña"
+                                onChange={handleChange}
+                            />
+                            <button 
+                                type="button" 
+                                className="toggle-password" 
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                            </button>
                         </div>
                         
-                        <div className="registro-field">
-                            <label className="registro-label">Confirmar Contraseña</label>
-                            <div className="password-wrapper">
-                                <input
-                                    name="confirmar_password"
-                                    type={showConfirmPassword ? "text" : "password"}
-                                    className={`registro-input ${errors.confirmar_password ? 'error' : ''}`}
-                                    placeholder="Repetí tu contraseña"
-                                    onChange={handleChange}
-                                />
-                                <button 
-                                    type="button" 
-                                    className="toggle-password" 
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                >
-                                    {showConfirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
-                                </button>
+                        {/* LISTA DINÁMICA DE REQUISITOS (Aparece solo si hay texto escrito) */}
+                        {formData.password && (
+                            <div className="password-requirements-list" style={{ marginTop: '8px', fontSize: '13px' }}>
+                                <div style={{ color: reqs.longitud ? '#2e7d32' : '#d32f2f', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+                                    <span>{reqs.longitud ? '✓' : '○'}</span> De 6 a 16 caracteres.
+                                </div>
+                                <div style={{ color: reqs.mayuscula ? '#2e7d32' : '#d32f2f', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+                                    <span>{reqs.mayuscula ? '✓' : '○'}</span> Al menos una letra mayúscula.
+                                </div>
+                                <div style={{ color: reqs.especial ? '#2e7d32' : '#d32f2f', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span>{reqs.especial ? '✓' : '○'}</span> Un carácter especial (!@#$%^&*).
+                                </div>
                             </div>
-                            {errors.confirmar_password && <span className="error-message">{errors.confirmar_password}</span>}
-                        </div>
+                        )}
+                        
+                        {errors.password && <span className="error-message">{errors.password}</span>}
                     </div>
                     
                     {/* apto fisico */}

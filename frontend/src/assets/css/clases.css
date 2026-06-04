@@ -570,3 +570,9 @@
   border-radius: 50%;
   display: inline-block;
 }
+
+.cupo-cargando {
+    color: #aaa;
+    font-style: italic;
+    font-size: 0.9em;
+}

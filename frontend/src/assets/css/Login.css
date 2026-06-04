@@ -351,22 +351,11 @@
 }
 
 .login-error {
-<<<<<<< HEAD
     margin-top: 12px;
     color: #ff4a4a;         /* El mismo rojo exacto del registro */
     font-size: 11px;        /* Más chico y sutil */
     font-style: italic;     /* Estilo itálico idéntico */
     text-align: center;     /* Centrado abajo del botón */
-=======
-  margin-top: 14px;
-  color: #ff4d4f;
-  background: rgba(255, 77, 79, 0.1);
-  border: 1px solid rgba(255, 77, 79, 0.3);
-  padding: 10px;
-  border-radius: 10px;
-  text-align: center;
-  font-size: 14px;
->>>>>>> main
 }
 
 .password-wrapper {

@@ -165,12 +165,34 @@ const Clases = ({ token }) => {
         return aplicarFiltros(clasesDia);
     })();
 
+    // ── Cupos reales por fecha ──
+    const [cuposReales, setCuposReales] = useState({});  // { claseId: { disponibles, hay_cupo } }
+
     const handleElegirClase = (clase) => {
-        // Si es profesor, puede ver el detalle pero no reservar
         if (esProfesor) return;
         setClaseElegida(clase);
         setModoReserva(null);
     };
+
+    // Consulta cupos de todas las clases del día seleccionado
+    useEffect(() => {
+        if (!diaSelec || clasesDelDiaFiltradas.length === 0) return;
+
+        const mm = String(mes + 1).padStart(2, '0');
+        const dd = String(diaSelec).padStart(2, '0');
+        const fechaDia = `${anio}-${mm}-${dd}`;
+
+        setCuposReales({}); // limpiar cupos del día anterior
+
+        clasesDelDiaFiltradas.forEach(async (clase) => {
+            try {
+                const res = await api.get(`/clases/${clase.id}/cupo-disponible?fecha=${fechaDia}`);
+                setCuposReales(prev => ({ ...prev, [clase.id]: res.data }));
+            } catch (err) {
+                console.error('Error obteniendo cupos para clase', clase.id, err);
+            }
+        });
+    }, [diaSelec, anio, mes]);
 
     const handleReservar = () => {
         if (!claseElegida || !modoReserva) return;
@@ -414,9 +436,19 @@ const Clases = ({ token }) => {
                                 <p>Duración: <strong>{clase.duracion} min</strong></p>
                                 <p>Finaliza a las: <strong>{calcularHoraFin(clase.horario, clase.duracion)}</strong></p>
                                 <p>Precio: <strong>${clase.precio_individual}</strong></p>
-                                <p className={clase.cupo > 0 ? 'cupo-ok' : 'cupo-lleno'}>
-                                    {clase.cupo > 0 ? `Cupos disponibles: ${clase.cupo}` : 'Sin cupos'}
-                                </p>
+                                {(() => {
+                                    const info = cuposReales[clase.id];
+                                    if (!info) {
+                                        return <p className="cupo-cargando">Consultando cupos...</p>;
+                                    }
+                                    return (
+                                        <p className={info.hay_cupo ? 'cupo-ok' : 'cupo-lleno'}>
+                                            {info.hay_cupo
+                                                ? `Cupos disponibles: ${info.disponibles}`
+                                                : 'Sin cupos — podés anotarte en lista de espera'}
+                                        </p>
+                                    );
+                                })()}
                             </div>
                         ))
                     )}
@@ -450,7 +482,7 @@ const Clases = ({ token }) => {
                     {/* Mensaje informativo para el profesor */}
                     {esProfesor && (
                         <p className="profesor-aviso">
-                            👁️ Estás viendo las clases en modo consulta.
+                            Estás viendo las clases en modo consulta.
                         </p>
                     )}
                 </div>
