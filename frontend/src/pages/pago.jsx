@@ -230,7 +230,7 @@ const Pago = () => {
                                             style={{ WebkitTextSecurity: 'disc' }}
                                             placeholder="•••"
                                             value={cvv}
-                                            onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                            onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
                                         />
                                     </div>
 

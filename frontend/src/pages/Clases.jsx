@@ -33,6 +33,26 @@ const Clases = ({ token }) => {
     const navigate = useNavigate();
     const hoy      = new Date();
 
+    // ── Usuario logueado ──
+    const [user, setUser] = useState(null);
+    const [userCargado, setUserCargado] = useState(false);
+
+    // Mientras no cargó, bloqueamos (asumimos profesor para evitar gap de timing)
+    const esProfesor = !userCargado || user?.rol?.toLowerCase() === 'profesor';
+
+    useEffect(() => {
+        // No depende del prop token — api.js manda el token del localStorage automáticamente
+        api.get('/socios/me')
+            .then(res => {
+                setUser(res.data);
+                setUserCargado(true);
+            })
+            .catch(() => {
+                // Sin sesión activa: userCargado=true, user=null → esProfesor=false
+                setUserCargado(true);
+            });
+    }, []);
+
     // ── Calendario ──
     const [anio, setAnio] = useState(hoy.getFullYear());
     const [mes, setMes]   = useState(hoy.getMonth());
@@ -145,7 +165,34 @@ const Clases = ({ token }) => {
         return aplicarFiltros(clasesDia);
     })();
 
-    const handleElegirClase  = (clase) => { setClaseElegida(clase); setModoReserva(null); };
+    // ── Cupos reales por fecha ──
+    const [cuposReales, setCuposReales] = useState({});  // { claseId: { disponibles, hay_cupo } }
+
+    const handleElegirClase = (clase) => {
+        if (esProfesor) return;
+        setClaseElegida(clase);
+        setModoReserva(null);
+    };
+
+    // Consulta cupos de todas las clases del día seleccionado
+    useEffect(() => {
+        if (!diaSelec || clasesDelDiaFiltradas.length === 0) return;
+
+        const mm = String(mes + 1).padStart(2, '0');
+        const dd = String(diaSelec).padStart(2, '0');
+        const fechaDia = `${anio}-${mm}-${dd}`;
+
+        setCuposReales({}); // limpiar cupos del día anterior
+
+        clasesDelDiaFiltradas.forEach(async (clase) => {
+            try {
+                const res = await api.get(`/clases/${clase.id}/cupo-disponible?fecha=${fechaDia}`);
+                setCuposReales(prev => ({ ...prev, [clase.id]: res.data }));
+            } catch (err) {
+                console.error('Error obteniendo cupos para clase', clase.id, err);
+            }
+        });
+    }, [diaSelec, anio, mes]);
 
     const handleReservar = () => {
         if (!claseElegida || !modoReserva) return;
@@ -198,9 +245,7 @@ const Clases = ({ token }) => {
             };
             const diaDB = MAP_NUM_A_DB[fechaCelda.getDay()];
         
-            // filtro inline corregido para usar String() de forma uniforme
             const tieneClases = todasClases.some(c => {
-                // NORMALIZAMOS EL DÍA ACÁ TAMBIÉN (Saca tildes, mayúsculas y espacios invisibles)
                 const diaClaseNormalizado = (c.dia || '').toLowerCase()
                     .normalize("NFD")
                     .replace(/[\u0300-\u036f]/g, '')
@@ -235,7 +280,6 @@ const Clases = ({ token }) => {
                     }}
                 >
                     {d}
-                    {/* Renderizado condicional del puntito verde */}
                     {tieneClases && !esPasado && <span className="cal-dot" />}
                 </td>
             );
@@ -248,7 +292,6 @@ const Clases = ({ token }) => {
         filas.push(<tr key={i}>{celdas.slice(i, i + 7)}</tr>);
     }
 
-    // CORREGIDO: Comparación segura usando String() en vez de parseInt() para evitar desajustes de tipo
     const chipsActivos = [
         ...filtroDisc.map(d => ({ label: d, quitar: () => toggleChip(d, filtroDisc, setFiltroDisc) })),
         ...filtroHorario.map(h => ({ label: h, quitar: () => toggleChip(h, filtroHorario, setFiltroHorario) })),
@@ -384,7 +427,7 @@ const Clases = ({ token }) => {
                         clasesDelDiaFiltradas.map(clase => (
                             <div
                                 key={clase.id}
-                                className={`clase-card ${claseElegida?.id === clase.id ? 'elegida' : ''}`}
+                                className={`clase-card ${claseElegida?.id === clase.id ? 'elegida' : ''} ${esProfesor ? 'clase-card--solo-vista' : ''}`}
                                 onClick={() => handleElegirClase(clase)}
                             >
                                 <p className="clase-nombre">{capitalizar(clase.actividad)}</p>
@@ -393,14 +436,25 @@ const Clases = ({ token }) => {
                                 <p>Duración: <strong>{clase.duracion} min</strong></p>
                                 <p>Finaliza a las: <strong>{calcularHoraFin(clase.horario, clase.duracion)}</strong></p>
                                 <p>Precio: <strong>${clase.precio_individual}</strong></p>
-                                <p className={clase.cupo > 0 ? 'cupo-ok' : 'cupo-lleno'}>
-                                    {clase.cupo > 0 ? `Cupos disponibles: ${clase.cupo}` : 'Sin cupos'}
-                                </p>
+                                {(() => {
+                                    const info = cuposReales[clase.id];
+                                    if (!info) {
+                                        return <p className="cupo-cargando">Consultando cupos...</p>;
+                                    }
+                                    return (
+                                        <p className={info.hay_cupo ? 'cupo-ok' : 'cupo-lleno'}>
+                                            {info.hay_cupo
+                                                ? `Cupos disponibles: ${info.disponibles}`
+                                                : 'Sin cupos — podés anotarte en lista de espera'}
+                                        </p>
+                                    );
+                                })()}
                             </div>
                         ))
                     )}
 
-                    {claseElegida && (
+                    {/* Solo se muestra si NO es profesor */}
+                    {claseElegida && !esProfesor && (
                         <div className="reserva-opciones">
                             <p className="reserva-titulo">
                                 Reservar <strong>{capitalizar(claseElegida.actividad)}</strong> a las {formatearHora(claseElegida.horario)}:
@@ -423,6 +477,13 @@ const Clases = ({ token }) => {
                                 Reservar
                             </button>
                         </div>
+                    )}
+
+                    {/* Mensaje informativo para el profesor */}
+                    {esProfesor && (
+                        <p className="profesor-aviso">
+                            Estás viendo las clases en modo consulta.
+                        </p>
                     )}
                 </div>
             )}

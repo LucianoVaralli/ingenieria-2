@@ -24,16 +24,14 @@ const CrearClase = () => {
         actividad: "", dia: "", horario: "",
         profesor_id: "", cupo: "", duracion: "", precio_individual: ""
     });
-    const [errores,       setErrores]       = useState({});
-    const [errorBackend,  setErrorBackend]  = useState("");
-    const [mensajeExito,  setMensajeExito]  = useState("");
-    const [profesores, setProfesores] = useState([]);
-    const [horariosSugeridos, setHorariosSugeridos] = useState([]);
+    const [errores,      setErrores]      = useState({});
+    const [errorBackend, setErrorBackend] = useState("");
+    const [mensajeExito, setMensajeExito] = useState("");
+    const [profesores,   setProfesores]   = useState([]);
+    const [horariosSugeridos,  setHorariosSugeridos]  = useState([]);
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
-    useEffect(() => {
-        cargarProfesores();
-    }, []);
+    useEffect(() => { cargarProfesores(); }, []);
 
     const cargarProfesores = async () => {
         try {
@@ -44,58 +42,51 @@ const CrearClase = () => {
         }
     };
 
+    // Solo limpia el error del campo que se edita, no toca los demás
     const handleChange = (e) => {
         setErrorBackend("");
         const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
+        setFormData(prev => ({ ...prev, [name]: value }));
+        setErrores(prev => {
+            const copia = { ...prev };
+            delete copia[name];
+            return copia;
+        });
+    };
 
-        let nuevosErrores = { ...errores };
+    // Acumula TODOS los errores antes de retornar
+    const validate = () => {
+        const temp = {};
 
-        // Si el usuario vuelve a escribir en un campo con error, limpiamos ese error específico
-        if (nuevosErrores[name]) {
-            delete nuevosErrores[name];
-        }
+        if (!formData.actividad)   temp.actividad   = "Debe seleccionar una actividad";
+        if (!formData.dia)         temp.dia         = "Debe seleccionar un día";
+        if (!formData.horario)     temp.horario     = "Debe ingresar un horario";
+        if (!formData.profesor_id) temp.profesor_id = "Debe seleccionar un profesor";
 
-        if (name === "cupo") {
-            if (!value) nuevosErrores.cupo = "Debe ingresar un cupo";
-            else if (isNaN(value)) nuevosErrores.cupo = "El cupo debe ser numérico";
-            else if (Number(value) <= 0) nuevosErrores.cupo = "El cupo debe ser mayor a 0";
-            else delete nuevosErrores.cupo;
-        }
-        if (name === "precio_individual") {
-            if (!value) nuevosErrores.precio_individual = "Debe ingresar un precio";
-            else if (isNaN(value)) nuevosErrores.precio_individual = "El precio debe ser numérico";
-            else if (Number(value) <= 0) nuevosErrores.precio_individual = "El precio debe ser mayor a 0";
-            else delete nuevosErrores.precio_individual;
-        }
-        
-        // NOTA: Se eliminó por completo el bloque "if (name === 'duracion')" de aquí
-        
-        setErrores(nuevosErrores);
+        if (!formData.cupo)                        temp.cupo = "Debe ingresar un cupo";
+        else if (isNaN(formData.cupo))             temp.cupo = "El cupo debe ser numérico";
+        else if (Number(formData.cupo) <= 0)       temp.cupo = "El cupo debe ser mayor a 0";
+
+        const dur = Number(formData.duracion);
+        if (!formData.duracion)                    temp.duracion = "Debe ingresar una duración";
+        else if (isNaN(dur))                       temp.duracion = "La duración debe ser numérica";
+        else if (dur < 30 || dur > 240)            temp.duracion = "La duración debe ser de mínimo 30 min y máximo 4 horas";
+
+        if (!formData.precio_individual)                          temp.precio_individual = "Debe ingresar un precio";
+        else if (isNaN(formData.precio_individual))               temp.precio_individual = "El precio debe ser numérico";
+        else if (Number(formData.precio_individual) <= 0)         temp.precio_individual = "El precio debe ser mayor a 0";
+
+        setErrores(temp);
+        return Object.keys(temp).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorBackend("");
         setMensajeExito("");
-        
-        // Validaciones de duración al presionar el botón
-        const dur = Number(formData.duracion);
-        if (!formData.duracion) {
-            setErrores(prev => ({ ...prev, duracion: "Debe ingresar una duración" }));
-            return;
-        }
-        if (isNaN(dur)) {
-            setErrores(prev => ({ ...prev, duracion: "La duración debe ser numérica" }));
-            return;
-        }
-        if (dur < 30 || dur > 240) {
-            setErrores(prev => ({ 
-                ...prev, 
-                duracion: "La duración de la clase es de mínimo 30 minutos y máximo 4 horas" 
-            }));
-            return;
-        }
+
+        // Muestra TODOS los errores frontend de una sola vez
+        if (!validate()) return;
 
         try {
             await api.post("/clases/crear", formData);
@@ -103,60 +94,40 @@ const CrearClase = () => {
             setTimeout(() => setMensajeExito(""), 3000);
             setFormData({ actividad: "", dia: "", horario: "", profesor_id: "", cupo: "", duracion: "", precio_individual: "" });
         } catch (error) {
+            const data   = error.response?.data;
+            const detail = data?.detail;
 
-            const data = error.response?.data;
-
-            // si viene con sugerencias del backend
-            if (data?.horarios_libres) {
-                setHorariosSugeridos(data.horarios_libres || []);
-                setMostrarSugerencias(true);
-
-                setErrorBackend(data.error || "No hay disponibilidad en ese horario, pero te mostramos alternativas");
+            // Errores múltiples del backend → objeto { errores: { campo: msg } }
+            if (detail?.errores) {
+                setErrores(prev => ({ ...prev, ...detail.errores }));
                 return;
             }
 
-            // Manejo de errores de negocio del backend (ej: Profesor inexistente, horario ocupado, etc.)
-            const detail = error.response?.data?.detail || "Error al crear clase";
-            
-            if (detail.toLowerCase().includes("profesor")) {
-                setErrores(prev => ({ ...prev, profesor_id: detail }));
+            // Sugerencias de horario por capacidad excedida
+            if (detail?.horarios_libres || data?.horarios_libres) {
+                const libre = detail ?? data;
+                setHorariosSugeridos(libre.horarios_libres || []);
+                setMostrarSugerencias(true);
+                setErrores(prev => ({ ...prev, horario: libre.error || "No hay capacidad en ese horario" })); // ← cambiada
+                return;
+            }
+
+            // Error simple de string (profesor con horario ocupado, capacidad, etc.)
+            if (typeof detail === "string") {
+                if (detail.toLowerCase().includes("profesor")) {
+                    setErrores(prev => ({ ...prev, profesor_id: detail }));
+                } else {
+                    setErrorBackend(detail);
+                }
             } else {
-                setErrorBackend(detail);
+                setErrorBackend("Error al crear clase");
             }
         }
     };
-
-    const pedirSugerencias = async () => {
-        try {
-            const res = await api.get("/gimnasio/sugerencias", {
-                params: {
-                    dia: formData.dia,
-                    duracion: formData.duracion
-                }
-            });
-
-            setHorariosSugeridos(res.data || []);
-            setMostrarSugerencias(true);
-
-        } catch (error) {
-            console.error("Error sugerencias:", error);
-        }
-    };
-
-    const deshabilitado =
-        !formData.actividad ||
-        !formData.dia ||
-        !formData.horario ||
-        !formData.profesor_id ||
-        !formData.cupo ||
-        !formData.duracion ||
-        !formData.precio_individual;
-
 
     return (
         <AdminLayout>
             <div className="crear-clase-page">
-
                 <div className="crear-clase-header">
                     <div className="crear-clase-label">Gestión</div>
                     <h1 className="crear-clase-titulo">Crear Clase</h1>
@@ -164,53 +135,49 @@ const CrearClase = () => {
                 </div>
 
                 <div className="crear-clase-card">
-
                     {mensajeExito && <p className="crear-clase-mensaje-exito">{mensajeExito}</p>}
                     {errorBackend && <p className="crear-clase-error-backend">{errorBackend}</p>}
 
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} noValidate>
 
                         {/* Actividad y Día */}
                         <div className="crear-clase-row">
                             <div className="crear-clase-field">
                                 <label className="crear-clase-field-label">Actividad</label>
-                                <select name="actividad" value={formData.actividad} onChange={handleChange} className="crear-clase-select">
+                                <select name="actividad" value={formData.actividad} onChange={handleChange} className={`crear-clase-select ${errores.actividad ? "error" : ""}`}>
                                     <option value="">Seleccione actividad</option>
                                     {actividades.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                                 </select>
+                                {errores.actividad && <p className="crear-clase-error-field">{errores.actividad}</p>}
                             </div>
                             <div className="crear-clase-field">
                                 <label className="crear-clase-field-label">Día</label>
-                                <select name="dia" value={formData.dia} onChange={handleChange} className="crear-clase-select">
+                                <select name="dia" value={formData.dia} onChange={handleChange} className={`crear-clase-select ${errores.dia ? "error" : ""}`}>
                                     <option value="">Seleccione día</option>
                                     {dias.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                                 </select>
+                                {errores.dia && <p className="crear-clase-error-field">{errores.dia}</p>}
                             </div>
                         </div>
 
-                        {/* Horario y Email */}
+                        {/* Horario y Profesor */}
                         <div className="crear-clase-row">
                             <div className="crear-clase-field">
                                 <label className="crear-clase-field-label">Horario</label>
-                                <input type="time" name="horario" value={formData.horario} onChange={handleChange} className="crear-clase-input" />
+                                <input type="time" name="horario" value={formData.horario} onChange={handleChange} className={`crear-clase-input ${errores.horario ? "error" : ""}`} />
+                                {errores.horario && <p className="crear-clase-error-field">{errores.horario}</p>}
                             </div>
                             <div className="crear-clase-field">
                                 <label className="crear-clase-field-label">Profesor</label>
-
-                                <select
-                                    name="profesor_id"
-                                    value={formData.profesor_id}
-                                    onChange={handleChange}
-                                    className="crear-clase-select"
-                                >
+                                <select name="profesor_id" value={formData.profesor_id} onChange={handleChange} className={`crear-clase-select ${errores.profesor_id ? "error" : ""}`}>
                                     <option value="">Seleccione profesor</option>
-
-                                    {profesores.map((p) => (
+                                    {profesores.map(p => (
                                         <option key={p.id} value={p.id}>
                                             {p.email} ({p.nombre} {p.apellido})
                                         </option>
                                     ))}
                                 </select>
+                                {errores.profesor_id && <p className="crear-clase-error-field">{errores.profesor_id}</p>}
                             </div>
                         </div>
 
@@ -218,12 +185,12 @@ const CrearClase = () => {
                         <div className="crear-clase-row">
                             <div className="crear-clase-field">
                                 <label className="crear-clase-field-label">Cupo</label>
-                                <input type="number" name="cupo" placeholder="Ej: 20" value={formData.cupo} onChange={handleChange} className={`crear-clase-input ${errores.cupo ? 'error' : ''}`} />
+                                <input type="number" name="cupo" placeholder="Ej: 20" value={formData.cupo} onChange={handleChange} className={`crear-clase-input ${errores.cupo ? "error" : ""}`} />
                                 {errores.cupo && <p className="crear-clase-error-field">{errores.cupo}</p>}
                             </div>
                             <div className="crear-clase-field">
                                 <label className="crear-clase-field-label">Duración (minutos)</label>
-                                <input type="number" name="duracion" placeholder="Ej: 60" value={formData.duracion} onChange={handleChange} className={`crear-clase-input ${errores.duracion ? 'error' : ''}`} />
+                                <input type="number" name="duracion" placeholder="Ej: 60" value={formData.duracion} onChange={handleChange} className={`crear-clase-input ${errores.duracion ? "error" : ""}`} />
                                 {errores.duracion && <p className="crear-clase-error-field">{errores.duracion}</p>}
                             </div>
                         </div>
@@ -231,24 +198,20 @@ const CrearClase = () => {
                         {/* Precio */}
                         <div className="crear-clase-field">
                             <label className="crear-clase-field-label">Precio Individual ($)</label>
-                            <input type="number" name="precio_individual" placeholder="Ej: 1500" value={formData.precio_individual} onChange={handleChange} className={`crear-clase-input ${errores.precio_individual ? 'error' : ''}`} />
+                            <input type="number" name="precio_individual" placeholder="Ej: 1500" value={formData.precio_individual} onChange={handleChange} className={`crear-clase-input ${errores.precio_individual ? "error" : ""}`} />
                             {errores.precio_individual && <p className="crear-clase-error-field">{errores.precio_individual}</p>}
                         </div>
 
                         {mostrarSugerencias && horariosSugeridos.length > 0 && (
                             <div className="sugerencias-box">
                                 <h4>Horarios sugeridos</h4>
-
                                 {horariosSugeridos.map((h, index) => (
                                     <button
                                         key={index}
                                         type="button"
                                         className="sugerencia-btn"
                                         onClick={() => {
-                                            setFormData({
-                                                ...formData,
-                                                horario: h.desde
-                                            });
+                                            setFormData(prev => ({ ...prev, horario: h.desde }));
                                             setMostrarSugerencias(false);
                                         }}
                                     >
@@ -258,7 +221,7 @@ const CrearClase = () => {
                             </div>
                         )}
 
-                        <button type="submit" className="crear-clase-btn" disabled={deshabilitado}>
+                        <button type="submit" className="crear-clase-btn">
                             Crear Clase
                         </button>
 

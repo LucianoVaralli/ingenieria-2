@@ -384,6 +384,27 @@
     background: #e74c3c;
 }
 
+.password-requirements-list {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-left: 5px;
+}
+
+/* Cuando cumple el requisito (Verde Sportify) */
+.req-valida {
+    color: #10b981; 
+    transition: color 0.3s ease;
+}
+
+/* Cuando todavía no lo cumple (Gris o Rojo sutil) */
+.req-invalida {
+    color: #9ca3af; 
+    transition: color 0.3s ease;
+}
+
 @keyframes popIn {
     from {
         transform: translate(-50%, -50%) scale(0.8);

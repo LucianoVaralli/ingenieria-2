@@ -544,6 +544,31 @@ def obtener_calendario(
 
     return calendario_eventos
 
+@router.get("/{clase_id}/cupo-disponible")
+def cupo_disponible(
+    clase_id: int,
+    fecha: str,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(Clase.id == clase_id).first()
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
+
+    ocupadas = db.query(Reserva).filter(
+        Reserva.clase_id == clase_id,
+        Reserva.fecha_clase == fecha,
+        Reserva.estado.in_(["confirmada", "pendiente_pago"])
+    ).count()
+
+    disponibles = clase.cupo - ocupadas
+
+    return {
+        "cupo_maximo": clase.cupo,
+        "ocupadas": ocupadas,
+        "disponibles": max(disponibles, 0),
+        "hay_cupo": disponibles > 0
+    }
+
 @router.put("/cambiar-rol/{socio_id}")
 def cambiar_rol(socio_id: int, rol: str, db: Session = Depends(get_db)):
     socio = db.query(Socio).filter(Socio.id == socio_id).first()
