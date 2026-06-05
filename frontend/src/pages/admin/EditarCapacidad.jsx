@@ -66,6 +66,7 @@ function EditarCapacidad() {
             setErrorBackend("La capacidad debe ser menor a 4000");
             return;
         }*/}
+        
         try {
             const res = await api.put("/gimnasio/capacidad", { capacidad_total: Number(nuevaCapacidad) });
             setMensajeExito(res.data.mensaje);

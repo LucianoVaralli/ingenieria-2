@@ -13,8 +13,10 @@ from sqlalchemy import func
 from schemas.reserva_individual import (
     ReservaIndividualCreate,
     ConfirmarPagoIndividual
+    
 )
-
+import calendar
+from datetime import date, timedelta
 from models.tarjeta_simulada import TarjetaSimulada
 from services.auth import validar_membresia
 
@@ -329,6 +331,145 @@ def cancelar_reserva(
  
     return {"mensaje": "Reserva cancelada, cupo liberado"}
  
+
+def sumar_un_mes(fecha_original: date) -> date:
+    anio = fecha_original.year
+    mes = fecha_original.month + 1
+    if mes > 12:
+        mes = 1
+        anio += 1
+    # maximo dia posible en el nuevo mes (ej: 30 para junio)
+    dia = min(fecha_original.day, calendar.monthrange(anio, mes)[1])
+    return date(anio, mes, dia)
+
+@router.get("/membresia/preview-renovacion")
+def preview_renovacion(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    user = obtener_usuario_actual(token=token, db=db)
+    socio = db.query(Socio).filter(Socio.id == user.id).first()
+
+    hoy = date.today()
+    mes_anterior = hoy.month - 1 if hoy.month > 1 else 12
+    anio = hoy.year if hoy.month > 1 else hoy.year - 1
+
+    reservas = db.query(Reserva).filter(
+        Reserva.socio_id == socio.id,
+        Reserva.tipo == TipoReserva.Membresia.value,
+        func.extract('month', Reserva.fecha_clase) == mes_anterior,
+        func.extract('year', Reserva.fecha_clase) == anio,
+        Reserva.estado == "confirmada"
+    ).all()
+
+    # ⚠️ Alerta: Si esta query da vacía, tira 400 y frena la redirección en el Front
+    if not reservas:
+        raise HTTPException(400, "No se encontraron reservas confirmadas de membresía del mes anterior")
+
+    fechas_nuevas = []
+    for r in reservas:
+        # Usa la nueva función segura 🚀
+        fecha_nueva = sumar_un_mes(r.fecha_clase)
+        fechas_nuevas.append(str(fecha_nueva))
+
+    clase = db.query(Clase).filter(Clase.id == reservas[0].clase_id).first()
+    monto = clase.precio_individual * len(reservas) if clase else 0
+
+    return {
+        "monto": round(monto, 2),
+        "fechas_con_cupo": fechas_nuevas,
+        "fechas_sin_cupo": [],
+        "clase_id": reservas[0].clase_id,
+        "clase_info": {
+            "actividad": clase.actividad if clase else None,
+            "horario": str(clase.horario) if clase else None,
+        }
+    }
+
+@router.post("/membresia/renovar-pago")
+async def renovar_pago_membresia(
+    datos: ConfirmarPagoMembresia,  # reutilizamos el mismo schema
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    socio = db.query(Socio).filter(
+        Socio.id == obtener_usuario_actual(token=token, db=db).id
+    ).first()
+
+    # Buscar reservas del mes anterior para reactivar
+    hoy = date.today()
+    mes_anterior = hoy.month - 1 if hoy.month > 1 else 12
+    anio = hoy.year if hoy.month > 1 else hoy.year - 1
+
+    reservas_a_renovar = db.query(Reserva).filter(
+        Reserva.socio_id == socio.id,
+        Reserva.tipo == TipoReserva.Membresia.value,
+        func.extract('month', Reserva.fecha_clase) == mes_anterior,
+        func.extract('year', Reserva.fecha_clase) == anio,
+        Reserva.estado == "confirmada"
+    ).all()
+
+    if not reservas_a_renovar:
+        raise HTTPException(400, "No hay reservas del mes anterior para renovar")
+
+    # Cobrar tarjeta si hay monto
+    if datos.monto_total > 0 and datos.numero_tarjeta:
+        numero_limpio = datos.numero_tarjeta.replace(" ", "")
+        titular_normalizado = " ".join(datos.titular.split())
+
+        tarjeta = db.query(TarjetaSimulada).filter(
+            TarjetaSimulada.numero == numero_limpio,
+            func.lower(TarjetaSimulada.titular) == titular_normalizado.lower(),
+            TarjetaSimulada.cvv == datos.cvv,
+            TarjetaSimulada.fecha_vencimiento == datos.fecha_vencimiento
+        ).first()
+
+        if not tarjeta:
+            raise HTTPException(400, "Tarjeta inválida")
+        if not tarjeta.conexion_exitosa:
+            raise HTTPException(400, "Hay inconvenientes con la conexión al banco")
+        if tarjeta.saldo < datos.monto_total:
+            raise HTTPException(400, "Saldo insuficiente")
+
+        tarjeta.saldo -= datos.monto_total
+
+    # Crear nuevas reservas para el mes actual con las mismas clases
+    nuevas_fechas = []
+    for r in reservas_a_renovar:
+        # Sumar 1 mes a cada fecha
+        fecha_vieja = r.fecha_clase
+        try:
+            fecha_nueva = fecha_vieja.replace(month=fecha_vieja.month + 1)
+        except ValueError:
+            # Si el mes es diciembre
+            fecha_nueva = fecha_vieja.replace(year=fecha_vieja.year + 1, month=1)
+
+        nueva_reserva = Reserva(
+            socio_id=socio.id,
+            clase_id=r.clase_id,
+            tipo=TipoReserva.Membresia.value,
+            estado="confirmada",
+            fecha_clase=fecha_nueva,
+            monto_total=datos.monto_total,
+            monto_pagado=datos.monto_total,
+            es_recurrente=True,
+        )
+        db.add(nueva_reserva)
+        nuevas_fechas.append(str(fecha_nueva))
+
+    # Actualizar membresía del socio
+    socio.cuota_al_dia = True
+    socio.membresia_activa_hasta = date(anio if hoy.month < 12 else hoy.year + 1, 
+                                         hoy.month % 12 + 1, 1) - timedelta(days=1)
+
+    db.commit()
+
+    return {
+        "mensaje": "Membresía renovada",
+        "nuevas_fechas": nuevas_fechas,
+        "vigente_hasta": socio.membresia_activa_hasta
+    }
+
 # Endpoint 4: mis reservas
 @router.get("/mis-reservas")
 def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
