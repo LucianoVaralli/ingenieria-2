@@ -16,6 +16,8 @@ class ConfirmarPagoMembresia(BaseModel):
     titular: str
     cvv: str
     fecha_vencimiento: str
+    creditos_a_usar:     int         = 0
+    
 class AgregarListaEspera(BaseModel):
     clase_id:       int
     fechas_sin_cupo: list[str] 
