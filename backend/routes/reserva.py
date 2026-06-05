@@ -10,10 +10,16 @@ from services.auth       import oauth2_scheme, obtener_usuario_actual
 from schemas.reserva     import ReservaMembresiaCreate, ConfirmarPagoMembresia
 from models.enums import Rol, TipoReserva
 from sqlalchemy import func
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 from schemas.reserva_individual import (
     ReservaIndividualCreate,
     ConfirmarPagoIndividual
 )
+
+from models.membresia import Membresia
 
 from models.tarjeta_simulada import TarjetaSimulada
 
@@ -79,9 +85,47 @@ def crear_reserva_membresia(
 ):
     socio = obtener_usuario_actual(db=db, token=token)
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
+    hoy = datetime.now()
     
     if not clase or not clase.activa:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
+
+    prioridades = db.query(Membresia).filter(
+        Membresia.clase_id == datos.clase_id,
+        Membresia.activa == True
+    ).all()
+
+    for p in prioridades:
+
+        if p.socio_id == socio.id:
+            continue
+
+        mes_siguiente = p.mes_vigente + 1
+        anio_siguiente = p.anio_vigente
+
+        if mes_siguiente == 13:
+            mes_siguiente = 1
+            anio_siguiente += 1
+
+        reservando_mes = datetime.strptime(
+            datos.fechas_clase[0],
+            "%Y-%m-%d"
+        ).month
+
+        reservando_anio = datetime.strptime(
+            datos.fechas_clase[0],
+            "%Y-%m-%d"
+        ).year
+
+        if (
+            reservando_mes == mes_siguiente
+            and reservando_anio == anio_siguiente
+            and hoy.day <= 10
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Esta membresía tiene prioridad de renovación hasta el día 10."
+            )
 
     hoy = date.today()
 
@@ -274,6 +318,37 @@ async def confirmar_pago_membresia(
             ))
 
     db.commit()
+
+    membresia = db.query(Membresia).filter(
+        Membresia.socio_id == socio.id,
+        Membresia.clase_id == datos.clase_id
+    ).first()
+
+    if membresia:
+
+        membresia.mes_vigente = datetime.now().month
+        membresia.anio_vigente = datetime.now().year
+        membresia.activa = True
+        membresia.fecha_expiracion = datetime(
+            membresia.anio_vigente,
+            membresia.mes_vigente,
+            1
+        ) + relativedelta(months=1)
+
+    else:
+
+        membresia = Membresia(
+            socio_id=socio.id,
+            clase_id=datos.clase_id,
+            mes_vigente=datetime.now().month,
+            anio_vigente=datetime.now().year,
+            activa=True
+        )
+
+        db.add(membresia)
+
+    db.commit()
+
 
     try:
         await enviar_mail_membresia(
