@@ -401,9 +401,6 @@ const ReservaIndividual = () => {
                         <div className="pago-resultado pago-resultado--error">
                             <div className="pago-resultado-icon pago-resultado-icon--error">✕</div>
                             <h3>{mensaje}</h3>
-                            <button className="pago-btn-ghost" onClick={() => { setPaso('lista_espera'); setMensaje(''); }}>
-                                Intentar de nuevo
-                            </button>
                             <button className="pago-btn-ghost" onClick={() => navigate('/')}>
                                 Volver al inicio
                             </button>

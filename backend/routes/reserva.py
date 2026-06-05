@@ -50,7 +50,7 @@ def _ya_tiene_reserva_en_horario(
         Clase.dia        == dia,
         Clase.horario    == horario,
         Reserva.fecha_clase.in_(fechas),
-        Reserva.estado.in_(["confirmada", "pendiente_pago"])
+        Reserva.estado.in_(["confirmada", "pendiente_pago", "en_espera"])
     ).first() is not None
  
  
@@ -406,7 +406,7 @@ def verificar_cupo(
         Clase.dia == clase.dia,
         Clase.horario == clase.horario,
         Reserva.fecha_clase == datos.fecha_clase,
-        Reserva.estado.in_(["pendiente_pago", "confirmada"])
+        Reserva.estado.in_(["confirmada", "pendiente_pago", "en_espera"])
     ).first()
 
     if conflicto:
@@ -493,7 +493,7 @@ def crear_reserva_individual(
         Clase.dia == clase.dia,
         Clase.horario == clase.horario,
         Reserva.fecha_clase == datos.fecha_clase,
-        Reserva.estado.in_(["pendiente_pago", "confirmada"])
+        Reserva.estado.in_(["confirmada", "pendiente_pago", "en_espera"])
     ).first()
 
     if conflicto:

@@ -173,6 +173,13 @@ const Perfil = ({ token, setToken }) => {
                             </div>
                         )}
                     </div>
+
+                    {mensajeExito && (
+                        <div className="mensaje-exito">
+                            {mensajeExito}
+                        </div>
+                    )}
+
                     
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
                     {user.rol !== 'profesor' && (
@@ -233,6 +240,17 @@ const Perfil = ({ token, setToken }) => {
                                                                                 En Espera
                                                                             </span>
                                                                         )}
+
+                                                                        {r.lista_espera && (
+                                                                            <button
+                                                                                className="btn-salir-espera"
+                                                                                onClick={() => salirListaEspera(r.id)}
+                                                                            >
+                                                                                Salir de lista de espera
+                                                                            </button>
+                                                                        )}
+
+
                                                                     </div>
                                                                 </div>
                                                             ))

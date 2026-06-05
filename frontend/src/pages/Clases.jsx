@@ -484,7 +484,7 @@ const Clases = ({ token }) => {
                         <div className="visitante-aviso-registro">
                             <p>Para reservar un lugar en esta clase, por favor iniciá sesión o registrate.</p>
                             <button className="boton-ir-registro" onClick={() => navigate('/registro')}>
-                                Registrarse / Iniciar Sesión
+                                Registrarse
                             </button>
                         </div>
                     )}
