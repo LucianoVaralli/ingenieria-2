@@ -20,6 +20,7 @@ import HistorialPagos from './pages/HistorialPagos';
 import CambiarPassword from "./pages/CambiarPassword";
 import ResetPassword from './pages/ResetPassword';
 import ForgotPassword from './pages/ForgotPassword';
+import GestionPreguntasFrecuentes from './pages/admin/GestionPreguntasFrecuentes';
 
 // 🌟 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
@@ -68,6 +69,7 @@ function AppContent({ token, setToken }) {
         <Route path="/admin/crear-clase" element={<CrearClase />} />
         <Route path="/admin/eliminar-clase" element={<ListaClasesAdmin />} />
         <Route path="/admin/editar-capacidad" element={<EditarCapacidad />} />
+        <Route path="/admin/preguntas-frecuentes" element={<GestionPreguntasFrecuentes />} />
 
         {/* Ruta 404 - Captura cualquier ruta inexistente */}
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />

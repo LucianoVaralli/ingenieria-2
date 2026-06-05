@@ -21,6 +21,12 @@ const OPCIONES = [
         titulo: "Capacidad",
         desc:  "Actualizá el aforo máximo del gimnasio.",
     },
+    {
+        to: "/admin/preguntas-frecuentes",
+        icon: "❓",
+        titulo: "Preguntas Frecuentes",
+        desc: "Administrá las preguntas y respuestas visibles para los usuarios."
+    },
 ];
 
 function AdminDashboard() {
