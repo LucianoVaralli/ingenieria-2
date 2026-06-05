@@ -30,7 +30,6 @@ const ReservaIndividual = () => {
     const [creditosDisponibles, setCreditosDisponibles] = useState(0);
     const [usaCredito, setUsaCredito]           = useState(false);
 
-
     // Datos de tarjeta
     const [nroTarjeta, setNroTarjeta] = useState('');
     const [titular, setTitular]       = useState('');
@@ -95,9 +94,6 @@ const ReservaIndividual = () => {
         );
     };
 
-    // ─────────────────────────────────────────────
-    // Verificar cupo al arrancar (llamado desde lista_espera)
-    // ─────────────────────────────────────────────
     const handleVerificarCupo = async () => {
         setCargando(true);
         setMensaje('');
@@ -116,7 +112,7 @@ const ReservaIndividual = () => {
                 setMonto(0);
             }
             setVinoDeEspera(true);
-            // Siempre va a créditos primero (paso informativo)
+            
             if (res.data.creditos_disponibles > 0) {
                 setPaso('creditos');
             } else {
@@ -130,22 +126,7 @@ const ReservaIndividual = () => {
         }
     };
 
-    // ─────────────────────────────────────────────
-    // Desde el paso créditos → siguiente
-    // ─────────────────────────────────────────────
-    const handleContinuarDesdeCreditos = () => {
-        if (usaCredito) {
-            // Créditos cubren todo → ir directo al pago (que mostrará "confirmar sin tarjeta")
-            setPaso('pago');
-        } else {
-            // Sin créditos → elegir modalidad seña/total
-            setPaso('tipo_pago');
-        }
-    };
-
-    // ─────────────────────────────────────────────
-    // Pagar
-    // ─────────────────────────────────────────────
+    // Pagar / Confirmar Operación
     const handlePagar = async () => {
         if (monto > 0 && (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim())) {
             setMensaje('Por favor, completá todos los datos de la tarjeta.');
@@ -173,29 +154,29 @@ const ReservaIndividual = () => {
 
             setPaso('exito');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'No se pudo procesar el pago.');
+            setMensaje(err.response?.data?.detail || 'No se pudo procesar la reserva.');
             setPaso('error');
         } finally {
             setCargando(false);
         }
     };
 
-    // ─────────────────────────────────────────────
-    // Botón volver según paso
-    // ─────────────────────────────────────────────
+    // Desde el paso créditos → Decisión Directa
+    const handleContinuarDesdeCreditos = () => {
+        if (usaCredito) {
+            // Si el crédito cubre todo, gatilla directamente la confirmación sin pasar por pantallas raras
+            handlePagar();
+        } else {
+            // Sin créditos suficientes → Elegir modalidad habitual
+            setPaso('tipo_pago');
+        }
+    };
+
     const handleVolver = () => {
         if (paso === 'creditos')  return setPaso('lista_espera');
         if (paso === 'tipo_pago') return setPaso(vinoDeEspera ? 'lista_espera' : 'cargando');
         if (paso === 'pago')      return setPaso(usaCredito ? 'creditos' : 'tipo_pago');
         navigate(-1);
-    };
-
-    const handleAceptarEspera = () => {
-        if (creditosDisponibles > 0) {
-            setPaso('creditos');
-        } else {
-            setPaso('tipo_pago');
-        }
     };
 
     return (
@@ -275,7 +256,8 @@ const ReservaIndividual = () => {
                             <span className="reserva-spinner" />
                         </div>
                     )}
-                    {/* PASO 1: lista de espera */}
+
+                    {/* PASO: lista de espera */}
                     {paso === 'lista_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
@@ -295,41 +277,29 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO 2: créditos */}
+                    {/* PASO: créditos */}
                     {paso === 'creditos' && (
                         <div className="reserva-accion-card">
-                            {creditosDisponibles > 0 ? (
-                                <>
-                                    <div className="pago-credito-icon">🎟️</div>
-                                    <h3 className="reserva-accion-titulo">Tenés créditos disponibles</h3>
-                                    <p className="reserva-accion-desc">
-                                        Tenés <strong>{creditosDisponibles} crédito{creditosDisponibles > 1 ? 's' : ''}</strong> disponible{creditosDisponibles > 1 ? 's' : ''}.
-                                        {usaCredito
-                                            ? ' Esta clase quedará cubierta sin necesidad de pago.'
-                                            : ' No alcanza para cubrir esta clase, continuá con el pago.'}
-                                    </p>
-                                </>
-                            ) : (
-                                <>
-                                    <h3 className="reserva-accion-titulo">Sin créditos disponibles</h3>
-                                    <p className="reserva-accion-desc">
-                                        No tenés créditos. Continuá para abonar la clase.
-                                    </p>
-                                </>
-                            )}
+                            <div className="pago-credito-icon">🎟️</div>
+                            <h3 className="reserva-accion-titulo">Tenés créditos disponibles</h3>
+                            <p className="reserva-accion-desc">
+                                Tenés <strong>{creditosDisponibles} crédito{creditosDisponibles > 1 ? 's' : ''}</strong> disponible{creditosDisponibles > 1 ? 's' : ''}.
+                                {usaCredito
+                                    ? 'Esta clase quedará completamente cubierta con tus créditos.'
+                                    : 'No alcanza para cubrir esta clase, continuá para abonar el saldo.'}
+                            </p>
+                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
                             <button className="boton-accion" onClick={handleContinuarDesdeCreditos} disabled={cargando}>
-                                Continuar →
+                                {cargando ? <span className="reserva-spinner" /> : (usaCredito ? 'Confirmar Reserva con Crédito' : 'Continuar →')}
                             </button>
                         </div>
                     )}
 
-                    {/* PASO 3: elegir modalidad (solo si no usa crédito) */}
+                    {/* PASO: elegir modalidad */}
                     {paso === 'tipo_pago' && (
                         <div className="reserva-accion-card">
                             <h3 className="reserva-accion-titulo">Configurá tu pago</h3>
-                            <p className="reserva-accion-desc">
-                                Seleccioná cómo querés abonar la clase:
-                            </p>
+                            <p className="reserva-accion-desc">Seleccioná cómo querés abonar la clase:</p>
                             <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
                                 <button
                                     type="button"
@@ -364,85 +334,69 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO 4: pago */}
-                    {paso === 'pago' && (
+                    {/* PASO: formulario de pago manual */}
+                    {paso === 'pago' && monto > 0 && (
                         <div className="pago-form-card">
                             <h2 className="pago-form-titulo">Datos de pago</h2>
-
-                            {monto > 0 ? (
-                                <>
-                                    <div className="pago-field">
-                                        <label className="pago-label">Número de tarjeta</label>
-                                        <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
-                                            placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
-                                            onChange={(e) => {
-                                                const numeros = e.target.value.replace(/\D/g, '');
-                                                const parts = [];
-                                                for (let i = 0; i < numeros.length; i += 4) parts.push(numeros.substring(i, i + 4));
-                                                setNroTarjeta(parts.join(' '));
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="pago-field">
-                                        <label className="pago-label">Nombre del titular</label>
-                                        <input className="pago-input pago-input--wide" type="text"
-                                            placeholder="Tal como aparece en la tarjeta" value={titular}
-                                            onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
-                                        />
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '15px' }}>
-                                        <div className="pago-field" style={{ flex: 1 }}>
-                                            <label className="pago-label">CVV</label>
-                                            <input className="pago-input" type="text" inputMode="numeric"
-                                                style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
-                                                value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                                            />
-                                        </div>
-                                        <div className="pago-field" style={{ flex: 1 }}>
-                                            <label className="pago-label">Vencimiento</label>
-                                            <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
-                                                value={vencimiento}
-                                                onChange={(e) => {
-                                                    let valor = e.target.value.replace(/\D/g, '');
-                                                    if (valor.length > 2) valor = valor.slice(0, 2) + '/' + valor.slice(2, 4);
-                                                    setVencimiento(valor);
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                    {mensaje && <p className="pago-error-msg">{mensaje}</p>}
-                                    <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
-                                        {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${Number(monto).toFixed(2)}`}
-                                    </button>
-                                    <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
-                                </>
-                            ) : (
-                                <div className="pago-credito-box">
-                                    <div className="pago-credito-icon">🎟️</div>
-                                    <h3>Reserva cubierta con crédito</h3>
-                                    <p>Esta clase será descontada de tus créditos. No se requiere pago.</p>
-                                    {mensaje && <p className="pago-error-msg">{mensaje}</p>}
-                                    <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
-                                        {cargando ? <><span className="pago-spinner" /> Confirmando...</> : 'Confirmar reserva'}
-                                    </button>
+                            <div className="pago-field">
+                                <label className="pago-label">Número de tarjeta</label>
+                                <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
+                                    placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
+                                    onChange={(e) => {
+                                        const numeros = e.target.value.replace(/\D/g, '');
+                                        const parts = [];
+                                        for (let i = 0; i < numeros.length; i += 4) parts.push(numeros.substring(i, i + 4));
+                                        setNroTarjeta(parts.join(' '));
+                                    }}
+                                />
+                            </div>
+                            <div className="pago-field">
+                                <label className="pago-label">Nombre del titular</label>
+                                <input className="pago-input pago-input--wide" type="text"
+                                    placeholder="Tal como aparece en la tarjeta" value={titular}
+                                    onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <div className="pago-field" style={{ flex: 1 }}>
+                                    <label className="pago-label">CVV</label>
+                                    <input className="pago-input" type="text" inputMode="numeric"
+                                        style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
+                                        value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                                    />
                                 </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* PASO 5: éxito */}
-                    {paso === 'exito' && (
-                        <div className="pago-resultado pago-resultado--ok">
-                            <div className="pago-resultado-icon">✓</div>
-                            <h3>¡Reserva procesada!</h3>
-                            <p>Tu solicitud fue registrada correctamente.</p>
-                            <button className="pago-btn-primary" onClick={() => navigate('/perfil')}>
-                                Ver mis reservas
+                                <div className="pago-field" style={{ flex: 1 }}>
+                                    <label className="pago-label">Vencimiento</label>
+                                    <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
+                                        value={vencimiento}
+                                        onChange={(e) => {
+                                            let valor = e.target.value.replace(/\D/g, '');
+                                            if (valor.length > 2) valor = valor.slice(0, 2) + '/' + valor.slice(2, 4);
+                                            setVencimiento(valor);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                            <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
+                                {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${Number(monto).toFixed(2)}`}
                             </button>
                         </div>
                     )}
 
-                    {/* PASO 6: error */}
+                    {/* PASO: éxito */}
+                    {paso === 'exito' && (
+                        <div className="pago-resultado pago-resultado--ok">
+                            <div className="pago-resultado-icon">✓</div>
+                            <h3>¡Reserva procesada!</h3>
+                            <p>Tu solicitud fue registrada correctamente con tus créditos.</p>
+                            <button className="pago-btn-primary" onClick={() => navigate('/')}>
+                                Volver al inicio
+                            </button>
+                        </div>
+                    )}
+
+                    {/* PASO: error */}
                     {paso === 'error' && (
                         <div className="pago-resultado pago-resultado--error">
                             <div className="pago-resultado-icon pago-resultado-icon--error">✕</div>
@@ -450,12 +404,11 @@ const ReservaIndividual = () => {
                             <button className="pago-btn-ghost" onClick={() => { setPaso('lista_espera'); setMensaje(''); }}>
                                 Intentar de nuevo
                             </button>
-                            <button className="pago-btn-ghost" onClick={() => navigate('/home')}>
-                                Volver al home
+                            <button className="pago-btn-ghost" onClick={() => navigate('/')}>
+                                Volver al inicio
                             </button>
                         </div>
                     )}
-
                 </div>
             </div>
         </div>

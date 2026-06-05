@@ -8,47 +8,48 @@ const formatearHora = (hora) => hora?.slice(0, 5);
 const ReservaMembresia = () => {
     const location = useLocation();
     const navigate = useNavigate();
-
     const { clase, fechasDelMes } = location.state || {};
 
-    // pasos: lista_espera | creditos | pago_confirmacion | error
-    const [paso,         setPaso]         = useState('lista_espera');
-    const [mensaje,      setMensaje]      = useState('');
-    const [cargando,     setCargando]     = useState(false);
+    const [paso, setPaso]                 = useState('cargando');
+    const [mensaje, setMensaje]           = useState('');
+    const [cargando, setCargando]         = useState(false);
     const [datosReserva, setDatosReserva] = useState(null);
-    const [creditos,     setCreditos]     = useState(0);
+    const [creditos, setCreditos]         = useState(0);
+
+    const [nroTarjeta, setNroTarjeta]   = useState('');
+    const [titular, setTitular]         = useState('');
+    const [cvv, setCvv]                 = useState('');
+    const [vencimiento, setVencimiento] = useState('');
 
     useEffect(() => {
+        if (!clase || !fechasDelMes) return;
+
         const inicializar = async () => {
-            if (!clase || !fechasDelMes) return;
             setCargando(true);
             try {
-                const hoyDate = new Date();
-                hoyDate.setHours(0, 0, 0, 0);
-                const fechasFuturas = fechasDelMes.filter(f => new Date(f) >= hoyDate);
-
                 const [perfilRes, cotizarRes] = await Promise.all([
                     api.get('/socios/me'),
                     api.post('/reservas/membresia/crear', {
                         clase_id:         clase.id,
-                        fechas_clase:     fechasFuturas,
+                        fechas_clase:     fechasDelMes, // ← TODAS las fechas, el backend separa pasadas/futuras
                         total_clases_mes: fechasDelMes.length,
                     })
                 ]);
 
                 const creditosActuales = perfilRes.data.creditos_disponibles || 0;
                 setCreditos(creditosActuales);
-                setDatosReserva({ ...cotizarRes.data, acepta_espera: true });
+                setDatosReserva({ ...cotizarRes.data, acepta_espera: false });
 
                 if (cotizarRes.data.hay_lista_espera) {
                     setPaso('lista_espera');
                 } else if (creditosActuales > 0) {
                     setPaso('creditos');
                 } else {
-                    setPaso('ir_pago'); // ← nuevo paso que navega directo
+                    setPaso('pago');
                 }
             } catch (err) {
-                setMensaje(err.response?.data?.detail || 'Error inesperado');
+                const detalle = err.response?.data?.detail;
+                setMensaje(typeof detalle === 'string' ? detalle : 'Error al inicializar.');
                 setPaso('error');
             } finally {
                 setCargando(false);
@@ -68,75 +69,94 @@ const ReservaMembresia = () => {
         );
     }
 
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const clasesPerdidas = fechasDelMes.filter(f => new Date(f) < hoy).length;
+    const clasesPerdidas = datosReserva?.clases_perdidas ?? 0;
     const clasesFuturas  = fechasDelMes.length - clasesPerdidas;
+    const descuento      = Number(datosReserva?.descuento_aplicado ?? 0);
+    const montoFinal     = Number(datosReserva?.monto_total ?? clase.precio_individual * fechasDelMes.length);
 
     const emojiDisciplina = {
         yoga: '🧘', pilates: '🤸', funcional: '⚡'
     }[clase.actividad?.toLowerCase()] || '🏋️';
 
-    const descuento  = Number(datosReserva?.descuento_aplicado ?? 0);
-    const montoFinal = datosReserva?.monto_total ?? (clase.precio_individual * fechasDelMes.length);
+    const handleAceptarEspera = () => {
+        setDatosReserva(prev => ({ ...prev, acepta_espera: true }));
+        if (creditos > 0) {
+            setPaso('creditos');
+        } else {
+            setPaso('pago');
+        }
+    };
 
-    // ─────────────────────────────────────────────
-    // Llamar al backend para cotizar
-    // ─────────────────────────────────────────────
-    const handleCotizar = async (aceptaEspera) => {
+    const handleContinuarDesdeCreditos = () => {
+        if (montoFinal === 0) {
+            handleConfirmarConCreditos();
+        } else {
+            setPaso('pago');
+        }
+    };
+
+    const handleConfirmarConCreditos = async () => {
         setCargando(true);
+        setMensaje('');
         try {
-            const fechasFuturas = fechasDelMes.filter(f => new Date(f) >= hoy);
-
-            if (fechasFuturas.length === 0) {
-                setMensaje('No quedan clases futuras para este mes.');
-                setPaso('error');
-                return;
-            }
-
-            const res = await api.post('/reservas/membresia/crear', {
-                clase_id:         clase.id,
-                fechas_clase:     fechasFuturas,
-                total_clases_mes: fechasDelMes.length,
+            await api.post('/reservas/membresia/pagar', {
+                clase_id:            clase.id,
+                creditos_a_usar:     datosReserva.creditos_a_usar || 0,
+                monto_total:         0,
+                fechas_con_cupo:     datosReserva.fechas_con_cupo || [],
+                fechas_sin_cupo:     datosReserva.fechas_sin_cupo || [],
+                acepta_lista_espera: datosReserva.acepta_espera || false,
+                pago_exitoso:        true,
+                numero_tarjeta:      '0000000000000000',
+                titular:             'credito',
+                cvv:                 '000',
+                fecha_vencimiento:   '12/99',
             });
-
-            setDatosReserva({ ...res.data, acepta_espera: aceptaEspera });
-            if (creditos > 0) {
-                setPaso('creditos');
-            } else {
-                setPaso('ir_pago');
-            }
+            setPaso('exito');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'Error inesperado');
+            const detalle = err.response?.data?.detail;
+            setMensaje(typeof detalle === 'string' ? detalle : 'Error al confirmar con créditos.');
             setPaso('error');
         } finally {
             setCargando(false);
         }
     };
 
-    const handleAceptarEspera = () => {
-        if (creditos > 0) {
-            setPaso('creditos');
-        } else {
-            setPaso('ir_pago');
+    const handlePagar = async () => {
+        if (!nroTarjeta || !titular || !cvv || !vencimiento) {
+            setMensaje('Por favor, completá todos los datos de la tarjeta.');
+            return;
+        }
+        setCargando(true);
+        setMensaje('');
+        try {
+            await api.post('/reservas/membresia/pagar', {
+                clase_id:            clase.id,
+                creditos_a_usar:     datosReserva.creditos_a_usar || 0,
+                monto_total:         montoFinal,
+                fechas_con_cupo:     datosReserva.fechas_con_cupo || [],
+                fechas_sin_cupo:     datosReserva.fechas_sin_cupo || [],
+                acepta_lista_espera: datosReserva.acepta_espera || false,
+                pago_exitoso:        true,
+                numero_tarjeta:      nroTarjeta.replace(/\s/g, ''),
+                titular,
+                cvv,
+                fecha_vencimiento:   vencimiento,
+            });
+            setPaso('exito');
+        } catch (err) {
+            const detalle = err.response?.data?.detail;
+            setMensaje(typeof detalle === 'string' ? detalle : 'Error al procesar el pago.');
+        } finally {
+            setCargando(false);
         }
     };
 
-    // ─────────────────────────────────────────────
-    // Desde créditos → ir al pago
-    // ─────────────────────────────────────────────
-    const handleContinuarDesdeCreditos = () => {
-        setPaso('ir_pago');
-    };
-
-    // ─────────────────────────────────────────────
-    // Botón volver
-    // ─────────────────────────────────────────────
     const handleVolver = () => {
-        if (paso === 'creditos') return setPaso('lista_espera');
+        if (paso === 'creditos') return setPaso(datosReserva?.hay_lista_espera ? 'lista_espera' : 'cargando');
+        if (paso === 'pago')     return setPaso(creditos > 0 ? 'creditos' : (datosReserva?.hay_lista_espera ? 'lista_espera' : 'cargando'));
         navigate(-1);
     };
-
 
     return (
         <div className="reserva-page">
@@ -174,7 +194,7 @@ const ReservaMembresia = () => {
                         {clasesPerdidas > 0 && (
                             <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
                                 <span>Descuento ({clasesPerdidas} clase{clasesPerdidas > 1 ? 's' : ''} perdida{clasesPerdidas > 1 ? 's' : ''})</span>
-                                <span>-${Number(descuento).toFixed(2)}</span>
+                                <span>-${descuento.toFixed(2)}</span>
                             </div>
                         )}
                         {datosReserva?.creditos_a_usar > 0 && (
@@ -185,61 +205,37 @@ const ReservaMembresia = () => {
                         )}
                         <div className="reserva-desglose-total">
                             <span>Total</span>
-                            <span>${Number(montoFinal).toFixed(2)}</span>
+                            <span>${montoFinal.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* COLUMNA DERECHA */}
                 <div className="reserva-accion-col">
+
                     {paso === 'cargando' && (
                         <div className="reserva-accion-card" style={{ textAlign: 'center' }}>
                             <span className="reserva-spinner" />
                         </div>
                     )}
 
-                    {paso === 'ir_pago' && (() => {
-                        navigate('/pago', {
-                            state: {
-                                monto:             datosReserva.monto_total,
-                                fechasConCupo:     datosReserva.fechas_con_cupo,
-                                fechasSinCupo:     datosReserva.fechas_sin_cupo ?? [],
-                                aceptaListaEspera: datosReserva.acepta_espera ?? false,
-                                claseInfo:         clase,
-                                claseId:           clase.id,
-                                creditosUsados:    datosReserva.creditos_a_usar ?? 0,
-                            }
-                        });
-                        return null;
-                    })()}
-                    {/* PASO 1: lista de espera */}
                     {paso === 'lista_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
                             <h3 className="reserva-accion-titulo">Algunas fechas sin cupo</h3>
                             <p className="reserva-accion-desc">
-                                Es posible que algunas clases del mes no tengan lugares disponibles.
-                                Si querés entrar en lista de espera para esas fechas, te avisamos cuando se libere un cupo.
+                                Las siguientes fechas no tienen lugares disponibles. Si aceptás, te anotamos en lista de espera y te avisamos cuando se libere un cupo.
                             </p>
-                            <div className="reserva-fechas">
-                                <span className="reserva-fechas-label">Clases del mes</span>
-                                <div className="reserva-fechas-lista">
-                                    {fechasDelMes
-                                        .filter(f => new Date(f) >= hoy)
-                                        .map(f => {
-                                            const fecha = new Date(f + 'T00:00:00');
-                                            return (
-                                                <span key={f} className="reserva-fecha-chip">
-                                                    {fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
-                                                </span>
-                                            );
-                                        })
-                                    }
-                                </div>
+                            <div className="reserva-fechas-lista" style={{ margin: '12px 0' }}>
+                                {datosReserva?.fechas_sin_cupo?.map((f, i) => (
+                                    <span key={i} className="reserva-fecha-chip reserva-fecha-chip--vacio">
+                                        {new Date(f + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                                    </span>
+                                ))}
                             </div>
                             <div className="reserva-espera-botones">
-                                <button className="boton-accion" onClick={() => handleCotizar(true)} disabled={cargando}>
-                                    {cargando ? <span className="reserva-spinner" /> : 'Acepto entrar en espera si es necesario'}
+                                <button className="boton-accion" onClick={handleAceptarEspera} disabled={cargando}>
+                                    Acepto entrar en espera
                                 </button>
                                 <button className="boton-cancelar" onClick={() => navigate('/')} disabled={cargando}>
                                     No, volver al inicio
@@ -248,40 +244,91 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO 2: créditos */}
                     {paso === 'creditos' && (
                         <div className="reserva-accion-card">
-                            {creditos > 0 ? (
-                                <>
-                                    <div className="pago-credito-icon">🎟️</div>
-                                    <h3 className="reserva-accion-titulo">Tenés créditos disponibles</h3>
-                                    <p className="reserva-accion-desc">
-                                        Tenés <strong>{creditos} crédito{creditos > 1 ? 's' : ''}</strong> disponible{creditos > 1 ? 's' : ''}.
-                                        {datosReserva?.creditos_a_usar > 0
-                                            ? ` Se aplicarán ${datosReserva.creditos_a_usar} a esta membresía.`
-                                            : ' No alcanzan para cubrir clases adicionales.'}
-                                    </p>
-                                </>
-                            ) : (
-                                <>
-                                    <h3 className="reserva-accion-titulo">Sin créditos disponibles</h3>
-                                    <p className="reserva-accion-desc">
-                                        No tenés créditos. Continuá para abonar la membresía.
-                                    </p>
-                                </>
-                            )}
+                            <div className="pago-credito-icon">🎟️</div>
+                            <h3 className="reserva-accion-titulo">Tenés créditos disponibles</h3>
+                            <p className="reserva-accion-desc">
+                                Tenés <strong>{creditos} crédito{creditos > 1 ? 's' : ''}</strong> disponible{creditos > 1 ? 's' : ''}.
+                                {montoFinal === 0
+                                    ? ' Cubren el total de la membresía, no necesitás pagar nada.'
+                                    : ` Se aplicarán ${datosReserva?.creditos_a_usar} y abonarás el resto con tarjeta.`}
+                            </p>
+                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
                             <button className="boton-accion" onClick={handleContinuarDesdeCreditos} disabled={cargando}>
-                                {datosReserva?.monto_total === 0 ? 'Confirmar sin pago →' : 'Continuar al pago →'}
+                                {cargando
+                                    ? <span className="reserva-spinner" />
+                                    : montoFinal === 0 ? 'Confirmar sin pago →' : 'Continuar al pago →'}
                             </button>
                         </div>
                     )}
 
-                    {/* PASO: error */}
+                    {paso === 'pago' && (
+                        <div className="pago-form-card">
+                            <h2 className="pago-form-titulo">Datos de pago</h2>
+                            <div className="pago-field">
+                                <label className="pago-label">Número de tarjeta</label>
+                                <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
+                                    placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
+                                    onChange={(e) => {
+                                        const n = e.target.value.replace(/\D/g, '');
+                                        const parts = [];
+                                        for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
+                                        setNroTarjeta(parts.join(' '));
+                                    }}
+                                />
+                            </div>
+                            <div className="pago-field">
+                                <label className="pago-label">Nombre del titular</label>
+                                <input className="pago-input pago-input--wide" type="text"
+                                    placeholder="Tal como aparece en la tarjeta" value={titular}
+                                    onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <div className="pago-field" style={{ flex: 1 }}>
+                                    <label className="pago-label">CVV</label>
+                                    <input className="pago-input" type="text" inputMode="numeric"
+                                        style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
+                                        value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                                    />
+                                </div>
+                                <div className="pago-field" style={{ flex: 1 }}>
+                                    <label className="pago-label">Vencimiento</label>
+                                    <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
+                                        value={vencimiento}
+                                        onChange={(e) => {
+                                            let v = e.target.value.replace(/\D/g, '');
+                                            if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                            setVencimiento(v);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                            <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
+                                {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${montoFinal.toFixed(2)}`}
+                            </button>
+                            <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                        </div>
+                    )}
+
+                    {paso === 'exito' && (
+                        <div className="pago-resultado pago-resultado--ok">
+                            <div className="pago-resultado-icon">✓</div>
+                            <h3>¡Membresía confirmada!</h3>
+                            <p>Tus clases del mes fueron reservadas correctamente.</p>
+                            <button className="pago-btn-primary" onClick={() => navigate('/perfil')}>
+                                Ver mis reservas
+                            </button>
+                        </div>
+                    )}
+
                     {paso === 'error' && (
-                        <div className="reserva-accion-card reserva-accion-card--error">
-                            <div className="reserva-error-icon">✕</div>
-                            <h3 className="reserva-accion-titulo">{mensaje}</h3>
-                            <button className="boton-cancelar" onClick={() => navigate('/')}>
+                        <div className="pago-resultado pago-resultado--error">
+                            <div className="pago-resultado-icon pago-resultado-icon--error">✕</div>
+                            <h3>{mensaje}</h3>
+                            <button className="pago-btn-ghost" onClick={() => navigate('/')}>
                                 Volver al inicio
                             </button>
                         </div>

@@ -48,7 +48,7 @@ const Perfil = ({ token, setToken }) => {
                 hoy.setHours(0, 0, 0, 0);
 
                 const activas = resReservas.data.filter(r =>
-                    r.estado === 'confirmada' &&
+                    (r.estado === 'confirmada' || r.estado === 'en_espera') &&
                     new Date(r.fecha_clase) >= hoy
                 );
 
