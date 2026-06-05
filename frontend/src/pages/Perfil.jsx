@@ -6,6 +6,7 @@ import '../assets/css/Perfil.css';
 const Perfil = ({ token, setToken }) => {
     const [user, setUser] = useState(null);
     const [reservas, setReservas] = useState([]);
+    const [loadingRenovar, setLoadingRenovar] = useState(false);
     const navigate = useNavigate();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
     const [mensajeExito, setMensajeExito] = useState("");
@@ -15,6 +16,15 @@ const Perfil = ({ token, setToken }) => {
     const [membresiaActiva, setMembresiaActiva] = useState(false);
     const [fechaVencimiento, setFechaVencimiento] = useState(null);
 
+    const hoy = new Date();
+    const dia = hoy.getDate();
+
+    const puedeRenovar =
+        user?.rol === "miembro" &&
+        user?.membresia_vencimiento &&
+        dia >= 1 &&
+        dia <= 10;
+
     useEffect(() => {
         const cargarPerfil = async () => {
             const res = await api.get('/socios/me');
@@ -23,6 +33,7 @@ const Perfil = ({ token, setToken }) => {
             setRol(res.data.rol);
             setMembresiaActiva(res.data.membresia_activa);
             setFechaVencimiento(res.data.membresia_vencimiento);
+            setUser(res.data);
         };
 
         cargarPerfil();
@@ -46,6 +57,25 @@ const Perfil = ({ token, setToken }) => {
             console.error(error);
 
             alert("No se pudo salir de la lista de espera");
+        }
+    };
+
+    const renovarMembresia = async () => {
+        try {
+            setLoadingRenovar(true);
+
+            const res = await api.post("/membresia/renovar");
+
+            alert(res.data.mensaje || "Membresía renovada con éxito");
+
+            const resUser = await api.get("/socios/me");
+            setUser(resUser.data);
+
+        } catch (err) {
+            console.error(err);
+            alert(err?.response?.data?.detail || "Error al renovar membresía");
+        } finally {
+            setLoadingRenovar(false);
         }
     };
 
@@ -142,6 +172,19 @@ const Perfil = ({ token, setToken }) => {
                             <span className="dato-label">Email</span>
                             <span className="dato-valor">{user.email || 'No registrado'}</span>
                         </div>
+                        
+                        {puedeRenovar && (
+                            <div className="dato-item btn-container">
+                                <button
+                                    className="btn-cambiar-pass"
+                                    onClick={renovarMembresia}
+                                    disabled={loadingRenovar}
+                                >
+                                    {loadingRenovar ? "Renovando..." : "Renovar membresía"}
+                                </button>
+                            </div>
+                        )}
+
                         <div className="dato-item">
                             <span className="dato-label">DNI</span>
                             <span className="dato-valor">{user.dni || '—'}</span>
