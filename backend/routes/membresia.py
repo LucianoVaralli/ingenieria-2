@@ -16,18 +16,20 @@ def activar_membresia(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    socio = obtener_usuario_actual(token, db)
+    user = obtener_usuario_actual(token=token, db=db)
 
-    if socio.membresia_activa_hasta and socio.membresia_activa_hasta >= date.today():
-        raise HTTPException(400, "Ya tiene membresía activa")
+    socio = db.query(Socio).filter(Socio.id == user.id).first()
 
     hoy = date.today()
 
-    socio.fecha_membresia_inicio = hoy
     socio.membresia_activa_hasta = hoy + timedelta(days=30)
+    socio.fecha_membresia_inicio = hoy
     socio.cuota_al_dia = True
 
     db.commit()
+    db.refresh(socio)   # 🔥 CLAVE
+
+    print("GUARDADO OK:", socio.membresia_activa_hasta)
 
     return {
         "mensaje": "Membresía activada",
@@ -42,9 +44,11 @@ def renovar_membresia(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    socio = obtener_usuario_actual(token, db)
+    user = obtener_usuario_actual(token=token, db=db)
+    # Buscamos al socio en la sesión de base de datos para que registre los cambios
+    socio = db.query(Socio).filter(Socio.id == user.id).first()
 
-    if not socio.membresia_activa_hasta:
+    if not socio or not socio.membresia_activa_hasta:
         raise HTTPException(400, "No tiene membresía para renovar")
 
     base = max(socio.membresia_activa_hasta, date.today())
@@ -53,11 +57,13 @@ def renovar_membresia(
     socio.cuota_al_dia = True
 
     db.commit()
+    db.refresh(socio) # Agregamos refresh para tener el objeto actualizado
 
     return {
         "mensaje": "Membresía renovada",
         "vigente_hasta": socio.membresia_activa_hasta
     }
+
 
 
 # ─────────────────────────────────────────────
@@ -68,15 +74,15 @@ def procesar_vencimientos(db: Session = Depends(get_db)):
 
     hoy = date.today()
 
+    # Corrección de la query para que sea compatible con todas las bases de datos
     socios_vencidos = db.query(Socio).filter(
-        Socio.membresia_activa_hasta != None,
+        Socio.membresia_activa_hasta.isnot(None),
         Socio.membresia_activa_hasta < hoy
     ).all()
 
     eliminadas = 0
 
     for socio in socios_vencidos:
-
         reservas = db.query(Reserva).filter(
             Reserva.socio_id == socio.id,
             Reserva.es_recurrente == True,

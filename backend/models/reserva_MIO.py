@@ -18,8 +18,7 @@ class Reserva(Base):
 
     # Fecha concreta de esa clase, ej: "2026-03-09"
     fecha_clase  = Column(String, nullable=False)
-
-    monto_total  = Column(Float, nullable=False)
+    
     # últimos 4 números
     tarjeta_ultimos = Column(String, nullable=True)
 

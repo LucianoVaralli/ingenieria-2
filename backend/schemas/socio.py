@@ -42,8 +42,6 @@ class SocioResponse(BaseModel):  # O el nombre de la clase que use tu endpoint
     rol: str
     dni: int
     telefono: str  
-    dni: int
-    telefono: str  
     membresia_activa_hasta: date | None = None
 
     class Config:
