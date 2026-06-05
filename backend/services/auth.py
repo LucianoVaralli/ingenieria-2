@@ -1,3 +1,4 @@
+from models.enums import Rol
 from fastapi import HTTPException
 
 from pwdlib import PasswordHash
@@ -69,3 +70,15 @@ def obtener_usuario_actual(
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
     
     return usuario
+
+from datetime import date
+
+def validar_membresia(socio):
+    if socio.rol != Rol.Miembro.value:
+        return
+
+    if not socio.membresia_activa_hasta:
+        raise HTTPException(403, "Membresía no activa")
+
+    if socio.membresia_activa_hasta < date.today():
+        raise HTTPException(403, "Membresía vencida")

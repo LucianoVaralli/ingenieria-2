@@ -16,6 +16,7 @@ from schemas.reserva_individual import (
 )
 
 from models.tarjeta_simulada import TarjetaSimulada
+from services.auth import validar_membresia
 
 from services.mail_service import (
     enviar_mail_pago_exitoso,
@@ -78,6 +79,15 @@ def crear_reserva_membresia(
     db: Session = Depends(get_db)
 ):
     socio = obtener_usuario_actual(db=db, token=token)
+    if not socio.membresia_activa_hasta or socio.membresia_activa_hasta < date.today():
+        raise HTTPException(403, "No tiene membresía activa")
+
+    if socio.membresia_activa_hasta and socio.membresia_activa_hasta < date.today():
+        raise HTTPException(
+            status_code=403,
+            detail="Membresía vencida. Debe renovarla antes de reservar."
+        )
+
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
     
     if not clase or not clase.activa:
@@ -240,6 +250,7 @@ async def confirmar_pago_membresia(
                 fecha_clase = fecha,
                 monto_total = datos.monto_total,
                 monto_pagado = datos.monto_total,
+                es_recurrente = True,
             )
             db.add(r)
             reservas_creadas.append(r)

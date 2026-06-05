@@ -20,7 +20,6 @@ class Reserva(Base):
     fecha_clase  = Column(String, nullable=False)
 
     monto_total  = Column(Float, nullable=False)
-    monto_pagado = Column(Float, default=0.0)
     # últimos 4 números
     tarjeta_ultimos = Column(String, nullable=True)
 
@@ -41,6 +40,7 @@ class Reserva(Base):
     mensaje_admin = Column(String, nullable=True)
     tipo_cancelacion = Column(String, nullable=True)
     tipo_pago = Column(String, nullable=True)
+    es_recurrente = Column(Boolean, default=False)
 
     # Relaciones para acceder fácil a los datos en la lógica del backend
     socio = relationship("Socio")

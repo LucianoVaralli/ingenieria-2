@@ -9,6 +9,24 @@ const Perfil = ({ token, setToken }) => {
     const navigate = useNavigate();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
     const [mensajeExito, setMensajeExito] = useState("");
+    const [usuario, setUsuario] = useState(null);
+    const [rol, setRol] = useState("");
+
+    const [membresiaActiva, setMembresiaActiva] = useState(false);
+    const [fechaVencimiento, setFechaVencimiento] = useState(null);
+
+    useEffect(() => {
+        const cargarPerfil = async () => {
+            const res = await api.get('/socios/me');
+
+            setCreditos(res.data.creditos_disponibles || 0);
+            setRol(res.data.rol);
+            setMembresiaActiva(res.data.membresia_activa);
+            setFechaVencimiento(res.data.membresia_vencimiento);
+        };
+
+        cargarPerfil();
+    }, []);
 
     const salirListaEspera = async (reservaId) => {
         try {
@@ -172,6 +190,30 @@ const Perfil = ({ token, setToken }) => {
                                 )}
                             </div>
                         )}
+
+                    {rol === "miembro" && (
+                        membresiaActiva ? (
+                            <div className="perfil-membresia">
+                                <p>
+                                    🟢 Membresía activa hasta: {fechaVencimiento}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="perfil-membresia">
+                                <p>
+                                    🔴 No tenés membresía activa
+                                </p>
+
+                                <button
+                                    onClick={() => navigate('/renovar-membresia')}
+                                    className="boton-accion"
+                                >
+                                    Renovar membresía
+                                </button>
+                            </div>
+                        )
+                    )}
+
                     </div>
                     
                     {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
