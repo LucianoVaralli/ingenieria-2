@@ -125,51 +125,41 @@ def crear_reserva_membresia(
 
     clases_perdidas = total_clases - clases_validas #para la informacion que se ve en el front
 
-    cantidad_clases = len(fechas_con_cupo) #solo las clases validas
+    cantidad_clases = len(fechas_con_cupo)
 
     creditos_disponibles = socio.creditos_disponibles
-
     creditos_a_usar = min(creditos_disponibles, cantidad_clases)
-
-    clases_a_pagar_en_dinero = cantidad_clases - creditos_a_usar
-
-    socio.creditos_disponibles -= creditos_a_usar #deberia estar en el pago pero bueno
-
+    
     precio_por_clase = clase.precio_individual
-
-    # 1. El monto base se calcula sobre el total de clases del mes (5 * 123 = 615)
+    
+    # Monto base sobre total del mes
     monto_base_mes = total_clases * precio_por_clase
     
-    # 2. Sacamos el 20% a ese total mensual (615 * 0.20 = 123)
+    # Descuento por clases perdidas
     veinte_porciento_monto = monto_base_mes * 0.20
-    
-    # 3. Multiplicamos por las clases perdidas (4 * 123 = 492)
     descuento_total = clases_perdidas * veinte_porciento_monto
+    monto_sin_creditos = max(0, monto_base_mes - descuento_total)
     
-    # 4. Restamos para obtener el total (615 - 492 = 123)
-    monto_total = max(0, monto_base_mes - descuento_total)
-
-#    if not fechas_con_cupo:
-#        return {
-#            "PRUEBA": "ERIK_TEST",
-#            "fechas_con_cupo": fechas_con_cupo,
-#            "fechas_sin_cupo": fechas_sin_cupo,
-#            "fechas_pasadas": fechas_pasadas,
-#            "hay_lista_espera": True,
-#           "mensaje_espera": "¿Desea estar en lista de espera?"
-#        }
-
+    # Descuento por créditos (precio efectivo por clase tras descuento)
+    precio_efectivo_por_clase = monto_sin_creditos / cantidad_clases if cantidad_clases > 0 else 0
+    descuento_creditos = creditos_a_usar * precio_efectivo_por_clase
+    monto_total = max(0, monto_sin_creditos - descuento_creditos)
+    
+    # ← NO tocar socio.creditos_disponibles acá
+    
     respuesta = {
         "fechas_con_cupo":    fechas_con_cupo,
         "fechas_sin_cupo":    fechas_sin_cupo,
         "fechas_pasadas":     fechas_pasadas,
         "clases_perdidas":    clases_perdidas,
         "descuento_aplicado": round(descuento_total, 2),
+        "creditos_a_usar":    creditos_a_usar,
+        "descuento_creditos": round(descuento_creditos, 2),
         "monto_total":        round(monto_total, 2),
         "hay_lista_espera":   len(fechas_sin_cupo) > 0,
-        **({"mensaje_espera": f"¿Desea estar en lista de espera?"} if fechas_sin_cupo else {})
+        **({"mensaje_espera": "¿Desea estar en lista de espera?"} if fechas_sin_cupo else {})
     }
-
+    
     return respuesta
 
 
@@ -211,21 +201,39 @@ async def confirmar_pago_membresia(
         # Descontamos el saldo recién cuando todo está ok
         tarjeta.saldo -= datos.monto_total
     
-    # Verificar pago antes de tocar la BD
-    if datos.monto_total > 0 and not datos.pago_exitoso:
-        raise HTTPException(status_code=402, detail="No se pudo procesar el pago.")
-
-    # Descontar créditos si corresponde
-    if datos.monto_total == 0:
-        cantidad = len(datos.fechas_con_cupo)
-        if socio.creditos_disponibles < cantidad:
+    # Descontar créditos
+    if datos.creditos_a_usar > 0:
+        if socio.creditos_disponibles < datos.creditos_a_usar:
             raise HTTPException(status_code=400, detail="No tenés créditos suficientes.")
-        socio.creditos_disponibles -= cantidad
+        socio.creditos_disponibles -= datos.creditos_a_usar
+
+    # Validar tarjeta solo si hay monto a pagar
+    if datos.monto_total > 0:
+        if datos.numero_tarjeta:
+            numero_limpio = datos.numero_tarjeta.replace(" ", "")
+            titular_normalizado = " ".join(datos.titular.split())
+
+            tarjeta = db.query(TarjetaSimulada).filter(
+                TarjetaSimulada.numero == numero_limpio,
+                func.lower(TarjetaSimulada.titular) == titular_normalizado.lower(),
+                TarjetaSimulada.cvv == datos.cvv,
+                TarjetaSimulada.fecha_vencimiento == datos.fecha_vencimiento
+            ).first()
+
+            if not tarjeta:
+                raise HTTPException(status_code=400, detail="Tarjeta inválida")
+            if not tarjeta.conexion_exitosa:
+                raise HTTPException(status_code=400, detail="Hay inconvenientes con la conexión al banco")
+            if tarjeta.saldo < datos.monto_total:
+                raise HTTPException(status_code=400, detail="La cuenta no tiene saldo suficiente")
+
+            tarjeta.saldo -= datos.monto_total
+        elif not datos.pago_exitoso:
+            raise HTTPException(status_code=402, detail="No se pudo procesar el pago.")
 
     # Recién acá creamos las reservas
     reservas_creadas = []
     for fecha in datos.fechas_con_cupo:
-        # Re-verificar cupo en el momento del pago (puede haberse ocupado)
         ocupadas = db.query(Reserva).filter(
             Reserva.clase_id    == datos.clase_id,
             Reserva.fecha_clase == fecha,
@@ -233,44 +241,38 @@ async def confirmar_pago_membresia(
         ).count()
         if ocupadas < clase.cupo:
             r = Reserva(
-                socio_id    = socio.id,
-                clase_id    = datos.clase_id,
-                tipo        = TipoReserva.Membresia.value,
-                estado      = "confirmada",  # directo a confirmada
-                fecha_clase = fecha,
-                monto_total = datos.monto_total,
+                socio_id     = socio.id,
+                clase_id     = datos.clase_id,
+                tipo         = TipoReserva.Membresia.value,
+                estado       = "confirmada",
+                fecha_clase  = fecha,
+                monto_total  = datos.monto_total,
                 monto_pagado = datos.monto_total,
             )
             db.add(r)
             reservas_creadas.append(r)
         else:
-            # Se ocupó entre cotización y pago → lista de espera
             datos.fechas_sin_cupo.append(fecha)
 
     # Lista de espera
     if datos.acepta_lista_espera:
         for fecha in datos.fechas_sin_cupo:
-
-            # Guardar en reservas para que aparezca en "Mis reservas"
             reserva_espera = Reserva(
-                socio_id=socio.id,
-                clase_id=datos.clase_id,
-                tipo=TipoReserva.Membresia.value,
-                estado="confirmada",
-                fecha_clase=fecha,
-                monto_total=datos.monto_total,
-                monto_pagado=datos.monto_total,
+                socio_id     = socio.id,
+                clase_id     = datos.clase_id,
+                tipo         = TipoReserva.Membresia.value,
+                estado       = "confirmada",
+                fecha_clase  = fecha,
+                monto_total  = datos.monto_total,
+                monto_pagado = datos.monto_total,
             )
-
             db.add(reserva_espera)
-
-            # Guardar también en la tabla ListaEspera
             db.add(ListaEspera(
-                socio_id=socio.id,
-                clase_id=datos.clase_id,
-                fecha_clase=fecha,
-                tipo=TipoReserva.Membresia.value,
-                estado="esperando"
+                socio_id    = socio.id,
+                clase_id    = datos.clase_id,
+                fecha_clase = fecha,
+                tipo        = TipoReserva.Membresia.value,
+                estado      = "esperando"
             ))
 
     db.commit()
@@ -444,7 +446,9 @@ def verificar_cupo(
 
     return {
         "hay_cupo": hay_cupo,
-        "debe_lista_espera": not hay_cupo
+        "debe_lista_espera": not hay_cupo,
+        "creditos_disponibles": socio.creditos_disponibles,  
+        "puede_usar_credito":   socio.creditos_disponibles > 0 
     }
 
 # ──────────────────────────────────────────────────────────────
@@ -457,7 +461,33 @@ def crear_reserva_individual(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
+    socio = obtener_usuario_actual(db=db, token=token)
+    # ... validaciones existentes ...
 
+    # ← AGREGAR ESTO: si ya tiene una pendiente, la reutilizamos
+    reserva_existente = db.query(Reserva).filter(
+        Reserva.socio_id == socio.id,
+        Reserva.clase_id == datos.clase_id,
+        Reserva.fecha_clase == datos.fecha_clase,
+        Reserva.tipo == TipoReserva.Individual.value,
+        Reserva.estado == "pendiente_pago"
+    ).first()
+
+    if reserva_existente:
+        monto = (clase.precio_individual * 0.5 
+                if datos.tipo_pago == "sena" 
+                else clase.precio_individual)
+        reserva_existente.tipo_pago = datos.tipo_pago
+        reserva_existente.monto_pagado = monto
+        db.commit()
+        db.refresh(reserva_existente)
+        return {
+            "mensaje": "Reserva retomada",
+            "reserva_id": reserva_existente.id,
+            "monto_a_pagar": monto,
+            "hay_cupo": True,
+            "debe_lista_espera": False
+        }
     # Obtenemos usuario autenticado
     socio = obtener_usuario_actual(db=db, token=token)
 
@@ -636,6 +666,24 @@ async def pagar_reserva_individual(
         Clase.id == reserva.clase_id
     ).first()
 
+    if datos.usa_credito:
+        if socio.creditos_disponibles < 1:
+            reserva.estado = "cancelada"
+            db.commit()
+            raise HTTPException(status_code=400, detail="No tenés créditos disponibles")
+
+        socio.creditos_disponibles -= 1
+        reserva.estado = "confirmada"
+        reserva.monto_pagado = 0
+        db.commit()
+
+        try:
+            await enviar_mail_pago_exitoso(socio, clase, reserva)
+        except Exception as e:
+            print(f"⚠️ Mail no enviado: {e}")
+
+        return {"mensaje": "Reserva confirmada con crédito"}
+    
     # ─────────────────────────────────────────────
     # Buscamos tarjeta simulada
     # ─────────────────────────────────────────────
