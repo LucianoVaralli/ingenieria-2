@@ -62,6 +62,10 @@ const ReservaMembresia = () => {
                 total_clases_mes: fechasDelMes.length,
             });
 
+            if (res.data.monto_total >= 0) {
+                setMensaje(`Membresía calculada. Total: $${res.data.monto_total}`);
+            }
+
             console.log("RESPUESTA MEMBRESIA:", res.data); // lo uso para ver el error
 
             setDatosReserva(res.data);
@@ -110,6 +114,7 @@ const ReservaMembresia = () => {
                 aceptaListaEspera: aceptaEspera,
                 claseInfo:         clase,
                 claseId:           clase.id,
+                esPrimeraMembresia: true,
             }
         });
     };

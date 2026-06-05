@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 from models.enums import Rol  # Importamos tu Enum de la carpeta models
 import re
+from datetime import date
 
 class SocioBase(BaseModel):
     nombre: str
@@ -41,8 +42,7 @@ class SocioResponse(BaseModel):  # O el nombre de la clase que use tu endpoint
     rol: str
     dni: int
     telefono: str  
-    dni: int
-    telefono: str  
+    membresia_activa_hasta: date | None = None
 
     class Config:
         from_attributes = True

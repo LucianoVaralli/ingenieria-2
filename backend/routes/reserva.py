@@ -16,6 +16,7 @@ from schemas.reserva_individual import (
 )
 
 from models.tarjeta_simulada import TarjetaSimulada
+from services.auth import validar_membresia
 
 from services.mail_service import (
     enviar_mail_pago_exitoso,
@@ -77,13 +78,23 @@ def crear_reserva_membresia(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    socio = obtener_usuario_actual(db=db, token=token)
+    user = obtener_usuario_actual(token=token, db=db)
+    socio = db.query(Socio).filter(Socio.id == user.id).first()
+
+    print("SOCIO:", socio.id)
+    print("MEMBRESIA:", socio.membresia_activa_hasta)
+    print("HOY:", date.today())
+    print("TIPO MEMBRESIA:", type(socio.membresia_activa_hasta))
+    hoy = date.today()
+
+    if socio.membresia_activa_hasta and socio.membresia_activa_hasta < hoy: 
+            raise HTTPException(403, "Membresía vencida")
+    
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
     
     if not clase or not clase.activa:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
 
-    hoy = date.today()
 
     # Separamos fechas pasadas y futuras
     # Las pasadas no se reservan pero sí generan descuento
@@ -180,7 +191,7 @@ async def confirmar_pago_membresia(
     db: Session = Depends(get_db)
 ):
     socio = db.query(Socio).filter(
-        Socio.id == obtener_usuario_actual(db=db, token=token).id
+        Socio.id == obtener_usuario_actual(token=token, db=db).id
     ).first()
 
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
@@ -214,7 +225,14 @@ async def confirmar_pago_membresia(
     # Verificar pago antes de tocar la BD
     if datos.monto_total > 0 and not datos.pago_exitoso:
         raise HTTPException(status_code=402, detail="No se pudo procesar el pago.")
-
+    
+    # Si el socio no tenía membresía activa, se la activamos acá porque ya pagó
+    hoy = date.today()
+    if not socio.membresia_activa_hasta:
+        socio.membresia_activa_hasta = hoy + timedelta(days=30)
+        socio.fecha_membresia_inicio = hoy
+        socio.cuota_al_dia = True
+        
     # Descontar créditos si corresponde
     if datos.monto_total == 0:
         cantidad = len(datos.fechas_con_cupo)
@@ -240,6 +258,7 @@ async def confirmar_pago_membresia(
                 fecha_clase = fecha,
                 monto_total = datos.monto_total,
                 monto_pagado = datos.monto_total,
+                es_recurrente = True,
             )
             db.add(r)
             reservas_creadas.append(r)

@@ -2,6 +2,7 @@ import React, { useState, useEffect  } from 'react';
 import { Link } from 'react-router-dom';
 import '../assets/css/Home.css';
 import Clases from './Clases';
+import api from '../api/api.js';
 import { Dumbbell, Check, ChevronDown, MapPin, Zap } from 'lucide-react';
 // ─────────────────────────────────────────────
 // DATOS DEL SLIDESHOW
@@ -65,17 +66,6 @@ const pasos = [
 ];
 
 // ─────────────────────────────────────────────
-// PREGUNTAS FRECUENTES (del SRS)
-// ─────────────────────────────────────────────
-const faqs = [
-    { p: '¿Necesito experiencia previa para unirme?', r: 'No. Todas nuestras clases tienen niveles adaptados. Los profesores guían a cada alumno según su condición física.' },
-    { p: '¿Cómo cancelo una reserva?', r: 'Podés cancelar desde tu perfil hasta 2 horas antes de la clase sin penalidad. Pasado ese tiempo, el turno se considera asistido.' },
-    { p: '¿Qué pasa si la clase está llena?', r: 'Podés anotarte en la lista de espera. Si alguien cancela, el sistema te notifica automáticamente por email.' },
-    { p: '¿Qué medios de pago aceptan?', r: 'Aceptamos tarjetas de débito y crédito a través de Mercado Pago, y transferencias bancarias al Banco Provincia.' },
-    { p: '¿Necesito traer algo a la clase?', r: 'Para Yoga y Pilates recomendamos ropa cómoda y mat propio (aunque contamos con algunos en el gimnasio). Para Funcional, ropa deportiva y zapatillas.' },
-];
-
-// ─────────────────────────────────────────────
 // DATOS DE EJEMPLO PARA EL CALENDARIO
 // Cuando conectes el backend, reemplazá este array con los datos
 // que te devuelva tu API (ej: GET /clases/semana)
@@ -99,6 +89,7 @@ const Home = ({ token }) => {
     const [animando, setAnimando] = useState(false);
     const [faqAbierto, setFaqAbierto] = useState(null);
     const [filtroClase, setFiltroClase] = useState('Todas');
+    const [faqs, setFaqs] = useState([]);
 
     // Slideshow automático: cambia cada 5 segundos
     useEffect(() => {
@@ -111,6 +102,15 @@ const Home = ({ token }) => {
         }, 5000);
         return () => clearInterval(timer);
     }, []);
+
+    useEffect(() => {
+        obtenerPreguntas();
+    }, []);
+
+    const obtenerPreguntas = async () => {
+        const res = await api.get("/preguntas-frecuentes/listar_preguntas");
+        setFaqs(res.data);
+    };
 
     const irASlide = (i) => {
         if (i === actual) return;
@@ -282,16 +282,24 @@ const Home = ({ token }) => {
                 <div className="home-faq">
                     {faqs.map((f, i) => (
                         <div
-                            key={i}
+                            key={f.id}
                             className={`home-faq-item ${faqAbierto === i ? 'home-faq-item--open' : ''}`}
                             onClick={() => toggleFaq(i)}
                         >
                             <div className="home-faq-header">
-                                <span className="home-faq-pregunta">{f.p}</span>
-                                <span className="home-faq-arrow">{faqAbierto === i ? '−' : '+'}</span>
+                                <span className="home-faq-pregunta">
+                                    {f.titulo}
+                                </span>
+
+                                <span className="home-faq-arrow">
+                                    {faqAbierto === i ? '−' : '+'}
+                                </span>
                             </div>
+
                             {faqAbierto === i && (
-                                <p className="home-faq-respuesta">{f.r}</p>
+                                <p className="home-faq-respuesta">
+                                    {f.respuesta}
+                                </p>
                             )}
                         </div>
                     ))}
