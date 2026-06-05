@@ -139,7 +139,8 @@ async def crear_clase(
 
     clases_profesor = db.query(Clase).filter(
         Clase.profesor_id == profesor.id,
-        Clase.dia == clase.dia
+        Clase.dia == clase.dia,
+        Clase.activa == True
     ).all()    
 
     for clase_existente in clases_profesor:

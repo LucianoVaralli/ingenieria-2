@@ -45,26 +45,29 @@ def renovar_membresia(
     db: Session = Depends(get_db)
 ):
     user = obtener_usuario_actual(token=token, db=db)
-    # Buscamos al socio en la sesión de base de datos para que registre los cambios
     socio = db.query(Socio).filter(Socio.id == user.id).first()
 
-    if not socio or not socio.membresia_activa_hasta:
-        raise HTTPException(400, "No tiene membresía para renovar")
+    if not socio:
+        raise HTTPException(400, "Socio no encontrado")
 
-    base = max(socio.membresia_activa_hasta, date.today())
+    # ✅ Nuevo: evitar renovar si ya fue renovada este mes
+    hoy = date.today()
+    if socio.membresia_activa_hasta and socio.membresia_activa_hasta > hoy + timedelta(days=30):
+        raise HTTPException(400, "La membresía ya está renovada para el próximo mes")
+
+    base = socio.membresia_activa_hasta if socio.membresia_activa_hasta else hoy
+    base = max(base, hoy)
 
     socio.membresia_activa_hasta = base + timedelta(days=30)
     socio.cuota_al_dia = True
 
     db.commit()
-    db.refresh(socio) # Agregamos refresh para tener el objeto actualizado
+    db.refresh(socio)
 
     return {
         "mensaje": "Membresía renovada",
         "vigente_hasta": socio.membresia_activa_hasta
     }
-
-
 
 # ─────────────────────────────────────────────
 # PROCESAR VENCIMIENTOS

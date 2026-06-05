@@ -15,15 +15,28 @@ const Perfil = ({ token, setToken }) => {
 
     const [membresiaActiva, setMembresiaActiva] = useState(false);
     const [fechaVencimiento, setFechaVencimiento] = useState(null);
+    const [creditos, setCreditos] = useState(0);
 
     const hoy = new Date();
     const dia = hoy.getDate();
 
-    const puedeRenovar =
-        user?.rol === "miembro" &&
-        user?.membresia_vencimiento &&
-        dia >= 1 &&
-        dia <= 10;
+    const puedeRenovar = (() => {
+        if (user?.rol !== "miembro") return false;
+        if (dia < 1 || dia > 10) return false;
+        if (!membresiaActiva) return true; // sin membresía activa, siempre puede
+
+        // Con membresía activa: solo mostrar si vence este mes (renovación anticipada)
+        if (!fechaVencimiento) return false;
+        const vencimiento = new Date(fechaVencimiento + 'T00:00:00');
+        const mesProximo = hoy.getMonth() === 11 ? 0 : hoy.getMonth() + 1;
+        const anioProximo = hoy.getMonth() === 11 ? hoy.getFullYear() + 1 : hoy.getFullYear();
+
+        return (
+            vencimiento.getMonth() === mesProximo &&
+            vencimiento.getFullYear() === anioProximo
+        );
+    })();
+
 
     useEffect(() => {
         const cargarPerfil = async () => {
@@ -64,21 +77,27 @@ const Perfil = ({ token, setToken }) => {
         try {
             setLoadingRenovar(true);
 
-            const res = await api.post("/membresia/renovar");
+            // 1. Obtener preview sin cobrar nada
+            const preview = await api.get("/membresia/preview-renovacion");
 
-            alert(res.data.mensaje || "Membresía renovada con éxito");
-
-            const resUser = await api.get("/socios/me");
-            setUser(resUser.data);
+            // 2. Navegar a /pago con los datos reales
+            navigate('/pago', {
+                state: {
+                    monto: preview.data.monto,
+                    fechasConCupo: preview.data.fechas_con_cupo,
+                    fechasSinCupo: preview.data.fechas_sin_cupo,
+                    claseInfo: preview.data.clase_info,
+                    claseId: preview.data.clase_id,
+                    esRenovacion: true,
+                }
+            });
 
         } catch (err) {
-            console.error(err);
-            alert(err?.response?.data?.detail || "Error al renovar membresía");
+            alert(err?.response?.data?.detail || "Error al iniciar renovación");
         } finally {
             setLoadingRenovar(false);
         }
     };
-
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
@@ -91,14 +110,31 @@ const Perfil = ({ token, setToken }) => {
                 ]);
 
                 setUser(resUser.data);
+                setMembresiaActiva(resUser.data.membresia_activa); 
+                setFechaVencimiento(resUser.data.membresia_vencimiento); 
+                setRol(resUser.data.rol);
 
                 const hoy = new Date();
                 hoy.setHours(0, 0, 0, 0);
+                const mesActual = hoy.getMonth();
+                const anioActual = hoy.getFullYear();
 
-                const activas = resReservas.data.filter(r =>
-                    (r.estado === 'confirmada' || r.estado === 'en_espera') &&
-                    new Date(r.fecha_clase) >= hoy
-                );
+                // Si estamos entre el 1 y 10, también mostrar el mes anterior
+                const mesPrevio = mesActual === 0 ? 11 : mesActual - 1;
+                const anioPrevio = mesActual === 0 ? anioActual - 1 : anioActual;
+
+                const activas = resReservas.data.filter(r => {
+                    const fechaClase = new Date(r.fecha_clase + 'T00:00:00');
+                    const mes = fechaClase.getMonth();
+                    const anio = fechaClase.getFullYear();
+
+                    const esMesActual = mes === mesActual && anio === anioActual;
+                    const esMesPrevio = dia <= 10 && mes === mesPrevio && anio === anioPrevio;
+
+                    if (esMesActual) return r.estado === 'confirmada' || r.estado === 'en_espera';
+                    if (esMesPrevio) return true;
+                    return false;
+                });
 
                 setReservas(activas);
 
@@ -193,7 +229,7 @@ const Perfil = ({ token, setToken }) => {
                             <span className="dato-label">Teléfono</span>
                             <span className="dato-valor">{user.telefono || '—'}</span>
                         </div>
-                        {user.rol === 'Miembro' && (
+                        {user.rol === 'miembro' && (
                             <div className="dato-item">
                                 <span className="dato-label">Créditos disponibles</span>
                                 <span className="dato-valor">
@@ -235,27 +271,23 @@ const Perfil = ({ token, setToken }) => {
                         )}
 
                     {rol === "miembro" && (
-                        membresiaActiva ? (
-                            <div className="perfil-membresia">
-                                <p>
-                                    🟢 Membresía activa hasta: {fechaVencimiento}
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="perfil-membresia">
-                                <p>
-                                    🔴 No tenés membresía activa
-                                </p>
-
-                                <button
-                                    onClick={() => navigate('/renovar-membresia')}
-                                    className="boton-accion"
-                                >
-                                    Renovar membresía
-                                </button>
-                            </div>
-                        )
-                    )}
+                    membresiaActiva ? (
+                        <div className="perfil-membresia">
+                            <p>
+                                🟢 Membresía activa hasta: {fechaVencimiento 
+                                    ? new Date(fechaVencimiento + 'T00:00:00').toLocaleDateString('es-AR', {
+                                        day: 'numeric', month: 'long', year: 'numeric'
+                                      })
+                                    : '—'
+                                }
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="perfil-membresia">
+                            <p>🔴 No tenés membresía activa</p>
+                        </div>
+                    )
+                )}
 
                     </div>
 

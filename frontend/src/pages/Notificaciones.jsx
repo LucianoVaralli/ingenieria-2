@@ -111,14 +111,6 @@ function Notificaciones() {
                                     {!notif.leida && (
                                         <span className="notificacion-badge-nueva">Nueva</span>
                                     )}
-                                    {/* Botón borrar individual */}
-                                    <button
-                                        className="notif-borrar-una"
-                                        onClick={(e) => borrarUna(e, notif.id)}
-                                        title="Borrar notificación"
-                                    >
-                                        ✕
-                                    </button>
                                 </div>
                             </div>
                             <p>
