@@ -60,14 +60,26 @@ function EditarCapacidad() {
             setErrorBackend("La capacidad debe ser mayor a 0");
             return;
         }
+
+        // Para q tenga un maximo de 4000
+        {/*if (Number(nuevaCapacidad) >= 4000) {
+            setErrorBackend("La capacidad debe ser menor a 4000");
+            return;
+        }*/}
         try {
             const res = await api.put("/gimnasio/capacidad", { capacidad_total: Number(nuevaCapacidad) });
             setMensajeExito(res.data.mensaje);
             setTimeout(() => setMensajeExito(""), 3000);
             setCapacidadTotal(res.data.capacidad_total);
             setNuevaCapacidad("");
-            // Recargamos datos para actualizar cualquier lógica visual
-            cargarDatos();
+
+            // ← Recargamos todo junto
+            await cargarDatos();
+
+            // ← Recargamos también la ocupación del día actual
+            const resOcupacion = await api.get(`/clases/ocupacion/${diaSeleccionado}`);
+            setocupacionHoras(resOcupacion.data);
+
         } catch (error) {
             setErrorBackend(error.response?.data?.detail || "Error actualizando capacidad");
         }

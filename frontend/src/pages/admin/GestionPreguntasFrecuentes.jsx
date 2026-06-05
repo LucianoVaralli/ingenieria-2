@@ -201,7 +201,7 @@ function GestionPreguntasFrecuentes() {
                                 className="btn-eliminar"
                                 onClick={confirmarEliminacion}
                             >
-                                Eliminar
+                                Aceptar
                             </button>
 
                         </div>
