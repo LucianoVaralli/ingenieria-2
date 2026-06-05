@@ -85,7 +85,7 @@ function Notificaciones() {
                             className="notif-borrar-todas"
                             onClick={borrarTodas}
                         >
-                            🗑️ Borrar todas
+                            Borrar todas
                         </button>
                     )}
                 </div>

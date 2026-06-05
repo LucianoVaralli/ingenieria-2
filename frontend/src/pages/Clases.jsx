@@ -166,7 +166,7 @@ const Clases = ({ token }) => {
     })();
 
     // ── Cupos reales por fecha ──
-    const [cuposReales, setCuposReales] = useState({});  // { claseId: { disponibles, hay_cupo } }
+    const [cuposReales, setCuposReales] = useState({});
 
     const handleElegirClase = (clase) => {
         if (esProfesor) return;
@@ -453,8 +453,8 @@ const Clases = ({ token }) => {
                         ))
                     )}
 
-                    {/* Solo se muestra si NO es profesor */}
-                    {claseElegida && !esProfesor && (
+                    {/* CAMBIO CLAVE AQUÍ: Agregamos "&& user" para exigir inicio de sesión */}
+                    {claseElegida && !esProfesor && user && (
                         <div className="reserva-opciones">
                             <p className="reserva-titulo">
                                 Reservar <strong>{capitalizar(claseElegida.actividad)}</strong> a las {formatearHora(claseElegida.horario)}:
@@ -475,6 +475,16 @@ const Clases = ({ token }) => {
                             </div>
                             <button className="boton-reservar-cal" onClick={handleReservar} disabled={!modoReserva}>
                                 Reservar
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Si querés, podés agregar opcionalmente un aviso para invitar a registrarse */}
+                    {claseElegida && !esProfesor && !user && (
+                        <div className="visitante-aviso-registro">
+                            <p>Para reservar un lugar en esta clase, por favor iniciá sesión o registrate.</p>
+                            <button className="boton-ir-registro" onClick={() => navigate('/registro')}>
+                                Registrarse
                             </button>
                         </div>
                     )}

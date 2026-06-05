@@ -31,7 +31,8 @@ const Pago = () => {
         fechasSinCupo    = [],
         aceptaListaEspera = true,
         claseInfo        = null,
-        claseId          = null, 
+        claseId          = null,
+        creditosUsados   = 0,
         esPrimeraMembresia = false,
     } = location.state || {};
 
@@ -133,6 +134,18 @@ const Pago = () => {
                                 </div>
                             </>
                         )}
+
+                        {creditosUsados > 0 && (
+                            <div className="pago-resumen-fila" style={{ color: '#4caf50' }}>
+                                <span>🎟️ Créditos aplicados</span>
+                                <span>-{creditosUsados} clase{creditosUsados > 1 ? 's' : ''}</span>
+                            </div>
+                        )}
+                    
+                        <div className="pago-resumen-total">
+                            <span>Total</span>
+                            <span>${Number(monto || 0).toFixed(2)}</span>
+                        </div>
 
                         <div className="pago-resumen-total">
                             <span>Total</span>
