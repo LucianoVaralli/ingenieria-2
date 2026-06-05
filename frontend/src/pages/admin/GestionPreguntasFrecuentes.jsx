@@ -12,6 +12,9 @@ function GestionPreguntasFrecuentes() {
 
     const [editandoId, setEditandoId] = useState(null);
 
+    const [mostrarModal, setMostrarModal] = useState(false);
+    const [preguntaAEliminar, setPreguntaAEliminar] = useState(null);
+
     useEffect(() => {
         cargarPreguntas();
     }, []);
@@ -67,14 +70,22 @@ function GestionPreguntasFrecuentes() {
         setEditandoId(pregunta.id);
     };
 
-    const eliminarPregunta = async (id) => {
+    const abrirModalEliminar = (id) => {
+        setPreguntaAEliminar(id);
+        setMostrarModal(true);
+    };
 
-        if (!window.confirm("¿Eliminar esta pregunta?"))
-            return;
-
+    const confirmarEliminacion = async () => {
         try {
-            await api.delete(`/preguntas-frecuentes/eliminar_pregunta/${id}`);
+            await api.delete(
+                `/preguntas-frecuentes/eliminar_pregunta/${preguntaAEliminar}`
+            );
+
+            setMostrarModal(false);
+            setPreguntaAEliminar(null);
+
             cargarPreguntas();
+
         } catch (error) {
             console.error(error);
         }
@@ -150,7 +161,7 @@ function GestionPreguntasFrecuentes() {
                                 <button
                                     className="btn-eliminar"
                                     onClick={() =>
-                                        eliminarPregunta(pregunta.id)
+                                        abrirModalEliminar(pregunta.id)
                                     }
                                 >
                                     Eliminar
@@ -164,6 +175,40 @@ function GestionPreguntasFrecuentes() {
                 </div>
 
             </div>
+            {mostrarModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+
+                        <h3>Eliminar pregunta</h3>
+
+                        <p>
+                            ¿Estás seguro de que querés eliminar esta pregunta frecuente?
+                        </p>
+
+                        <div className="modal-actions">
+
+                            <button
+                                className="btn-cancelar"
+                                onClick={() => {
+                                    setMostrarModal(false);
+                                    setPreguntaAEliminar(null);
+                                }}
+                            >
+                                Cancelar
+                            </button>
+
+                            <button
+                                className="btn-eliminar"
+                                onClick={confirmarEliminacion}
+                            >
+                                Eliminar
+                            </button>
+
+                        </div>
+
+                    </div>
+                </div>
+            )}
 
         </AdminLayout>
     );
