@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, Boolean, ForeignKey, UniqueConstraint
 from database import Base
 from datetime import datetime
 from sqlalchemy import DateTime
@@ -20,3 +20,11 @@ class Membresia(Base):
     prioridad_hasta_dia = Column(Integer, default=10)
 
     fecha_expiracion = Column(DateTime, nullable=True)
+
+        # Garantiza a nivel de DB que un socio no puede tener
+    # dos membresías para la misma clase al mismo tiempo.
+    # El código también lo previene, pero este constraint
+    # es la última línea de defensa contra race conditions.
+    __table_args__ = (
+        UniqueConstraint("socio_id", "clase_id", name="uq_socio_clase"),
+    )
