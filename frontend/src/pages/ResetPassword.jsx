@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import api from '../api/api.js';
-import { toast } from 'react-hot-toast';
+import { toast, Toaster } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import '../assets/css/ResetPassword.css';
@@ -14,19 +14,28 @@ const ResetPassword = () => {
         confirmPassword: ''
     });
 
+    const [errors, setErrors] = useState({
+        code: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // Expresión regular oficial (6-16 caracteres, mayúscula y carácter especial)
     const passwordRegex =
         /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{6,16}$/;
 
-    // Manejo de inputs limpio y directo
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({
             ...formData,
             [name]: value
+        });
+
+        setErrors({
+            ...errors,
+            [name]: ''
         });
     };
 
@@ -35,31 +44,54 @@ const ResetPassword = () => {
 
         const emailGuardado = localStorage.getItem('reset_email');
 
-        // 1. VALIDACIÓN: Campos vacíos
-        if (!formData.code.trim() || !formData.newPassword.trim() || !formData.confirmPassword.trim()) {
-            toast.error('Todos los campos son obligatorios. Por favor, completalos.');
+        // 1. LIMPIEZA INICIAL: Reseteamos los errores visuales locales en cada intento
+        let localErrors = { code: '', newPassword: '', confirmPassword: '' };
+        let hasFailed = false;
+
+        // VALIDACIÓN CLIENTE: Verificar longitud exacta del código (6 dígitos)
+        if (!formData.code.trim()) {
+            localErrors.code = 'El código de verificación es obligatorio.';
+            hasFailed = true;
+        } else if (formData.code.trim().length !== 6) {
+            localErrors.code = 'El código debe tener exactamente 6 dígitos.';
+            hasFailed = true;
+        }
+
+        if (!formData.newPassword.trim()) {
+            localErrors.newPassword = 'La nueva contraseña es obligatoria.';
+            hasFailed = true;
+        }
+        if (!formData.confirmPassword.trim()) {
+            localErrors.confirmPassword = 'Debés confirmar la contraseña.';
+            hasFailed = true;
+        }
+
+        // VALIDACIÓN CLIENTE: Regla de negocio compleja de la contraseña
+        if (formData.newPassword.trim() && !passwordRegex.test(formData.newPassword)) {
+            localErrors.newPassword = 'Debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.';
+            hasFailed = true;
+        }
+
+        // VALIDACIÓN CLIENTE: Coincidencia mutua
+        if (formData.newPassword.trim() && formData.confirmPassword.trim() && formData.newPassword !== formData.confirmPassword) {
+            localErrors.confirmPassword = 'Las contraseñas no coinciden.';
+            hasFailed = true;
+        }
+
+        if (hasFailed) {
+            setErrors(localErrors);
             return;
         }
 
-        // 2. VALIDACIÓN: Regla de negocio compleja (6-16, Mayúscula, Especial)
-        if (!passwordRegex.test(formData.newPassword)) {
-            toast.error('La nueva contraseña debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.');
-            return;
-        }
-
-        // 3. VALIDACIÓN: Coincidencia mutua
-        if (formData.newPassword !== formData.confirmPassword) {
-            toast.error('Las contraseñas no coinciden.');
-            return;
-        }
-
-        // 4. VALIDACIÓN: Sesión activa de recuperación
         if (!emailGuardado) {
-            toast.error('Expiró la sesión de recuperación. Por favor, solicita un nuevo código.');
+            toast.error('El código expiró. Por favor, solicita un nuevo código.');
             return;
         }
 
         try {
+            // Pisamos la pantalla con un estado limpio antes de impactar a la API
+            setErrors({ code: '', newPassword: '', confirmPassword: '' });
+
             const res = await api.post('/auth/reset-password', {
                 email: emailGuardado,
                 code: formData.code,
@@ -68,7 +100,11 @@ const ResetPassword = () => {
             });
 
             if (res.data.success === false) {
-                toast.error(res.data.message || 'Error al cambiar la contraseña');
+                setErrors({
+                    code: res.data.message || 'Código de verificación incorrecto.',
+                    newPassword: '',
+                    confirmPassword: ''
+                });
                 return;
             }
 
@@ -81,23 +117,55 @@ const ResetPassword = () => {
 
         } catch (err) {
             console.error('Error capturado en ResetPassword:', err);
-            const mensajeError =
-                err.response?.data?.detail ||
-                err.response?.data?.message ||
-                'Error al cambiar la contraseña';
 
-            if (Array.isArray(mensajeError)) {
-                toast.error(mensajeError[0].msg);
-            } else {
-                toast.error(mensajeError);
+            const detalleBackend = err.response?.data?.detail;
+            const mensajeBackend = err.response?.data?.message;
+
+            // CASO A: Errores estructurales de Pydantic (Vienen en formato Array)
+            if (detalleBackend && Array.isArray(detalleBackend)) {
+                let apiErrors = { code: '', newPassword: '', confirmPassword: '' };
+
+                detalleBackend.forEach((error) => {
+                    const campoAfectado = error.loc[error.loc.length - 1];
+
+                    if (campoAfectado === 'code') {
+                        apiErrors.code = 'El código debe tener exactamente 6 caracteres.';
+                    } else if (campoAfectado === 'password' || campoAfectado === 'password_nueva') {
+                        apiErrors.newPassword = 'La contraseña no cumple con los requisitos del servidor.';
+                    }
+                });
+
+                setErrors(apiErrors);
+            }
+            // CASO B: Mensajes de texto normales enviados por el backend (Expiración / Invalidez)
+            else {
+                const mensajeError = detalleBackend || mensajeBackend || 'Error al cambiar la contraseña';
+                const msgString = String(mensajeError).toLowerCase();
+
+                // Si el mensaje del servidor hace referencia al código o token
+                if (msgString.includes('código') || msgString.includes('code') || msgString.includes('token') || msgString.includes('inválido') || msgString.includes('expir')) {
+                    setErrors({
+                        code: mensajeError, // Se inyecta correctamente arriba abajo del código
+                        newPassword: '',
+                        confirmPassword: ''
+                    });
+                } else {
+                    // Errores genéricos o de contraseña persistentes del backend
+                    setErrors({
+                        code: '',
+                        newPassword: mensajeError,
+                        confirmPassword: ''
+                    });
+                }
             }
         }
     };
 
     return (
         <div className="reset-container">
-            <div className="reset-card">
+            <Toaster />
 
+            <div className="reset-card">
                 <button
                     type="button"
                     onClick={() => navigate(-1)}
@@ -110,61 +178,72 @@ const ResetPassword = () => {
                     Restablecer Contraseña
                 </h1>
 
-                <form onSubmit={handleResetPassword} className="reset-form">
+                <form onSubmit={handleResetPassword} className="reset-form" noValidate>
 
                     {/* CÓDIGO DE VERIFICACIÓN */}
-                    <input
-                        type="text"
-                        name="code"
-                        placeholder="Código de 6 dígitos"
-                        maxLength="6"
-                        value={formData.code}
-                        onChange={handleChange}
-                        required
-                        className="reset-input"
-                    />
+                    <div className="reset-input-group">
+                        <input
+                            type="text"
+                            name="code"
+                            placeholder="Código de 6 dígitos"
+                            maxLength="6"
+                            value={formData.code}
+                            onChange={handleChange}
+                            className={`reset-input ${errors.code ? 'invalid-border' : ''}`}
+                        />
+                        {errors.code && (
+                            <p className="reset-error-message">{errors.code}</p>
+                        )}
+                    </div>
 
                     {/* NUEVA CONTRASEÑA */}
-                    <div className="reset-input-wrapper">
-                        <input
-                            type={showNewPassword ? 'text' : 'password'}
-                            name="newPassword"
-                            placeholder="Nueva Contraseña"
-                            value={formData.newPassword}
-                            onChange={handleChange}
-                            required
-                            className="reset-input"
-                        />
-                        <button
-                            type="button"
-                            className="reset-eye-btn"
-                            onClick={() => setShowNewPassword(!showNewPassword)}
-                        >
-                            {showNewPassword ? <FiEyeOff size={22} /> : <FiEye size={22} />}
-                        </button>
+                    <div className="reset-input-group">
+                        <div className="reset-input-wrapper">
+                            <input
+                                type={showNewPassword ? 'text' : 'password'}
+                                name="newPassword"
+                                placeholder="Nueva Contraseña"
+                                value={formData.newPassword}
+                                onChange={handleChange}
+                                className={`reset-input ${errors.newPassword ? 'invalid-border' : ''}`}
+                            />
+                            <button
+                                type="button"
+                                className="reset-eye-btn"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                            >
+                                {showNewPassword ? <FiEyeOff size={22} /> : <FiEye size={22} />}
+                            </button>
+                        </div>
+                        {errors.newPassword && (
+                            <p className="reset-error-message">{errors.newPassword}</p>
+                        )}
                     </div>
 
                     {/* CONFIRMAR NUEVA CONTRASEÑA */}
-                    <div className="reset-input-wrapper">
-                        <input
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            name="confirmPassword"
-                            placeholder="Confirmar Nueva Contraseña"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            required
-                            className="reset-input"
-                        />
-                        <button
-                            type="button"
-                            className="reset-eye-btn"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                            {showConfirmPassword ? <FiEyeOff size={22} /> : <FiEye size={22} />}
-                        </button>
+                    <div className="reset-input-group">
+                        <div className="reset-input-wrapper">
+                            <input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                name="confirmPassword"
+                                placeholder="Confirmar Nueva Contraseña"
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                className={`reset-input ${errors.confirmPassword ? 'invalid-border' : ''}`}
+                            />
+                            <button
+                                type="button"
+                                className="reset-eye-btn"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                                {showConfirmPassword ? <FiEyeOff size={22} /> : <FiEye size={22} />}
+                            </button>
+                        </div>
+                        {errors.confirmPassword && (
+                            <p className="reset-error-message">{errors.confirmPassword}</p>
+                        )}
                     </div>
 
-                    {/* BOTÓN DE ACCIÓN */}
                     <button type="submit" className="reset-button">
                         Actualizar Contraseña
                     </button>
