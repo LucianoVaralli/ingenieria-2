@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, Date
 from database import Base
 from models.enums import Rol
 from sqlalchemy.orm import relationship  
@@ -19,3 +19,6 @@ class Socio(Base):
     creditos_disponibles = Column(Integer, default=0)
     apto_fisico_path = Column(String, nullable=True) # Guardamos el nombre del archivo
     notificaciones = relationship("Notificacion", back_populates="socio")
+    membresia_activa_hasta = Column(Date, nullable=True)
+    fecha_membresia_inicio = Column(Date, nullable=True)
+    fecha_membresia_vencimiento = Column(Date, nullable=True)

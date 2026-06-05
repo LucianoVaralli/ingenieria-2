@@ -33,6 +33,7 @@ const Pago = () => {
         claseInfo        = null,
         claseId          = null,
         creditosUsados   = 0,
+        esPrimeraMembresia = false,
     } = location.state || {};
 
     const [nroTarjeta, setNroTarjeta] = useState('');
@@ -327,7 +328,21 @@ const Pago = () => {
                     {estado === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">✓</div>
-                            <h3>¡Reserva confirmada!</h3>
+                            <h3>
+                                {esPrimeraMembresia ? '¡Membresía activada!' : '¡Membresía renovada!'}
+                            </h3>
+                            <p>
+                                {esPrimeraMembresia
+                                    ? 'Tu membresía fue creada correctamente. Ya podés reservar todas las clases del mes.'
+                                    : 'Tu membresía fue renovada correctamente.'}
+
+                                {location.state?.fechaVencimiento && (
+                                    <>
+                                        <br />
+                                        Vence el: <strong>{location.state.fechaVencimiento}</strong>
+                                    </>
+                                )}
+                            </p>
                             <p>
                                 Tu lugar está asegurado.
                                 Te enviamos el comprobante a tu correo.

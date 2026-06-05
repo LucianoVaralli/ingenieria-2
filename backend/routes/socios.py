@@ -116,6 +116,9 @@ def obtener_mi_perfil(
         "telefono": usuario.telefono,
         "dni": usuario.dni,
         "creditos_disponibles": usuario.creditos_disponibles,
+
+        "membresia_activa":  bool(usuario.cuota_al_dia),
+        "membresia_vencimiento": usuario.membresia_activa_hasta
     }
 
 
