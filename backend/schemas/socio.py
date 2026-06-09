@@ -73,3 +73,39 @@ class CambiarPasswordRequest(BaseModel):
         if self.password_nueva != self.confirmar_password_nueva:
             raise ValueError("La confirmación de la nueva contraseña no coincide")
         return self
+
+class ProfesorCreate(BaseModel):
+    nombre: str
+    apellido: str
+    dni: str
+    email: str
+    telefono: str
+    #agrego fecha de nacimiento para el profesor??
+
+class ProfesorUpdate(BaseModel):
+    nombre: str
+    apellido: str
+    dni: str
+    email: str
+    telefono: str
+
+class CambiarPasswordInicialRequest(BaseModel):
+    password_nueva: str = Field(..., min_length=6, max_length=16)
+    confirmar_password_nueva: str
+
+    @field_validator("password_nueva")
+    @classmethod
+    def validar_complejidad_nueva_password(cls, v: str) -> str:
+        # Reutilizamos las reglas de complejidad que ya definiste en tu app
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La nueva contraseña debe incluir al menos una mayúscula")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("La nueva contraseña debe incluir al menos un carácter especial")
+        return v
+
+    @model_validator(mode="after")
+    def verificar_nuevas_claves_coinciden(self) -> "CambiarPasswordInicialRequest":
+        # Validación de que la nueva contraseña y su confirmación sean idénticas
+        if self.password_nueva != self.confirmar_password_nueva:
+            raise ValueError("La confirmación de la nueva contraseña no coincide")
+        return self
