@@ -796,6 +796,12 @@ body,
     background-color: #bb2d3b;
 }
 
+
+ 
+/* ═══════════════════════════════════════════════════
+   CHIP DE VENCIMIENTO en las cards de reserva
+═══════════════════════════════════════════════════ */
+ 
 .reserva-mini-vencimiento {
     display: inline-block;
     margin-top: 4px;
@@ -808,200 +814,11 @@ body,
     border: 1px solid rgba(230, 81, 0, 0.25);
     white-space: nowrap;
 }
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(3px);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    animation: fadeIn 0.18s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-
-.modal-renovar {
-    background: #fff;
-    border-radius: 16px;
-    width: 100%;
-    max-width: 480px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-    animation: slideUp 0.22s ease;
-    display: flex;
-    flex-direction: column;
-}
-
-@keyframes slideUp {
-    from { transform: translateY(24px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
-}
-
-.modal-renovar-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 22px 12px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.modal-renovar-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #1a1a1a;
-}
-
-.modal-cerrar {
-    background: none;
-    border: none;
-    font-size: 1.1rem;
-    cursor: pointer;
-    color: #888;
-    padding: 4px 8px;
-    border-radius: 6px;
-    transition: background 0.15s;
-}
-
-.modal-cerrar:hover {
-    background: #f5f5f5;
-    color: #333;
-}
-
-.modal-renovar-desc {
-    padding: 10px 22px 4px;
-    font-size: 0.88rem;
-    color: #666;
-    margin: 0;
-}
-
-.modal-renovar-lista {
-    padding: 12px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    flex: 1;
-    overflow-y: auto;
-}
-
-.modal-renovar-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 14px;
-    border-radius: 12px;
-    border: 2px solid #e8e8e8;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    background: #fafafa;
-}
-
-.modal-renovar-item:hover {
-    border-color: #bdbdbd;
-    background: #f5f5f5;
-}
-
-.modal-renovar-item.selected {
-    border-color: #4caf50;
-    background: rgba(76, 175, 80, 0.06);
-}
-
-.modal-renovar-item-check {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    border: 2px solid #ccc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #4caf50;
-    flex-shrink: 0;
-    margin-top: 2px;
-    transition: border-color 0.15s, background 0.15s;
-    background: #fff;
-}
-
-.modal-renovar-item.selected .modal-renovar-item-check {
-    border-color: #4caf50;
-    background: rgba(76, 175, 80, 0.1);
-}
-
-.modal-renovar-item-info {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex: 1;
-    min-width: 0;
-}
-
-.modal-renovar-actividad {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: #1a1a1a;
-}
-
-.modal-renovar-detalle {
-    font-size: 0.82rem;
-    color: #666;
-}
-
-.modal-renovar-mes {
-    font-size: 0.82rem;
-    color: #1976d2;
-    font-weight: 600;
-}
-
-.modal-renovar-vence {
-    font-size: 0.78rem;
-    color: #e65100;
-    font-weight: 600;
-}
-
-.modal-renovar-precio {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: #1a1a1a;
-    white-space: nowrap;
-    align-self: center;
-}
-
-.modal-renovar-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 22px 20px;
-    border-top: 1px solid #f0f0f0;
-    gap: 12px;
-}
-
-.modal-renovar-selec {
-    font-size: 0.85rem;
-    color: #888;
-}
-
-.reserva-mini-vencimiento {
-    display: inline-block;
-    margin-top: 4px;
-    padding: 2px 8px;
-    border-radius: 20px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    background: rgba(255, 160, 0, 0.12);
-    color: #e65100;
-    border: 1px solid rgba(230, 81, 0, 0.25);
-    white-space: nowrap;
-}
-
+ 
+/* ═══════════════════════════════════════════════════
+   OVERLAY del modal
+═══════════════════════════════════════════════════ */
+ 
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -1014,12 +831,16 @@ body,
     padding: 16px;
     animation: fadeIn 0.18s ease;
 }
-
+ 
 @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
 }
-
+ 
+/* ═══════════════════════════════════════════════════
+   CARD del modal
+═══════════════════════════════════════════════════ */
+ 
 .modal-renovar {
     background: #111;
     border: 1px solid rgba(92, 184, 77, 0.2);
@@ -1033,12 +854,12 @@ body,
     display: flex;
     flex-direction: column;
 }
-
+ 
 @keyframes slideUp {
     from { transform: translateY(24px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
 }
-
+ 
 .modal-renovar-header {
     display: flex;
     align-items: center;
@@ -1046,14 +867,14 @@ body,
     padding: 20px 22px 12px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-
+ 
 .modal-renovar-header h3 {
     margin: 0;
     font-size: 1.05rem;
     font-weight: 700;
     color: #fff;
 }
-
+ 
 .modal-cerrar {
     background: none;
     border: none;
@@ -1064,19 +885,23 @@ body,
     border-radius: 6px;
     transition: background 0.15s, color 0.15s;
 }
-
+ 
 .modal-cerrar:hover {
     background: rgba(255,255,255,0.06);
     color: #ccc;
 }
-
+ 
 .modal-renovar-desc {
     padding: 10px 22px 4px;
     font-size: 0.85rem;
     color: rgba(255,255,255,0.4);
     margin: 0;
 }
-
+ 
+/* ═══════════════════════════════════════════════════
+   ITEMS de la lista
+═══════════════════════════════════════════════════ */
+ 
 .modal-renovar-lista {
     padding: 12px 16px;
     display: flex;
@@ -1085,7 +910,7 @@ body,
     flex: 1;
     overflow-y: auto;
 }
-
+ 
 .modal-renovar-item {
     display: flex;
     align-items: flex-start;
@@ -1097,17 +922,17 @@ body,
     transition: border-color 0.15s, background 0.15s;
     background: #1a1a1a;
 }
-
+ 
 .modal-renovar-item:hover {
     border-color: rgba(255,255,255,0.15);
     background: #1f1f1f;
 }
-
+ 
 .modal-renovar-item.selected {
     border-color: #5CB84D;
     background: rgba(92, 184, 77, 0.07);
 }
-
+ 
 .modal-renovar-item-check {
     width: 22px;
     height: 22px;
@@ -1123,41 +948,41 @@ body,
     margin-top: 2px;
     transition: border-color 0.15s;
 }
-
+ 
 .modal-renovar-item.selected .modal-renovar-item-check {
     border-color: #5CB84D;
 }
-
+ 
 .modal-renovar-item-info {
     display: flex;
     flex-direction: column;
     gap: 3px;
     flex: 1;
 }
-
+ 
 .modal-renovar-actividad {
     font-weight: 700;
     font-size: 0.95rem;
     color: #fff;
 }
-
+ 
 .modal-renovar-detalle {
     font-size: 0.82rem;
     color: rgba(255,255,255,0.4);
 }
-
+ 
 .modal-renovar-mes {
     font-size: 0.82rem;
     color: #5CB84D;
     font-weight: 600;
 }
-
+ 
 .modal-renovar-vence {
     font-size: 0.78rem;
     color: #e65100;
     font-weight: 600;
 }
-
+ 
 .modal-renovar-precio {
     font-weight: 700;
     font-size: 0.95rem;
@@ -1165,7 +990,11 @@ body,
     white-space: nowrap;
     align-self: center;
 }
-
+ 
+/* ═══════════════════════════════════════════════════
+   FOOTER del modal
+═══════════════════════════════════════════════════ */
+ 
 .modal-renovar-footer {
     display: flex;
     align-items: center;
@@ -1174,14 +1003,29 @@ body,
     border-top: 1px solid rgba(255,255,255,0.06);
     gap: 12px;
 }
-
+ 
 .modal-renovar-selec {
     font-size: 0.85rem;
     color: rgba(255,255,255,0.35);
 }
-
+ 
 /* Adaptar .boton-accion deshabilitado dentro del modal */
 .modal-renovar-footer .boton-accion:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
+ 
+/* Chip "Podés renovar para julio" — aparece cuando ya pasó la última clase */
+.reserva-mini-renovar {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(92, 184, 77, 0.1);
+    color: #5CB84D;
+    border: 1px solid rgba(92, 184, 77, 0.3);
+    white-space: nowrap;
+}
+ 

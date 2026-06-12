@@ -19,18 +19,18 @@ from schemas.reserva import (
     ConfirmarPagoIndividual,
     ListaEsperaIndividualCreate,
 )
-
 from models.tarjeta_simulada import TarjetaSimulada
 from services.auth import validar_membresia
-
 from services.mail_service import (
     enviar_mail_pago_exitoso,
     enviar_mail_lista_espera,
     enviar_mail_membresia,
     enviar_mail_error_pago
 )
-
 from datetime import timedelta
+
+# ── Import de la función helper de membresía ──
+from routes.membresia import _actualizar_membresia_activa_hasta
 
 router = APIRouter(
     prefix="/reservas",
@@ -152,7 +152,7 @@ def crear_reserva_membresia(
 
 
 # ──────────────────────────────────────────────────────────────
-# NUEVO Endpoint: agregar a lista de espera de membresía sin pago
+# Endpoint: agregar a lista de espera de membresía sin pago
 # ──────────────────────────────────────────────────────────────
 
 @router.post("/membresia/lista-espera")
@@ -169,7 +169,6 @@ def agregar_lista_espera_membresia(
         raise HTTPException(status_code=404, detail="Clase no encontrada")
 
     for fecha in datos.fechas_sin_cupo:
-        # Evitar duplicados en lista de espera
         ya_en_espera = db.query(ListaEspera).filter(
             ListaEspera.socio_id    == socio.id,
             ListaEspera.clase_id    == datos.clase_id,
@@ -204,7 +203,7 @@ def agregar_lista_espera_membresia(
 
 
 # ──────────────────────────────────────────────────────────────
-# Endpoint: confirmar pago membresía (solo para reservas con cupo)
+# Endpoint: confirmar pago membresía
 # ──────────────────────────────────────────────────────────────
 
 @router.post("/membresia/pagar")
@@ -221,17 +220,17 @@ async def confirmar_pago_membresia(
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
 
-    # 1. Descontar créditos primero (si aplica)
+    # 1. Descontar créditos (si aplica)
     if datos.creditos_a_usar > 0:
         if socio.creditos_disponibles < datos.creditos_a_usar:
             raise HTTPException(status_code=400, detail="No tenés créditos suficientes.")
         socio.creditos_disponibles -= datos.creditos_a_usar
 
-    # 2. Validación y cobro de tarjeta (solo si hay monto a pagar)
+    # 2. Validación y cobro de tarjeta (solo si hay monto)
     if datos.monto_total > 0:
         if datos.numero_tarjeta:
-            numero_limpio       = datos.numero_tarjeta.replace(" ", "")
-            titular_normalized  = " ".join(datos.titular.split())
+            numero_limpio      = datos.numero_tarjeta.replace(" ", "")
+            titular_normalized = " ".join(datos.titular.split())
 
             tarjeta = db.query(TarjetaSimulada).filter(
                 TarjetaSimulada.numero == numero_limpio,
@@ -251,7 +250,7 @@ async def confirmar_pago_membresia(
         elif not datos.pago_exitoso:
             raise HTTPException(status_code=402, detail="No se pudo procesar el pago.")
 
-    # 3. Creación de reservas confirmadas (con cupo)
+    # 3. Crear reservas confirmadas
     reservas_creadas = []
     for fecha in datos.fechas_con_cupo:
         ocupadas = db.query(Reserva).filter(
@@ -276,6 +275,10 @@ async def confirmar_pago_membresia(
 
     db.commit()
 
+    # ── Actualizar membresia_activa_hasta con la última fecha real ──
+    _actualizar_membresia_activa_hasta(socio.id, db)
+    db.commit()
+
     try:
         await enviar_mail_membresia(
             socio=socio,
@@ -288,14 +291,14 @@ async def confirmar_pago_membresia(
         print(f"⚠️ Mail no enviado: {e}")
 
     return {
-        "mensaje": "Reserva procesada",
+        "mensaje":             "Reserva procesada",
         "reservas_confirmadas": len(reservas_creadas),
-        "monto_pagado": datos.monto_total,
+        "monto_pagado":        datos.monto_total,
     }
 
 
 # ──────────────────────────────────────────────────────────────
-# Endpoint: cancelar reserva membresía y notificar lista de espera
+# Endpoint: cancelar reserva membresía
 # ──────────────────────────────────────────────────────────────
 
 @router.post("/membresia/cancelar/{reserva_id}")
@@ -319,6 +322,10 @@ def cancelar_reserva(
     reserva.estado = "cancelada"
     db.commit()
 
+    # Recalcular vencimiento después de cancelar
+    _actualizar_membresia_activa_hasta(socio.id, db)
+    db.commit()
+
     siguiente = db.query(ListaEspera).filter(
         ListaEspera.clase_id    == reserva.clase_id,
         ListaEspera.fecha_clase == reserva.fecha_clase,
@@ -331,7 +338,6 @@ def cancelar_reserva(
     if siguiente:
         siguiente.estado = "notificado"
         db.commit()
-        # TODO: enviar mail al socio notificándole que se liberó un cupo
 
     return {"mensaje": "Reserva cancelada, cupo liberado"}
 
@@ -448,7 +454,7 @@ def verificar_cupo(
 
 
 # ──────────────────────────────────────────────────────────────
-# NUEVO Endpoint: agregar a lista de espera individual sin pago
+# Endpoint: agregar a lista de espera individual sin pago
 # ──────────────────────────────────────────────────────────────
 
 @router.post("/individual/lista-espera")
@@ -463,7 +469,6 @@ def agregar_lista_espera_individual(
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
 
-    # Verificar que no esté ya en lista de espera para esa fecha
     ya_en_espera = db.query(ListaEspera).filter(
         ListaEspera.socio_id    == socio.id,
         ListaEspera.clase_id    == datos.clase_id,
@@ -474,7 +479,6 @@ def agregar_lista_espera_individual(
     if ya_en_espera:
         raise HTTPException(status_code=400, detail="Ya estás en lista de espera para esta clase")
 
-    # Crear reserva en estado en_espera (sin costo)
     reserva_espera = Reserva(
         socio_id     = socio.id,
         clase_id     = datos.clase_id,
@@ -517,7 +521,6 @@ def crear_reserva_individual(
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
 
-    # Reutilizar reserva pendiente si existe
     reserva_existente = db.query(Reserva).filter(
         Reserva.socio_id    == socio.id,
         Reserva.clase_id    == datos.clase_id,
@@ -530,26 +533,24 @@ def crear_reserva_individual(
         monto = (clase.precio_individual * 0.5
                  if datos.tipo_pago == "sena"
                  else clase.precio_individual)
-        reserva_existente.tipo_pago   = datos.tipo_pago
+        reserva_existente.tipo_pago    = datos.tipo_pago
         reserva_existente.monto_pagado = monto
         db.commit()
         db.refresh(reserva_existente)
         return {
-            "mensaje":    "Reserva retomada",
-            "reserva_id": reserva_existente.id,
-            "monto_a_pagar": monto,
-            "hay_cupo":      True,
+            "mensaje":           "Reserva retomada",
+            "reserva_id":        reserva_existente.id,
+            "monto_a_pagar":     monto,
+            "hay_cupo":          True,
             "debe_lista_espera": False
         }
 
-    # Regla: no puede reservar una clase ya iniciada
     horario_str = str(clase.horario)[:5]
     fecha_hora  = datetime.strptime(f"{datos.fecha_clase} {horario_str}", "%Y-%m-%d %H:%M")
 
     if datetime.now() >= fecha_hora:
         raise HTTPException(status_code=400, detail="La clase ya comenzó")
 
-    # Regla: no puede reservar 2 clases en el mismo horario
     conflicto = db.query(Reserva).join(Clase).filter(
         Reserva.socio_id    == socio.id,
         Clase.dia           == clase.dia,
@@ -561,7 +562,6 @@ def crear_reserva_individual(
     if conflicto:
         raise HTTPException(status_code=400, detail="Ya tiene una reserva en ese horario")
 
-    # Regla: no puede reservar individual si ya tiene membresía activa
     membresia_existente = db.query(Reserva).filter(
         Reserva.socio_id    == socio.id,
         Reserva.clase_id    == clase.id,
@@ -587,14 +587,14 @@ def crear_reserva_individual(
     monto = clase.precio_individual * 0.5 if datos.tipo_pago == "sena" else clase.precio_individual
 
     reserva = Reserva(
-        socio_id    = socio.id,
-        clase_id    = clase.id,
-        tipo        = TipoReserva.Individual.value,
-        estado      = "pendiente_pago",
-        fecha_clase = datos.fecha_clase,
-        monto_total = clase.precio_individual,
+        socio_id     = socio.id,
+        clase_id     = clase.id,
+        tipo         = TipoReserva.Individual.value,
+        estado       = "pendiente_pago",
+        fecha_clase  = datos.fecha_clase,
+        monto_total  = clase.precio_individual,
         monto_pagado = monto,
-        tipo_pago   = datos.tipo_pago
+        tipo_pago    = datos.tipo_pago
     )
 
     db.add(reserva)
@@ -602,10 +602,10 @@ def crear_reserva_individual(
     db.refresh(reserva)
 
     return {
-        "mensaje":          "Reserva creada correctamente",
-        "reserva_id":       reserva.id,
-        "monto_a_pagar":    monto,
-        "hay_cupo":         hay_cupo,
+        "mensaje":           "Reserva creada correctamente",
+        "reserva_id":        reserva.id,
+        "monto_a_pagar":     monto,
+        "hay_cupo":          hay_cupo,
         "debe_lista_espera": not hay_cupo
     }
 
@@ -634,7 +634,6 @@ async def pagar_reserva_individual(
 
     clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
 
-    # ── Pago con crédito ──
     if datos.usa_credito:
         if socio.creditos_disponibles < 1:
             reserva.estado = "cancelada"
@@ -653,14 +652,13 @@ async def pagar_reserva_individual(
 
         return {"mensaje": "Reserva confirmada con crédito"}
 
-    # ── Pago con tarjeta ──
     numero_limpio       = datos.numero_tarjeta.replace(" ", "")
     titular_normalizado = " ".join(datos.titular.split())
 
     tarjeta = db.query(TarjetaSimulada).filter(
-        TarjetaSimulada.numero           == numero_limpio,
+        TarjetaSimulada.numero            == numero_limpio,
         func.lower(TarjetaSimulada.titular) == titular_normalizado.lower(),
-        TarjetaSimulada.cvv              == datos.cvv,
+        TarjetaSimulada.cvv               == datos.cvv,
         TarjetaSimulada.fecha_vencimiento == datos.fecha_vencimiento
     ).first()
 
@@ -679,17 +677,13 @@ async def pagar_reserva_individual(
         db.commit()
         raise HTTPException(status_code=400, detail="La cuenta no tiene saldo suficiente")
 
-    # Reverificar cupo (pudo ocuparse mientras el usuario completaba el form)
     ocupadas = db.query(Reserva).filter(
         Reserva.clase_id    == clase.id,
         Reserva.fecha_clase == reserva.fecha_clase,
         Reserva.estado      == "confirmada"
     ).count()
 
-    hay_cupo = ocupadas < clase.cupo
-
-    if not hay_cupo:
-        # Ya no hay cupo al momento de pagar → cancelamos y avisamos
+    if ocupadas >= clase.cupo:
         reserva.estado = "cancelada"
         db.commit()
         raise HTTPException(
@@ -697,7 +691,6 @@ async def pagar_reserva_individual(
             detail="El cupo se llenó mientras procesabas el pago. Podés intentar anotarte en lista de espera."
         )
 
-    # ── Pago exitoso ──
     reserva.estado          = "confirmada"
     reserva.tarjeta_ultimos = tarjeta.numero
     reserva.tipo_tarjeta    = tarjeta.tipo
@@ -790,8 +783,8 @@ def obtener_alertas_individuales(
     socio = obtener_usuario_actual(db=db, token=token)
 
     alertas = db.query(Reserva).filter(
-        Reserva.socio_id     == socio.id,
-        Reserva.tipo         == TipoReserva.Individual.value,
+        Reserva.socio_id      == socio.id,
+        Reserva.tipo          == TipoReserva.Individual.value,
         Reserva.mensaje_admin != None
     ).order_by(Reserva.id.desc()).all()
 

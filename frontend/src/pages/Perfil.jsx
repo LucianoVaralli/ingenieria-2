@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
@@ -151,10 +151,37 @@ const Perfil = ({ token, setToken }) => {
         return f.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
     };
 
-    // Busca la info de membresía renovable para una reserva dada
-    const membresiaDeReserva = (reserva) => {
+    // Para cada clase de membresía, calcula cuál es la última fecha reservada
+    const ultimaFechaPorClase = useMemo(() => {
+        const map = {};
+        reservas.forEach(r => {
+            if (r.tipo !== 'membresia') return;
+            if (!map[r.clase_id] || r.fecha_clase > map[r.clase_id]) {
+                map[r.clase_id] = r.fecha_clase;
+            }
+        });
+        return map;
+    }, [reservas]);
+
+    // Devuelve info del chip para una reserva de membresía:
+    // - Si es la última del mes y aún no pasó → { tipo: 'vence', fecha }
+    // - Si ya pasó la última clase → { tipo: 'renovar', mesLabel }
+    // - En cualquier otra reserva → null
+    const chipMembresia = (reserva) => {
         if (reserva.tipo !== 'membresia') return null;
-        return membresíasRenovables.find(m => m.clase_id === reserva.clase_id) || null;
+        const esUltima = ultimaFechaPorClase[reserva.clase_id] === reserva.fecha_clase;
+        if (!esUltima) return null;
+
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const fechaUltima = new Date(reserva.fecha_clase + 'T00:00:00');
+        const renovable   = membresíasRenovables.find(m => m.clase_id === reserva.clase_id);
+
+        if (fechaUltima >= hoy) {
+            return { tipo: 'vence', fecha: reserva.fecha_clase };
+        } else {
+            return { tipo: 'renovar', mesLabel: renovable?.mes_renovacion || null };
+        }
     };
 
     // ── Agrupación por día ──
@@ -310,7 +337,7 @@ const Perfil = ({ token, setToken }) => {
                                                             <p className="agenda-columna-vacio">Sin clases</p>
                                                         ) : (
                                                             clasesDelDia.map(r => {
-                                                                const membresia = membresiaDeReserva(r);
+                                                                const chip = chipMembresia(r);
                                                                 return (
                                                                     <div className="reserva-card-mini" key={r.id}>
                                                                         <div className="reserva-mini-fecha">
@@ -329,10 +356,15 @@ const Perfil = ({ token, setToken }) => {
                                                                                 {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
                                                                             </span>
 
-                                                                            {/* ── CHIP DE VENCIMIENTO ── */}
-                                                                            {membresia?.ultima_fecha_reservada && (
+                                                                            {/* ── CHIP DE VENCIMIENTO / RENOVACIÓN ── */}
+                                                                            {chip?.tipo === 'vence' && (
                                                                                 <span className="reserva-mini-vencimiento">
-                                                                                    📅 Hasta el {formatearUltimaFecha(membresia.ultima_fecha_reservada)}
+                                                                                    📅 Hasta el {formatearUltimaFecha(chip.fecha)}
+                                                                                </span>
+                                                                            )}
+                                                                            {chip?.tipo === 'renovar' && (
+                                                                                <span className="reserva-mini-renovar">
+                                                                                    🔄 Podés renovar para {chip.mesLabel || 'el mes siguiente'}
                                                                                 </span>
                                                                             )}
 

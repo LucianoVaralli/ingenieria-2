@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from calendar import monthrange
 
 from dependencies.database import get_db
@@ -41,7 +41,6 @@ def _determinar_mes_renovacion(clase_dia: str, hoy: date) -> tuple[int, int]:
     """
     weekday = DIA_A_WEEKDAY.get(clase_dia.lower().strip(), -1)
     if weekday == -1:
-        # Día desconocido: mes siguiente como fallback
         mes_sig  = hoy.month % 12 + 1
         anio_sig = hoy.year + (1 if hoy.month == 12 else 0)
         return anio_sig, mes_sig
@@ -61,13 +60,38 @@ def _determinar_mes_renovacion(clase_dia: str, hoy: date) -> tuple[int, int]:
         return anio_sig, mes_sig
 
 
+def _actualizar_membresia_activa_hasta(socio_id: int, db: Session):
+    """
+    Recalcula membresia_activa_hasta como la última fecha de reserva
+    de membresía confirmada del socio. Se llama después de cada pago.
+    """
+    ultima = db.query(Reserva).filter(
+        Reserva.socio_id      == socio_id,
+        Reserva.tipo          == TipoReserva.Membresia.value,
+        Reserva.estado        == "confirmada",
+        Reserva.es_recurrente == True,
+    ).order_by(Reserva.fecha_clase.desc()).first()
+
+    socio = db.query(Socio).filter(Socio.id == socio_id).first()
+    if ultima:
+        socio.membresia_activa_hasta = datetime.strptime(
+            ultima.fecha_clase, "%Y-%m-%d"
+        ).date()
+        socio.cuota_al_dia = True
+    else:
+        socio.membresia_activa_hasta = None
+        socio.cuota_al_dia = False
+
+
 # ── Schema ──
 class RenovarMembresiaRequest(BaseModel):
     clase_ids: list[int]
 
 
 # ─────────────────────────────────────────────
-# ACTIVAR MEMBRESÍA (sin cambios)
+# ACTIVAR MEMBRESÍA
+# Ahora membresia_activa_hasta se calcula desde las reservas reales,
+# no con +30 días hardcodeado.
 # ─────────────────────────────────────────────
 
 @router.post("/activar")
@@ -79,9 +103,16 @@ def activar_membresia(
     socio = db.query(Socio).filter(Socio.id == user.id).first()
     hoy   = date.today()
 
-    socio.membresia_activa_hasta  = hoy + timedelta(days=30)
-    socio.fecha_membresia_inicio  = hoy
-    socio.cuota_al_dia            = True
+    socio.fecha_membresia_inicio = hoy
+    socio.cuota_al_dia           = True
+
+    # Calculamos la fecha real desde las reservas ya existentes
+    _actualizar_membresia_activa_hasta(socio.id, db)
+
+    # Si aún no tiene reservas (recién activó antes de reservar), ponemos fin de mes como fallback
+    if not socio.membresia_activa_hasta:
+        _, ultimo_dia = monthrange(hoy.year, hoy.month)
+        socio.membresia_activa_hasta = date(hoy.year, hoy.month, ultimo_dia)
 
     db.commit()
     db.refresh(socio)
@@ -101,11 +132,6 @@ def obtener_membresias_renovables(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    """
-    Devuelve una lista de clases para las que el socio tiene membresía activa,
-    con el mes al que correspondería renovar y la última fecha reservada
-    (para mostrar el chip "Vence el..." en el perfil).
-    """
     socio = obtener_usuario_actual(token=token, db=db)
     hoy   = date.today()
 
@@ -128,7 +154,7 @@ def obtener_membresias_renovables(
         if not clase:
             continue
 
-        # Última fecha reservada para esta clase → "Vence el..."
+        # Última fecha reservada para esta clase → chip "Vence el..."
         ultima = db.query(Reserva).filter(
             Reserva.socio_id      == socio.id,
             Reserva.clase_id      == r.clase_id,
@@ -168,11 +194,6 @@ def cotizar_renovacion(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    """
-    Recibe una lista de clase_ids, verifica que el socio tenga membresía activa
-    para cada una, y devuelve las fechas + objeto clase listos para navegar
-    a ReservaMembresia. No escribe nada en la base de datos.
-    """
     socio = obtener_usuario_actual(token=token, db=db)
     hoy   = date.today()
 
@@ -224,33 +245,37 @@ def cotizar_renovacion(
 
 
 # ─────────────────────────────────────────────
-# PROCESAR VENCIMIENTOS (sin cambios)
+# PROCESAR VENCIMIENTOS — FIX CRÍTICO
+# Solo cancela reservas de fechas pasadas, nunca futuras.
+# Actualiza membresia_activa_hasta desde las reservas reales.
 # ─────────────────────────────────────────────
 
 @router.post("/procesar-vencimientos")
 def procesar_vencimientos(db: Session = Depends(get_db)):
     hoy = date.today()
 
-    socios_vencidos = db.query(Socio).filter(
-        Socio.membresia_activa_hasta.isnot(None),
-        Socio.membresia_activa_hasta < hoy
+    # 1. Cancelar reservas de membresía cuya fecha_clase ya pasó
+    reservas_pasadas = db.query(Reserva).filter(
+        Reserva.es_recurrente == True,
+        Reserva.estado        == "confirmada",
+        Reserva.fecha_clase   <  str(hoy),
     ).all()
 
-    eliminadas = 0
+    canceladas = 0
+    socios_afectados = set()
 
-    for socio in socios_vencidos:
-        reservas = db.query(Reserva).filter(
-            Reserva.socio_id      == socio.id,
-            Reserva.es_recurrente == True,
-            Reserva.estado        != "cancelada"
-        ).all()
+    for reserva in reservas_pasadas:
+        reserva.estado = "cancelada"
+        canceladas += 1
+        socios_afectados.add(reserva.socio_id)
 
-        for reserva in reservas:
-            reserva.estado = "cancelada"
-            eliminadas += 1
+    db.flush()  # aplicar cambios sin commitear todavía
 
-        socio.cuota_al_dia = False
+    # 2. Para cada socio afectado, recalcular membresia_activa_hasta
+    #    basado en las reservas futuras que aún quedan confirmadas
+    for socio_id in socios_afectados:
+        _actualizar_membresia_activa_hasta(socio_id, db)
 
     db.commit()
 
-    return {"reservas_eliminadas": eliminadas}
+    return {"reservas_canceladas": canceladas}
