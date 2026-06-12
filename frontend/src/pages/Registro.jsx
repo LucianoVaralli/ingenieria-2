@@ -270,7 +270,7 @@ const Registro = () => {
                             {errors.confirmar_password && <span className="error-message">{errors.confirmar_password}</span>}
                         </div>
                     </div>
-                    
+                    {errors.general && <span className="error-message" style={{ textAlign: 'center' }}>{errors.general}</span>}
                     {/* apto fisico */}
                     <div className="registro-field">
                         <label className={`registro-file-label ${file ? 'registro-file-label--ok' : ''}`}>
@@ -288,8 +288,7 @@ const Registro = () => {
                         {errors.apto_fisico && <span className="error-message">{errors.apto_fisico}</span>}
                     </div>
 
-                    {/* SECCIÓN DE ERRORES GENERALES O ÉXITO (Reemplaza a los Toasts flotantes) */}
-                    {errors.general && <div className="error-message-general" style={{ color: 'red', marginBottom: '15px', fontWeight: 'bold', textAlign: 'center' }}>{errors.general}</div>}
+                    {/* SECCIÓN DE ERRORES GENERALES O ÉXITO (Reemplaza a los Toasts flotantes) */}                   
                     {successMessage && <div className="success-message-inline" style={{ color: 'green', marginBottom: '15px', fontWeight: 'bold', textAlign: 'center' }}>{successMessage}</div>}
 
                     <button type="submit" className="boton-registrar">

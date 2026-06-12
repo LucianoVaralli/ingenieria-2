@@ -16,9 +16,6 @@ dnspython==2.8.0
 ecdsa==0.19.2
 email-validator==2.3.0
 fastapi==0.136.1
-greenlet==3.4.0
-h11==0.16.0
-idna==3.13
 fastapi-mail==1.6.4
 greenlet==3.4.0
 h11==0.16.0
@@ -31,9 +28,6 @@ pwdlib==0.3.0
 pyasn1==0.6.3
 pycparser==3.0
 pydantic==2.13.3
-pydantic_core==2.46.3
-python-jose==3.5.0
-python-multipart==0.0.28
 pydantic-settings==2.14.1
 pydantic_core==2.46.3
 python-dotenv==1.2.2

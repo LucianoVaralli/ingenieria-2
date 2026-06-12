@@ -110,8 +110,6 @@ async def crear_clase(
     except HTTPException:
         huecos = sugerir_bloques_libres(db, clase.dia, clase.duracion)
 
-
-    # Buscar profesor por email
         raise HTTPException(
             status_code=400,
             detail={
@@ -126,7 +124,6 @@ async def crear_clase(
         Socio.rol == Rol.Profesor.value
     ).first()
 
-    # Validar que el profesor exista y no tenga otra clase en el mismo horario
     if not profesor:
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
     
