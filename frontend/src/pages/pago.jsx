@@ -31,7 +31,9 @@ const Pago = () => {
         fechasSinCupo    = [],
         aceptaListaEspera = true,
         claseInfo        = null,
-        claseId          = null, 
+        claseId          = null,
+        creditosUsados   = 0,
+        esPrimeraMembresia = false,
     } = location.state || {};
 
     const [nroTarjeta, setNroTarjeta] = useState('');
@@ -133,6 +135,18 @@ const Pago = () => {
                             </>
                         )}
 
+                        {creditosUsados > 0 && (
+                            <div className="pago-resumen-fila" style={{ color: '#4caf50' }}>
+                                <span>🎟️ Créditos aplicados</span>
+                                <span>-{creditosUsados} clase{creditosUsados > 1 ? 's' : ''}</span>
+                            </div>
+                        )}
+                    
+                        <div className="pago-resumen-total">
+                            <span>Total</span>
+                            <span>${Number(monto || 0).toFixed(2)}</span>
+                        </div>
+
                         <div className="pago-resumen-total">
                             <span>Total</span>
                             <span>${Number(monto || 0).toFixed(2)}</span>
@@ -230,7 +244,7 @@ const Pago = () => {
                                             style={{ WebkitTextSecurity: 'disc' }}
                                             placeholder="•••"
                                             value={cvv}
-                                            onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                            onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
                                         />
                                     </div>
 
@@ -314,7 +328,21 @@ const Pago = () => {
                     {estado === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">✓</div>
-                            <h3>¡Reserva confirmada!</h3>
+                            <h3>
+                                {esPrimeraMembresia ? '¡Membresía activada!' : '¡Membresía renovada!'}
+                            </h3>
+                            <p>
+                                {esPrimeraMembresia
+                                    ? 'Tu membresía fue creada correctamente. Ya podés reservar todas las clases del mes.'
+                                    : 'Tu membresía fue renovada correctamente.'}
+
+                                {location.state?.fechaVencimiento && (
+                                    <>
+                                        <br />
+                                        Vence el: <strong>{location.state.fechaVencimiento}</strong>
+                                    </>
+                                )}
+                            </p>
                             <p>
                                 Tu lugar está asegurado.
                                 Te enviamos el comprobante a tu correo.

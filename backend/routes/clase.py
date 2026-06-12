@@ -1,10 +1,11 @@
+from schemas import clase
 from services.sugerencias import sugerir_bloques_libres
 from models.lista_espera import ListaEspera
 from models.reserva_MIO import Reserva
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
-from models.enums import Rol
+from models.enums import Rol, DiaSemana
 from models.clase import Clase
 from models.gimnasio import Gimnasio
 from models.socio import Socio
@@ -233,6 +234,43 @@ def obtener_ocupacion_dia(dia: str, db: Session = Depends(get_db)):
 
     return resultado
 
+
+@router.get("/eliminar/{clase_id}/info")
+def obtener_info_eliminacion(
+    clase_id: int,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(
+        Clase.id == clase_id,
+        Clase.activa == True
+    ).first()
+
+    if not clase:
+        raise HTTPException(
+            status_code=404,
+            detail="Clase no encontrada"
+        )
+
+    hoy_str = date.today().strftime("%Y-%m-%d")
+
+    reservas_futuras = db.query(Reserva).filter(
+        Reserva.clase_id == clase.id,
+        Reserva.estado.in_(["confirmada", "pendiente_pago"]),
+        Reserva.fecha_clase >= hoy_str
+    ).all()
+
+    alumnos_afectados = len({
+        reserva.socio_id
+        for reserva in reservas_futuras
+    })
+
+    return {
+        "clase_id": clase.id,
+        "actividad": clase.actividad,
+        "alumnos_afectados": alumnos_afectados,
+        "reservas_afectadas": len(reservas_futuras)
+    }    
+
 @router.put("/eliminar/{clase_id}")
 async def eliminar_clase(
     clase_id: int,
@@ -352,11 +390,53 @@ async def cancelar_clase_dia(
     db: Session = Depends(get_db)
 ):
     clase = db.query(Clase).filter(Clase.id == clase_id, Clase.activa == True).first()
+    
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
 
+    if not datos.fecha_clase:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe seleccionar una fecha"
+        )
+    
     if not datos.motivo.strip():
         raise HTTPException(status_code=400, detail="Debe ingresar un motivo de cancelación")
+    
+    if len(datos.motivo.strip()) < 5:
+        raise HTTPException(
+            status_code=400,
+            detail="El motivo debe tener al menos 5 caracteres"
+        )
+
+    fecha = datetime.strptime(
+        datos.fecha_clase,
+        "%Y-%m-%d"
+    ).date()
+
+    dias = {
+        0: "Lunes",
+        1: "Martes",
+        2: "Miercoles",
+        3: "Jueves",
+        4: "Viernes",
+        5: "Sabado",
+        6: "Domingo"
+    }
+
+    dia_fecha = dias[fecha.weekday()]
+
+    if dia_fecha.lower() != clase.dia.value.lower():
+        raise HTTPException(
+            status_code=400,
+            detail=f"La fecha seleccionada corresponde a {dia_fecha} y esta clase se dicta los {clase.dia.value.capitalize()}"
+        )
+    
+    if fecha < date.today():
+        raise HTTPException(
+        status_code=400,
+        detail="No se puede cancelar una clase de una fecha pasada"
+    )
 
     # Buscar reservas tanto "confirmada" como "pendiente_pago" para ESE día puntual
     reservas = db.query(Reserva).filter(
@@ -364,6 +444,12 @@ async def cancelar_clase_dia(
         Reserva.fecha_clase == datos.fecha_clase,
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
     ).all()
+
+    if not reservas:
+        raise HTTPException(
+            status_code=400,
+            detail="No existen reservas para cancelar en esa fecha"
+        )
 
     # Procesar alumnos anotados para esa fecha
     for reserva in reservas:
@@ -380,13 +466,14 @@ async def cancelar_clase_dia(
                 db,
                 reserva.socio_id,
                 "Clase cancelada",
-                f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. La actividad continúa normalmente en los próximos días."
+                f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada."
+                f"Motivo: {datos.motivo.strip().capitalize()}. La actividad continúa normalmente en los próximos días."
             )
-            reserva.mensaje_admin = f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada por el administrador antes de tu pago."
+            reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada por el administrador antes de tu pago."
             continue
         
         # Si estaba CONFIRMADA, aplicamos devoluciones según tipo de usuario
-        if reserva.tipo == TipoReserva.Membresia:
+        if reserva.tipo == TipoReserva.Membresia.value:
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
             if socio:
                 socio.creditos_disponibles += 1
@@ -395,14 +482,15 @@ async def cancelar_clase_dia(
                     db,
                     socio.id,
                     "Clase cancelada",
-                    f"Se canceló la clase del día {clase.dia.value} {datos.fecha_clase}. "
+                    f"Se canceló la clase del día {clase.dia.value.capitalize()} {datos.fecha_clase}. "
+                    f"Motivo: {datos.motivo.strip().capitalize()}. "
                     f"Se te otorgó 1 crédito como compensación. La clase sigue activa en el resto del calendario."
                 )
 
             reserva.credito_generado = True
-            reserva.mensaje_admin = f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. Tenés 1 crédito pendiente disponible."
+            reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. Tenés 1 crédito pendiente disponible."
             
-        elif reserva.tipo == TipoReserva.Individual:
+        elif reserva.tipo == TipoReserva.Individual.value:
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
 
             if socio:
@@ -410,33 +498,19 @@ async def cancelar_clase_dia(
                     db,
                     socio.id,
                     "Clase cancelada",
-                    f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. "
+                    f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. "
+                    f"Motivo: {datos.motivo.strip().capitalize()}. "
                     f"Se devolvió el {reserva.porcentaje_pagado}% del pago. La actividad continúa normalmente."
                 )
 
             reserva.reembolso_realizado = True
-            reserva.mensaje_admin = f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. Se devolvió el pago del {reserva.porcentaje_pagado}%."
+            reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. Se devolvió el pago del {reserva.porcentaje_pagado}%."
     
-    # Cancelar la lista de espera de ese día específico
-    espera = db.query(ListaEspera).filter(
-        ListaEspera.clase_id == clase.id,
-        ListaEspera.fecha_clase == datos.fecha_clase,
-        ListaEspera.estado == "esperando"
-    ).all()
-
-    for item in espera:
-        item.estado = "dia_cancelado"
-
-        crear_notificacion(
-            db,
-            item.socio_id,
-            "Clase cancelada",
-            f"La clase del día {clase.dia.value} {datos.fecha_clase} fue cancelada. Podés inscribirte en próximas fechas"
-        )
     # No alteramos 'gimnasio.capacidad_disponible' porque la clase base sigue activa en la grilla.
 
     db.commit()
-    return {"mensaje": f"Clase del día {clase.dia.value} {datos.fecha_clase} cancelada correctamente. Alumnos notificados y base de datos actualizada."}
+    return {"mensaje": f"Clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} cancelada correctamente. Alumnos notificados y base de datos actualizada."}
+
 
 @router.get("/")
 def obtener_clases(db: Session = Depends(get_db)):
@@ -447,7 +521,16 @@ def obtener_clases(db: Session = Depends(get_db)):
     resultado = []
 
     for c in clases:
-        profesor = db.query(Socio).filter(Socio.id == c.profesor_id).first()
+
+        cantidad_alumnos = db.query(Reserva).filter(
+            Reserva.clase_id == c.id,
+            Reserva.estado == "confirmada"
+        ).count()
+
+        profesor = db.query(Socio).filter(
+            Socio.id == c.profesor_id
+        ).first()
+
         resultado.append({
             "id": c.id,
             "actividad": c.actividad,
@@ -457,8 +540,10 @@ def obtener_clases(db: Session = Depends(get_db)):
             "precio_individual": c.precio_individual,
             "duracion": c.duracion,
             "profesor_id": c.profesor_id,
-            "profesor_nombre": f"{profesor.nombre} {profesor.apellido}" if profesor else "Sin asignar"
+            "profesor_nombre": f"{profesor.nombre} {profesor.apellido}" if profesor else "Sin asignar",
+            "alumnos_inscriptos": cantidad_alumnos
         })
+
     return resultado
 
 
@@ -543,6 +628,31 @@ def obtener_calendario(
                 })
 
     return calendario_eventos
+
+@router.get("/{clase_id}/cupo-disponible")
+def cupo_disponible(
+    clase_id: int,
+    fecha: str,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(Clase.id == clase_id).first()
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
+
+    ocupadas = db.query(Reserva).filter(
+        Reserva.clase_id == clase_id,
+        Reserva.fecha_clase == fecha,
+        Reserva.estado.in_(["confirmada", "pendiente_pago"])
+    ).count()
+
+    disponibles = clase.cupo - ocupadas
+
+    return {
+        "cupo_maximo": clase.cupo,
+        "ocupadas": ocupadas,
+        "disponibles": max(disponibles, 0),
+        "hay_cupo": disponibles > 0
+    }
 
 @router.put("/cambiar-rol/{socio_id}")
 def cambiar_rol(socio_id: int, rol: str, db: Session = Depends(get_db)):

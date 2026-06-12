@@ -3,7 +3,7 @@ import api from "../api/api.js";
 import "../assets/css/Notificaciones.css";
 
 function Notificaciones() {
-    const [notificaciones,          setNotificaciones]          = useState([]);
+    const [notificaciones,           setNotificaciones]           = useState([]);
     const [notificacionSeleccionada, setNotificacionSeleccionada] = useState(null);
 
     useEffect(() => { cargarNotificaciones(); }, []);
@@ -31,6 +31,30 @@ function Notificaciones() {
         }
     };
 
+    const borrarUna = async (e, notifId) => {
+        e.stopPropagation(); // evita abrir el modal al hacer clic en el botón
+        try {
+            await api.delete(`/notificaciones/${notifId}`);
+            setNotificaciones(prev => prev.filter(n => n.id !== notifId));
+            // si estaba abierta en el modal, cerrarlo
+            if (notificacionSeleccionada?.id === notifId) {
+                setNotificacionSeleccionada(null);
+            }
+        } catch (error) {
+            console.error("Error borrando notificación", error);
+        }
+    };
+
+    const borrarTodas = async () => {
+        try {
+            await api.delete("/notificaciones/borrar-todas");
+            setNotificaciones([]);
+            setNotificacionSeleccionada(null);
+        } catch (error) {
+            console.error("Error borrando todas las notificaciones", error);
+        }
+    };
+
     const noLeidas = notificaciones.filter(n => !n.leida).length;
 
     return (
@@ -39,20 +63,32 @@ function Notificaciones() {
             {/* ── ENCABEZADO ── */}
             <div className="notificaciones-header">
                 <div className="notificaciones-label">Centro de mensajes</div>
-                <h1 className="notificaciones-titulo">
-                    Notificaciones
-                    {noLeidas > 0 && (
-                        <span style={{
-                            marginLeft: '12px',
-                            fontSize: '13px',
-                            color: '#5CB84D',
-                            fontWeight: '400',
-                            fontStyle: 'italic'
-                        }}>
-                            {noLeidas} sin leer
-                        </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <h1 className="notificaciones-titulo">
+                        Notificaciones
+                        {noLeidas > 0 && (
+                            <span style={{
+                                marginLeft: '12px',
+                                fontSize: '13px',
+                                color: '#5CB84D',
+                                fontWeight: '400',
+                                fontStyle: 'italic'
+                            }}>
+                                {noLeidas} sin leer
+                            </span>
+                        )}
+                    </h1>
+
+                    {/* Botón borrar todas — solo aparece si hay notificaciones */}
+                    {notificaciones.length > 0 && (
+                        <button
+                            className="notif-borrar-todas"
+                            onClick={borrarTodas}
+                        >
+                            Borrar todas
+                        </button>
                     )}
-                </h1>
+                </div>
             </div>
 
             {/* ── LISTA ── */}
@@ -71,9 +107,19 @@ function Notificaciones() {
                         >
                             <div className="notificacion-card-top">
                                 <h3>{notif.titulo}</h3>
-                                {!notif.leida && (
-                                    <span className="notificacion-badge-nueva">Nueva</span>
-                                )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {!notif.leida && (
+                                        <span className="notificacion-badge-nueva">Nueva</span>
+                                    )}
+                                    {/* Botón borrar individual */}
+                                    <button
+                                        className="notif-borrar-una"
+                                        onClick={(e) => borrarUna(e, notif.id)}
+                                        title="Borrar notificación"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
                             <p>
                                 {notif.mensaje.length > 80
@@ -99,12 +145,20 @@ function Notificaciones() {
                         <h2>{notificacionSeleccionada.titulo}</h2>
                         <p>{notificacionSeleccionada.mensaje}</p>
                         <small>{new Date(notificacionSeleccionada.fecha).toLocaleString()}</small>
-                        <button
-                            className="notificacion-detalle-cerrar"
-                            onClick={() => setNotificacionSeleccionada(null)}
-                        >
-                            Cerrar
-                        </button>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                            <button
+                                className="notificacion-detalle-cerrar"
+                                onClick={() => setNotificacionSeleccionada(null)}
+                            >
+                                Cerrar
+                            </button>
+                            <button
+                                className="notificacion-detalle-borrar"
+                                onClick={(e) => borrarUna(e, notificacionSeleccionada.id)}
+                            >
+                                Borrar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

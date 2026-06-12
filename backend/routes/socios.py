@@ -3,91 +3,84 @@ import re
 import shutil  # Para guardar el archivo en el disco
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status
 from sqlalchemy.orm import Session
-
+from typing import Optional
 from dependencies.database import get_db
 from models.enums import Rol
 from models.socio import Socio
-from schemas.socio import SocioCreate, CambiarPasswordRequest
+from schemas.socio import ProfesorUpdate, ProfesorCreate, CambiarPasswordRequest, CambiarPasswordInicialRequest
 from services.auth import get_password_hash, oauth2_scheme, obtener_usuario_actual, verificar_password
+import secrets
 
 router = APIRouter(prefix="/socios", tags=["Socios"])
 
 
 @router.post("/registrar")
 async def registrar_socio(
-    apto_fisico: UploadFile = File(...),
-    nombre: str = Form(...),
-    apellido: str = Form(...),
-    dni: str = Form(...),
-    email: str = Form(...),
-    telefono: str = Form(...),
-    password: str = Form(...),
-    confirmar_password: str = Form(...),
+    apto_fisico: Optional[UploadFile] = File(None),
+    nombre: Optional[str] = Form(None),
+    apellido: Optional[str] = Form(None),
+    dni: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    telefono: Optional[str] = Form(None),
+    password: Optional[str] = Form(None),
+    confirmar_password: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    # Validar DNI
-    if not dni.isdigit() or len(dni) not in [7, 8]:
-        raise HTTPException(
-            status_code=400, detail="El DNI debe tener 7 u 8 dígitos números"
-        )
+    errores = {}
 
-    # Teléfono
-    if not telefono.isdigit() or len(telefono) != 10:
-        raise HTTPException(
-            status_code=400,
-            detail="El teléfono debe tener 10 dígitos (ej: 2211234567).",
-        )
+    # Validar Nombre y Apellido
+    if not nombre:
+        errores["nombre"] = "El nombre es obligatorio."
+    if not apellido:
+        errores["apellido"] = "El apellido es obligatorio."
 
-    if not apto_fisico or not apto_fisico.filename:
-        raise HTTPException(
-            status_code=400, detail="Debe adjuntar un apto físico en PDF"
-        )
+    # Validaciones de DNI
+    if not dni or not dni.isdigit() or len(dni) not in [7, 8]:
+        errores["dni"] = "El DNI debe tener 7 u 8 dígitos numéricos."
+    elif db.query(Socio).filter(Socio.dni == dni).first():
+        errores["dni"] = "DNI ya registrado."
 
-    # 1. Validaciones de existencia (DNI y Email)
-    if db.query(Socio).filter(Socio.dni == dni).first():
-        raise HTTPException(status_code=400, detail="DNI ya registrado")
+    # Validación de Email
+    if not email:
+        errores["email"] = "El correo electrónico es obligatorio."
+    elif db.query(Socio).filter(Socio.email == email).first():
+        errores["email"] = "Correo ya registrado."
 
-    if db.query(Socio).filter(Socio.email == email).first():
-        raise HTTPException(status_code=400, detail="Correo ya registrado")
+    # Validación de Teléfono
+    if not telefono or not telefono.isdigit() or len(telefono) != 10:
+        errores["telefono"] = "El teléfono debe tener 10 dígitos (ej: 2211234567)."
 
-    # Password fuerte: 6-16 caracteres, al menos una mayúscula y un carácter especial
+    # Validaciones de Contraseña
     pass_regex = r"^(?=.*[A-Z])(?=.*[!@#$%^&*]).{6,16}$"
-
-    if not re.match(pass_regex, password):
-        raise HTTPException(
-            status_code=400,
-            detail="Debe tener 6-16 caracteres, una mayúscula y un especial.",
-        )
-
-    # Validar contraseñas
+    if not password or not re.match(pass_regex, password):
+        errores["password"] = "Debe tener 6-16 caracteres, una mayúscula y un especial."
+        
     if password != confirmar_password:
-        raise HTTPException(
-            status_code=400, detail="Las contraseñas no coinciden"
-        )
+        errores["confirmar_password"] = "Las contraseñas no coinciden."
 
-    # 2. VALIDACIÓN DEL ARCHIVO
-    filename = apto_fisico.filename.lower()
+    # Validaciones del Archivo PDF
+    if not apto_fisico or not apto_fisico.filename:
+        errores["apto_fisico"] = "Debés subir un apto físico en PDF."
+    else:
+        filename = apto_fisico.filename.lower()
+        if not filename.endswith(".pdf"):
+            errores["apto_fisico"] = "Solo se permiten archivos con extensión .pdf"
+        elif apto_fisico.content_type != "application/pdf":
+            errores["apto_fisico"] = "El archivo no es un PDF válido."
 
-    # Validamos extensión
-    if not filename.endswith(".pdf"):
-        raise HTTPException(
-            status_code=400, detail="Solo se permiten archivos con extensión .pdf"
-        )
+    # SI HAY ERRORES ACUMULADOS (DE CUALQUIER TIPO), SE MANDAN TODOS JUNTOS
+    if errores:
+        raise HTTPException(status_code=400, detail=errores)
 
-    # Validamos tipo MIME
-    if apto_fisico.content_type != "application/pdf":
-        raise HTTPException(
-            status_code=400, detail="El archivo no es un PDF válido."
-        )
-
-    # 3. Guardar el archivo
+    # -------------------------------------------------------------
+    # SI PASÓ TODO, RECIÉN ACÁ SE GUARDA
+    # -------------------------------------------------------------
     os.makedirs("uploads", exist_ok=True)
     file_location = f"uploads/{dni}_{apto_fisico.filename}"
 
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(apto_fisico.file, buffer)
 
-    # 4. Guardar en DB
     hashed_pass = get_password_hash(password)
 
     nuevo_socio = Socio(
@@ -124,6 +117,10 @@ def obtener_mi_perfil(
         "telefono": usuario.telefono,
         "dni": usuario.dni,
         "creditos_disponibles": usuario.creditos_disponibles,
+
+        "membresia_activa":  bool(usuario.cuota_al_dia),
+        "membresia_vencimiento": usuario.membresia_activa_hasta
+        ,"primer_login": usuario.primer_login
     }
 
 
@@ -139,17 +136,8 @@ def obtener_profesores(db: Session = Depends(get_db)):
             "nombre": p.nombre,
             "apellido": p.apellido,
             "email": p.email,
-        }
-        for p in profesores
-    ]
-
-
-    return [
-        {
-            "id": p.id,
-            "nombre": p.nombre,
-            "apellido": p.apellido,
-            "email": p.email
+            "telefono": str(p.telefono),
+            "dni": str(p.dni),
         }
         for p in profesores
     ]
@@ -190,7 +178,200 @@ def cambiar_contrasena_perfil(
         )
         
     usuario.hashed_password = get_password_hash(datos.password_nueva)
+
+    if usuario.primer_login:
+        usuario.primer_login = False
+
     db.commit()
     db.refresh(usuario)
     
     return {"mensaje": "Contraseña actualizada con éxito"}
+
+@router.post("/crear_profesores")
+def crear_profesor(
+    datos: ProfesorCreate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    usuario = obtener_usuario_actual(token, db)
+
+    if usuario.rol != Rol.Admin.value:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un administrador puede crear profesores"
+        )
+
+    errores = {}
+
+    if not datos.nombre.strip():
+        errores["nombre"] = "El nombre es obligatorio"
+
+    if not datos.apellido.strip():
+        errores["apellido"] = "El apellido es obligatorio"
+
+    if not datos.dni.isdigit() or len(datos.dni) not in [7, 8]:
+        errores["dni"] = "El DNI debe tener 7 u 8 dígitos"
+
+    if not datos.telefono.isdigit() or len(datos.telefono) != 10:
+        errores["telefono"] = "El teléfono debe tener 10 dígitos"
+
+    if db.query(Socio).filter(Socio.dni == datos.dni).first():
+        errores["dni"] = "Ya existe un usuario con ese DNI"
+    
+    if not datos.email.strip():
+        errores["email"] = "El correo electrónico es obligatorio."
+    
+    email_regex = r"^[^@]+@[^@]+\.[^@]+$"
+
+    if not re.match(email_regex, datos.email):
+        errores["email"] = "Ingresá un correo válido."
+
+    if db.query(Socio).filter(Socio.email == datos.email).first():
+        errores["email"] = "Ya existe un usuario con ese email"
+
+    if errores:
+        raise HTTPException(
+            status_code=400,
+            detail=errores
+        )
+
+    password_temporal = "Temp@" + secrets.token_hex(3)
+
+    nuevo_profesor = Socio(
+        nombre=datos.nombre,
+        apellido=datos.apellido,
+        dni=datos.dni,
+        email=datos.email,
+        telefono=datos.telefono,
+        hashed_password=get_password_hash(password_temporal),
+        rol=Rol.Profesor.value,
+        primer_login=True  # El profesor deberá cambiar esta contraseña temporal en su primer login
+    )
+
+    db.add(nuevo_profesor)
+    db.commit()
+    db.refresh(nuevo_profesor)
+
+    return {
+        "mensaje": "Profesor creado correctamente",
+        "password_temporal": password_temporal,
+        "profesor_id": nuevo_profesor.id
+    }
+
+@router.post("/cambiar-password-inicial")
+def cambiar_password_inicial(
+    datos: CambiarPasswordInicialRequest,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    usuario = obtener_usuario_actual(token, db)
+
+    if not usuario.primer_login:
+        raise HTTPException(
+            status_code=400,
+            detail="El cambio inicial ya fue realizado"
+        )
+
+    usuario.hashed_password = get_password_hash(
+        datos.password_nueva
+    )
+
+    usuario.primer_login = False
+
+    db.commit()
+    db.refresh(usuario)
+
+    return {
+        "mensaje": "Contraseña actualizada correctamente"
+    }
+
+@router.put("/profesores/{profesor_id}")
+def editar_profesor(
+    profesor_id: int,
+    datos: ProfesorUpdate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    usuario = obtener_usuario_actual(token, db)
+
+    if usuario.rol != Rol.Admin.value:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un administrador puede editar profesores"
+        )
+    
+    profesor = (
+        db.query(Socio)
+        .filter(Socio.id == profesor_id, Socio.rol == Rol.Profesor.value)
+        .first()
+    )
+
+    if not profesor:
+        raise HTTPException(
+            status_code=404,
+            detail="Profesor no encontrado"
+        )    
+    
+    errores = {}
+
+    dni_existente = (
+        db.query(Socio)
+        .filter(
+            Socio.dni == datos.dni,
+            Socio.id != profesor_id,
+            Socio.rol == Rol.Profesor.value
+        )
+        .first()
+    )
+
+    if dni_existente:
+        errores["dni"] = "Ya existe un profesor con ese DNI"
+    
+    if not datos.dni.isdigit() or len(datos.dni) not in [7, 8]:
+        errores["dni"] = "El DNI debe tener 7 u 8 dígitos"
+    
+    email_regex = r"^[^@]+@[^@]+\.[^@]+$"
+
+    email_existente = (
+        db.query(Socio)
+        .filter(
+            Socio.email == datos.email,
+            Socio.id != profesor_id,
+            Socio.rol == Rol.Profesor.value
+        )
+        .first()
+    )
+
+    if email_existente:
+        errores["email"] = "Ya existe un profesor con ese email"
+    
+    if not re.match(email_regex, datos.email):
+        errores["email"] = "Ingresá un correo válido."
+    
+    if not datos.nombre.strip():
+        errores["nombre"] = "El nombre es obligatorio"
+
+    if not datos.apellido.strip():
+        errores["apellido"] = "El apellido es obligatorio"
+
+    if not datos.telefono.isdigit() or len(datos.telefono) != 10:
+        errores["telefono"] = "El teléfono debe tener 10 dígitos"
+
+    if errores:
+        raise HTTPException(
+            status_code=400,
+            detail=errores
+        )
+    
+    profesor.nombre = datos.nombre
+    profesor.apellido = datos.apellido
+    profesor.dni = datos.dni
+    profesor.email = datos.email
+    profesor.telefono = datos.telefono
+
+    db.commit()
+    db.refresh(profesor)
+
+    return {
+        "mensaje": "Profesor actualizado correctamente"
+    }    
