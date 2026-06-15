@@ -5,7 +5,7 @@ import logoSportify from "../assets/logo.png";
 const NAV_ITEMS = [
     { to: "/admin",                 label: "Dashboard",       icon: "⬛" },
     { to: "/admin/crear-clase",     label: "Crear Clase",     icon: "＋" },
-    { to: "/admin/eliminar-clase",  label: "Clases",          icon: "☰" },
+    { to: "/admin/eliminar-clase",  label: "Ver Clases",          icon: "☰" },
     { to: "/admin/editar-capacidad",label: "Capacidad",       icon: "◎" },
     { to: "/admin/preguntas-frecuentes", label: "Preguntas Frecuentes", icon: "❓" },
 ];
