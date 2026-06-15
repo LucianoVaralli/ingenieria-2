@@ -70,10 +70,10 @@ const Navbar = ({ setToken }) => {
             
             <div className="navbar-menu">
                 <span onClick={() => scrollToSection('seccion-clases')} className="navbar-link" style={{ cursor: 'pointer' }}>
-                    Clases
+                    Ver Clases
                 </span>
                 <span onClick={() => scrollToSection('seccion-gimnasio')} className="navbar-link" style={{ cursor: 'pointer' }}>
-                    El Gimnasio
+                    Preguntas
                 </span>
                 {esAdmin && ( //lo muestra solo si el usuario es admin
                     <Link to="/admin" className="navbar-link">

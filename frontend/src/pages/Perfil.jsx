@@ -6,9 +6,38 @@ import '../assets/css/Perfil.css';
 const Perfil = ({ token, setToken }) => {
     const [user, setUser] = useState(null);
     const [reservas, setReservas] = useState([]);
+    const [loadingRenovar, setLoadingRenovar] = useState(false);
     const navigate = useNavigate();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
     const [mensajeExito, setMensajeExito] = useState("");
+    const [usuario, setUsuario] = useState(null);
+    const [rol, setRol] = useState("");
+
+    const [membresiaActiva, setMembresiaActiva] = useState(false);
+    const [fechaVencimiento, setFechaVencimiento] = useState(null);
+
+    const hoy = new Date();
+    const dia = hoy.getDate();
+
+    const puedeRenovar =
+        user?.rol === "miembro" &&
+        user?.membresia_vencimiento &&
+        dia >= 1 &&
+        dia <= 10;
+
+    useEffect(() => {
+        const cargarPerfil = async () => {
+            const res = await api.get('/socios/me');
+
+            setCreditos(res.data.creditos_disponibles || 0);
+            setRol(res.data.rol);
+            setMembresiaActiva(res.data.membresia_activa);
+            setFechaVencimiento(res.data.membresia_vencimiento);
+            setUser(res.data);
+        };
+
+        cargarPerfil();
+    }, []);
 
     const salirListaEspera = async (reservaId) => {
         try {
@@ -31,6 +60,25 @@ const Perfil = ({ token, setToken }) => {
         }
     };
 
+    const renovarMembresia = async () => {
+        try {
+            setLoadingRenovar(true);
+
+            const res = await api.post("/membresia/renovar");
+
+            alert(res.data.mensaje || "Membresía renovada con éxito");
+
+            const resUser = await api.get("/socios/me");
+            setUser(resUser.data);
+
+        } catch (err) {
+            console.error(err);
+            alert(err?.response?.data?.detail || "Error al renovar membresía");
+        } finally {
+            setLoadingRenovar(false);
+        }
+    };
+
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
@@ -48,7 +96,7 @@ const Perfil = ({ token, setToken }) => {
                 hoy.setHours(0, 0, 0, 0);
 
                 const activas = resReservas.data.filter(r =>
-                    r.estado === 'confirmada' &&
+                    (r.estado === 'confirmada' || r.estado === 'en_espera') &&
                     new Date(r.fecha_clase) >= hoy
                 );
 
@@ -124,6 +172,19 @@ const Perfil = ({ token, setToken }) => {
                             <span className="dato-label">Email</span>
                             <span className="dato-valor">{user.email || 'No registrado'}</span>
                         </div>
+                        
+                        {puedeRenovar && (
+                            <div className="dato-item btn-container">
+                                <button
+                                    className="btn-cambiar-pass"
+                                    onClick={renovarMembresia}
+                                    disabled={loadingRenovar}
+                                >
+                                    {loadingRenovar ? "Renovando..." : "Renovar membresía"}
+                                </button>
+                            </div>
+                        )}
+
                         <div className="dato-item">
                             <span className="dato-label">DNI</span>
                             <span className="dato-valor">{user.dni || '—'}</span>
@@ -172,6 +233,30 @@ const Perfil = ({ token, setToken }) => {
                                 )}
                             </div>
                         )}
+
+                    {rol === "miembro" && (
+                        membresiaActiva ? (
+                            <div className="perfil-membresia">
+                                <p>
+                                    🟢 Membresía activa hasta: {fechaVencimiento}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="perfil-membresia">
+                                <p>
+                                    🔴 No tenés membresía activa
+                                </p>
+
+                                <button
+                                    onClick={() => navigate('/renovar-membresia')}
+                                    className="boton-accion"
+                                >
+                                    Renovar membresía
+                                </button>
+                            </div>
+                        )
+                    )}
+
                     </div>
 
                     {mensajeExito && (

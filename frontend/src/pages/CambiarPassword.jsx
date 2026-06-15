@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import api from "../api/api";
-import { toast, Toaster } from "react-hot-toast"; // Agregamos Toaster para manejar el éxito
+import { toast, Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "../assets/css/CambiarPassword.css";
@@ -11,7 +11,7 @@ const CambiarPassword = () => {
     const [passwordNueva, setPasswordNueva] = useState("");
     const [confirmarPassword, setConfirmarPassword] = useState("");
 
-    // Nuevo estado de errores individuales para renderizar abajo de cada input
+    // Estado inicial limpio de errores
     const [errors, setErrors] = useState({
         passwordActual: "",
         passwordNueva: "",
@@ -22,10 +22,9 @@ const CambiarPassword = () => {
     const [mostrarNueva, setMostrarNueva] = useState(false);
     const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
 
-    // Expresión regular unificada con tu backend
     const passRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,16}$/;
 
-    // Handlers específicos para actualizar datos y limpiar el error en tiempo real al escribir
+    // Handlers que limpian el error individual en tiempo real al escribir
     const handleActualChange = (val) => {
         setPasswordActual(val);
         setErrors((prev) => ({ ...prev, passwordActual: "" }));
@@ -44,11 +43,11 @@ const CambiarPassword = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Estructura limpia para capturar los errores de la validación actual
+        // 1. Estructura limpia para evaluar la validación actual desde cero
         let localErrors = { passwordActual: "", passwordNueva: "", confirmarPassword: "" };
         let hasFailed = false;
 
-        // 1. VALIDACIÓN: Verificar campos vacíos de forma independiente
+        // Validación: Verificar campos vacíos
         if (!passwordActual.trim()) {
             localErrors.passwordActual = "La contraseña actual es obligatoria.";
             hasFailed = true;
@@ -62,36 +61,36 @@ const CambiarPassword = () => {
             hasFailed = true;
         }
 
-        // 2. VALIDACIÓN: Regla de negocio (solo si se escribió algo)
+        // Validación: Regla de negocio de complejidad
         if (passwordNueva.trim() && !passRegex.test(passwordNueva)) {
             localErrors.passwordNueva = "Debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.";
             hasFailed = true;
         }
 
-        // 3. VALIDACIÓN: Que las contraseñas nuevas coincidan
+        // Validación: Que coincidan las contraseñas nuevas
         if (passwordNueva.trim() && confirmarPassword.trim() && passwordNueva !== confirmarPassword) {
             localErrors.confirmarPassword = "La confirmación de la nueva contraseña no coincide.";
             hasFailed = true;
         }
 
-        // Si salta algún error de front, los renderizamos juntos y frenamos la petición
+        // Si falla alguna validación de Frontend, mostramos y frenamos
         if (hasFailed) {
             setErrors(localErrors);
             return;
         }
 
         try {
-            // Envío de datos seguro al backend
+            // 💡 CLAVE: Antes de mandar la petición, vaciamos los errores viejos de la pantalla
+            setErrors({ passwordActual: "", passwordNueva: "", confirmarPassword: "" });
+
             const res = await api.post("/socios/cambiar-password", {
                 password_actual: passwordActual,
                 password_nueva: passwordNueva,
                 confirmar_password_nueva: confirmarPassword
             });
 
-            // Éxito flotante permitido 🎉
             toast.success(res.data.mensaje || "Contraseña actualizada con éxito");
 
-            // Limpiamos campos por seguridad
             setPasswordActual("");
             setPasswordNueva("");
             setConfirmarPassword("");
@@ -104,15 +103,35 @@ const CambiarPassword = () => {
             console.error("Error capturado en CambiarPassword:", err);
             const errorMsg = err.response?.data?.detail || "Error al cambiar contraseña";
 
-            // Si el backend rechaza los datos, los mapeamos como errores fijos en la UI
             if (Array.isArray(errorMsg)) {
-                setErrors((prev) => ({ ...prev, passwordNueva: errorMsg[0].msg }));
+                // Manejo de errores de validación estructurados del backend (Pydantic)
+                setErrors({
+                    passwordActual: "",
+                    passwordNueva: errorMsg[0].msg,
+                    confirmarPassword: ""
+                });
             } else {
-                // Si la contraseña actual no coincide en base de datos, el cartel se inyecta directamente abajo de ella
-                if (errorMsg.toLowerCase().includes("actual")) {
-                    setErrors((prev) => ({ ...prev, passwordActual: errorMsg }));
+                const msgString = errorMsg.toLowerCase();
+
+                // 💡 CLAVE: Mapeamos el error de forma exclusiva y nos aseguramos de limpiar los demás
+                if (msgString.includes("actual") || msgString.includes("incorrecta")) {
+                    setErrors({
+                        passwordActual: errorMsg, // Muestra "La contraseña actual es incorrecta"
+                        passwordNueva: "",        // Se asegura de limpiar errores viejos
+                        confirmarPassword: ""     // Evita que aparezca el error fantasma de coincidencia
+                    });
+                } else if (msgString.includes("coincide") || msgString.includes("confirmar")) {
+                    setErrors({
+                        passwordActual: "",
+                        passwordNueva: "",
+                        confirmarPassword: errorMsg
+                    });
                 } else {
-                    setErrors((prev) => ({ ...prev, passwordNueva: errorMsg }));
+                    setErrors({
+                        passwordActual: "",
+                        passwordNueva: errorMsg,
+                        confirmarPassword: ""
+                    });
                 }
             }
         }
@@ -120,7 +139,6 @@ const CambiarPassword = () => {
 
     return (
         <div className="reset-container">
-            {/* Montamos el Toaster pasivo esperando el success */}
             <Toaster />
 
             <div className="reset-card">
@@ -134,7 +152,6 @@ const CambiarPassword = () => {
 
                 <h1 className="reset-title">Cambiar Contraseña</h1>
 
-                {/* noValidate apaga los tooltips nativos del navegador */}
                 <form onSubmit={handleSubmit} className="reset-form" noValidate>
 
                     {/* CAMPO CONTRASEÑA ACTUAL */}

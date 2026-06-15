@@ -18,3 +18,4 @@ class ConfirmarPagoIndividual(BaseModel):
     cvv: str
     fecha_vencimiento: str
     acepta_lista_espera: bool = False
+    usa_credito: bool = False

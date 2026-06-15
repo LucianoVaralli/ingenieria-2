@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import api from '../api/api.js';
-import { toast, Toaster } from 'react-hot-toast'; // Importamos Toaster para manejar el éxito flotante
+import { toast, Toaster } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import '../assets/css/ResetPassword.css';
@@ -14,7 +14,6 @@ const ResetPassword = () => {
         confirmPassword: ''
     });
 
-    // Nuevo estado para controlar los errores fijos individuales
     const [errors, setErrors] = useState({
         code: '',
         newPassword: '',
@@ -24,11 +23,9 @@ const ResetPassword = () => {
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // Expresión regular oficial (6-16 caracteres, mayúscula y carácter especial)
     const passwordRegex =
         /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{6,16}$/;
 
-    // Al escribir, actualizamos los datos y limpiamos el error específico inmediatamente
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({
@@ -36,7 +33,6 @@ const ResetPassword = () => {
             [name]: value
         });
 
-        // Limpieza inteligente en tiempo real
         setErrors({
             ...errors,
             [name]: ''
@@ -48,15 +44,19 @@ const ResetPassword = () => {
 
         const emailGuardado = localStorage.getItem('reset_email');
 
-        // Estructura temporal para evaluar todos los errores al mismo tiempo
+        // 1. LIMPIEZA INICIAL: Reseteamos los errores visuales locales en cada intento
         let localErrors = { code: '', newPassword: '', confirmPassword: '' };
         let hasFailed = false;
 
-        // 1. VALIDACIÓN: Campos vacíos independientes
+        // VALIDACIÓN CLIENTE: Verificar longitud exacta del código (6 dígitos)
         if (!formData.code.trim()) {
             localErrors.code = 'El código de verificación es obligatorio.';
             hasFailed = true;
+        } else if (formData.code.trim().length !== 6) {
+            localErrors.code = 'El código debe tener exactamente 6 dígitos.';
+            hasFailed = true;
         }
+
         if (!formData.newPassword.trim()) {
             localErrors.newPassword = 'La nueva contraseña es obligatoria.';
             hasFailed = true;
@@ -66,31 +66,32 @@ const ResetPassword = () => {
             hasFailed = true;
         }
 
-        // 2. VALIDACIÓN: Regla de negocio compleja (solo si no está vacío)
+        // VALIDACIÓN CLIENTE: Regla de negocio compleja de la contraseña
         if (formData.newPassword.trim() && !passwordRegex.test(formData.newPassword)) {
             localErrors.newPassword = 'Debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.';
             hasFailed = true;
         }
 
-        // 3. VALIDACIÓN: Coincidencia mutua (solo si se escribieron ambas)
+        // VALIDACIÓN CLIENTE: Coincidencia mutua
         if (formData.newPassword.trim() && formData.confirmPassword.trim() && formData.newPassword !== formData.confirmPassword) {
             localErrors.confirmPassword = 'Las contraseñas no coinciden.';
             hasFailed = true;
         }
 
-        // Si falló alguna validación, renderizamos los errores en pantalla y frenamos
         if (hasFailed) {
             setErrors(localErrors);
             return;
         }
 
-        // 4. VALIDACIÓN DE CONTEXTO: Sesión activa de recuperación (Esta sí queda flotante por ser ajena al formulario)
         if (!emailGuardado) {
-            toast.error('Expiró la sesión de recuperación. Por favor, solicita un nuevo código.');
+            toast.error('El código expiró. Por favor, solicita un nuevo código.');
             return;
         }
 
         try {
+            // Pisamos la pantalla con un estado limpio antes de impactar a la API
+            setErrors({ code: '', newPassword: '', confirmPassword: '' });
+
             const res = await api.post('/auth/reset-password', {
                 email: emailGuardado,
                 code: formData.code,
@@ -99,15 +100,14 @@ const ResetPassword = () => {
             });
 
             if (res.data.success === false) {
-                // Si la API devuelve un error de lógica de negocio (ej: "Código inválido") lo mapeamos al input del código
                 setErrors({
-                    ...errors,
-                    code: res.data.message || 'Código de verificación incorrecto.'
+                    code: res.data.message || 'Código de verificación incorrecto.',
+                    newPassword: '',
+                    confirmPassword: ''
                 });
                 return;
             }
 
-            // Único caso de notificación flotante permitida para el Éxito 🎉
             toast.success(res.data.message || '¡Contraseña actualizada correctamente!');
             localStorage.removeItem('reset_email');
 
@@ -117,24 +117,52 @@ const ResetPassword = () => {
 
         } catch (err) {
             console.error('Error capturado en ResetPassword:', err);
-            const mensajeError =
-                err.response?.data?.detail ||
-                err.response?.data?.message ||
-                'Error al cambiar la contraseña';
 
-            // Errores de API controlados van a la interfaz fija para evitar alertas flotantes de error
-            if (Array.isArray(mensajeError)) {
-                setErrors({ ...errors, newPassword: mensajeError[0].msg });
-            } else {
-                // Si el backend avisa algo genérico sobre la contraseña o código, lo inyectamos abajo
-                setErrors({ ...errors, code: mensajeError });
+            const detalleBackend = err.response?.data?.detail;
+            const mensajeBackend = err.response?.data?.message;
+
+            // CASO A: Errores estructurales de Pydantic (Vienen en formato Array)
+            if (detalleBackend && Array.isArray(detalleBackend)) {
+                let apiErrors = { code: '', newPassword: '', confirmPassword: '' };
+
+                detalleBackend.forEach((error) => {
+                    const campoAfectado = error.loc[error.loc.length - 1];
+
+                    if (campoAfectado === 'code') {
+                        apiErrors.code = 'El código debe tener exactamente 6 caracteres.';
+                    } else if (campoAfectado === 'password' || campoAfectado === 'password_nueva') {
+                        apiErrors.newPassword = 'La contraseña no cumple con los requisitos del servidor.';
+                    }
+                });
+
+                setErrors(apiErrors);
+            }
+            // CASO B: Mensajes de texto normales enviados por el backend (Expiración / Invalidez)
+            else {
+                const mensajeError = detalleBackend || mensajeBackend || 'Error al cambiar la contraseña';
+                const msgString = String(mensajeError).toLowerCase();
+
+                // Si el mensaje del servidor hace referencia al código o token
+                if (msgString.includes('código') || msgString.includes('code') || msgString.includes('token') || msgString.includes('inválido') || msgString.includes('expir')) {
+                    setErrors({
+                        code: mensajeError, // Se inyecta correctamente arriba abajo del código
+                        newPassword: '',
+                        confirmPassword: ''
+                    });
+                } else {
+                    // Errores genéricos o de contraseña persistentes del backend
+                    setErrors({
+                        code: '',
+                        newPassword: mensajeError,
+                        confirmPassword: ''
+                    });
+                }
             }
         }
     };
 
     return (
         <div className="reset-container">
-            {/* Contenedor de Toasts (solo se ejecutará ante el éxito) */}
             <Toaster />
 
             <div className="reset-card">
@@ -150,7 +178,6 @@ const ResetPassword = () => {
                     Restablecer Contraseña
                 </h1>
 
-                {/* Quitamos los required nativos de HTML para que nuestra lógica controle el comportamiento al pulsar el botón */}
                 <form onSubmit={handleResetPassword} className="reset-form" noValidate>
 
                     {/* CÓDIGO DE VERIFICACIÓN */}
@@ -217,7 +244,6 @@ const ResetPassword = () => {
                         )}
                     </div>
 
-                    {/* BOTÓN DE ACCIÓN */}
                     <button type="submit" className="reset-button">
                         Actualizar Contraseña
                     </button>
