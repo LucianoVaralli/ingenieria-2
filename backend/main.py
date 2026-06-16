@@ -32,6 +32,8 @@ from routes.membresia import router as membresia_router
 
 from fastapi.staticfiles import StaticFiles
 
+from models.membresia import Membresia
+
 # Crear las tablas en la base de datos
 Base.metadata.create_all(bind=engine)
 
