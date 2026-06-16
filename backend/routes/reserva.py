@@ -10,10 +10,16 @@ from services.auth       import oauth2_scheme, obtener_usuario_actual
 from schemas.reserva     import ReservaMembresiaCreate, ConfirmarPagoMembresia
 from models.enums import Rol, TipoReserva
 from sqlalchemy import func
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 from schemas.reserva_individual import (
     ReservaIndividualCreate,
     ConfirmarPagoIndividual
 )
+
+from models.membresia import Membresia
 
 from models.tarjeta_simulada import TarjetaSimulada
 from services.auth import validar_membresia
@@ -91,6 +97,7 @@ def crear_reserva_membresia(
             raise HTTPException(403, "Membresía vencida")
     
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
+    hoy = datetime.now()
     
     if not clase or not clase.activa:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
@@ -269,6 +276,37 @@ async def confirmar_pago_membresia(
             ))
 
     db.commit()
+
+    membresia = db.query(Membresia).filter(
+        Membresia.socio_id == socio.id,
+        Membresia.clase_id == datos.clase_id
+    ).first()
+
+    if membresia:
+
+        membresia.mes_vigente = datetime.now().month
+        membresia.anio_vigente = datetime.now().year
+        membresia.activa = True
+        membresia.fecha_expiracion = datetime(
+            membresia.anio_vigente,
+            membresia.mes_vigente,
+            1
+        ) + relativedelta(months=1)
+
+    else:
+
+        membresia = Membresia(
+            socio_id=socio.id,
+            clase_id=datos.clase_id,
+            mes_vigente=datetime.now().month,
+            anio_vigente=datetime.now().year,
+            activa=True
+        )
+
+        db.add(membresia)
+
+    db.commit()
+
 
     try:
         await enviar_mail_membresia(
