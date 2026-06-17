@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
+import ModalConfirmacion from '../components/ModalConfirmacion.jsx';
+import ModalResultado from '../components/ModalResultado.jsx';
 
 const Perfil = ({ token, setToken }) => {
     const [user, setUser] = useState(null);
@@ -15,6 +17,14 @@ const Perfil = ({ token, setToken }) => {
 
     const [membresiaActiva, setMembresiaActiva] = useState(false);
     const [fechaVencimiento, setFechaVencimiento] = useState(null);
+
+    const [creditos, setCreditos] = useState(0);
+
+    // ── MODALES ──
+    const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+    const [mostrarResultado, setMostrarResultado] = useState(false);
+    const [reservaAbordador, setReservaAbordador] = useState(null);
+    const [mensajeResultado, setMensajeResultado] = useState("");
 
     const hoy = new Date();
     const dia = hoy.getDate();
@@ -50,7 +60,8 @@ const Perfil = ({ token, setToken }) => {
                 prev.filter(r => r.id !== reservaId)
             );
 
-            setMensajeExito("Baja exitosa");
+            setMensajeResultado("Baja exitosa");
+            setMostrarResultado(true);
 
         } catch (error) {
 
@@ -96,7 +107,7 @@ const Perfil = ({ token, setToken }) => {
                 hoy.setHours(0, 0, 0, 0);
 
                 const activas = resReservas.data.filter(r =>
-                    (r.estado === 'confirmada' || r.estado === 'en_espera') &&
+                    (r.estado === 'confirmada' || r.estado === 'en_espera' || r.estado === 'notificado') &&
                     new Date(r.fecha_clase) >= hoy
                 );
 
@@ -143,10 +154,118 @@ const Perfil = ({ token, setToken }) => {
                 reservasPorDia[nombreDia].push(r);
             }
         });
+    
+    // ── CANCELAR RESERVA ──
+    const iniciarCancelacion = (reserva) => {
+        setReservaAbordador(reserva);
+        setMostrarConfirmacion(true);
+    };
+
+    const confirmarCancelacion = async () => {
+        if (!reservaAbordador) return;
+
+        try {
+            setMostrarConfirmacion(false);
+
+            let endpoint = '';
+            if (reservaAbordador.tipo === 'membresia') {
+                endpoint = `/reservas/membresia/cancelar/${reservaAbordador.id}`;
+            } else {
+                endpoint = `/reservas/individual/cancelar-confirmada/${reservaAbordador.id}`;
+            }
+
+            let res;
+            if (reservaAbordador.tipo === 'membresia') {
+                res = await api.post(`/reservas/membresia/cancelar/${reservaAbordador.id}`);
+            } else {
+                res = await api.delete(`/reservas/individual/cancelar-confirmada/${reservaAbordador.id}`);
+            }
+
+            setMensajeResultado(res.data.mensaje);
+            setMostrarResultado(true);
+
+            // Actualizar la lista de reservas
+            setReservas(prev => prev.filter(r => r.id !== reservaAbordador.id));
+
+            // Actualizar créditos si se otorgó uno
+            if (res.data.credito_otorgado) {
+                setCreditos(res.data.creditos_disponibles);
+            }
+
+            setReservaAbordador(null);
+
+        } catch (error) {
+            console.error("Error cancelando reserva:", error);
+            setMostrarConfirmacion(false);
+            alert("Error: " + (error.response?.data?.detail || "No se pudo cancelar"));
+            setReservaAbordador(null);
+        }
+    };
+
+    const cancelarCancelacion = () => {
+        setMostrarConfirmacion(false);
+        setReservaAbordador(null);
+    };
+
+    // ── ACEPTAR CUPO ──
+    const aceptarCupo = async (reservaId) => {
+        try {
+            const res = await api.post(`/reservas/aceptar-cupo/${reservaId}`);
+
+            setMensajeResultado(res.data.mensaje);
+            setMostrarResultado(true);
+
+            // Actualizar estado de la reserva
+            setReservas(prev =>
+                prev.map(r =>
+                    r.id === reservaId ? { ...r, estado: 'confirmada', notificado: false } : r
+                )
+            );
+
+        } catch (error) {
+            console.error("Error aceptando cupo:", error);
+            alert("Error: " + (error.response?.data?.detail || "No se pudo aceptar el cupo"));
+        }
+    };
+
+    // ── RECHAZAR CUPO ──
+    const rechazarCupo = async (reservaId) => {
+        try {
+            const res = await api.post(`/reservas/rechazar-cupo/${reservaId}`);
+
+            setMensajeResultado(res.data.mensaje);
+            setMostrarResultado(true);
+
+            // Actualizar estado de la reserva
+            setReservas(prev =>
+                prev.map(r =>
+                    r.id === reservaId ? { ...r, estado: 'en_espera', notificado: false } : r
+                )
+            );
+
+        } catch (error) {
+            console.error("Error rechazando cupo:", error);
+            alert("Error: " + (error.response?.data?.detail || "No se pudo rechazar el cupo"));
+        }
+    };
 
     return (
         
         <div className="perfil-container">
+            
+            <ModalConfirmacion
+                isOpen={mostrarConfirmacion}
+                titulo="¿Estás seguro?"
+                onConfirm={confirmarCancelacion}
+                onCancel={cancelarCancelacion}
+            />
+
+            <ModalResultado
+                isOpen={mostrarResultado}
+                mensaje={mensajeResultado}
+                onClose={() => setMostrarResultado(false)}
+            />
+
             {user ? (
                 <>
                     {/* ── BLOQUE 1: INFORMACIÓN DEL SOCIO (Estructura superior aislada) ── */}
@@ -197,7 +316,7 @@ const Perfil = ({ token, setToken }) => {
                             <div className="dato-item">
                                 <span className="dato-label">Créditos disponibles</span>
                                 <span className="dato-valor">
-                                    🎟️ {user.creditos_disponibles || 0}
+                                    🎟️ {creditos}  {/* Antes estaba "{user.creditos_disponibles || 0}" pero lo cambie porque me dijo esto claude "Si dejás user.creditos_disponibles, el número en pantalla no cambia después de la cancelación, porque user no se actualiza. Solo creditos (el estado nuevo) se actualiza." */}
                                 </span>
                             </div>
                         )}
@@ -320,13 +439,48 @@ const Perfil = ({ token, setToken }) => {
                                                                         <span className="reserva-mini-tipo">
                                                                             {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
                                                                         </span>
-                                                                        {r.lista_espera && (
+                                                                        {r.lista_espera && r.estado === 'en_espera' && (
                                                                             <span className="reserva-mini-espera">
                                                                                 En Espera
                                                                             </span>
                                                                         )}
 
-                                                                        {r.lista_espera && (
+                                                                        {r.notificado && (
+                                                                            <span className="reserva-mini-notificado">
+                                                                                ¡Cupo disponible!
+                                                                            </span>
+                                                                        )}
+
+                                                                        {/* Botones de acción */}
+                                                                        {r.estado === 'confirmada' && (
+                                                                            <button
+                                                                                className="btn-cancelar-reserva"
+                                                                                onClick={() => iniciarCancelacion(r)}
+                                                                            >
+                                                                                Cancelar
+                                                                            </button>
+                                                                        )}
+
+                                                                        {r.notificado && (
+                                                                            <button
+                                                                                className="btn-aceptar-cupo"
+                                                                                onClick={() => aceptarCupo(r.id)}
+                                                                            >
+                                                                                Aceptar cupo
+                                                                            </button>
+                                                                        )}
+
+                                                                        {r.notificado && (
+                                                                            <button
+                                                                                className="btn-rechazar-cupo"
+                                                                                onClick={() => rechazarCupo(r.id)}
+                                                                            >
+                                                                                Rechazar cupo
+                                                                            </button>
+                                                                        )}
+
+
+                                                                        {r.lista_espera && r.estado === 'en_espera' &&(
                                                                             <button
                                                                                 className="btn-salir-espera"
                                                                                 onClick={() => salirListaEspera(r.id)}
