@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, time
 
 from pydantic import BaseModel, EmailStr
 from models.enums import DiaSemana, TipoActividad
@@ -34,4 +34,11 @@ class CancelarClaseDia(BaseModel):
 class EliminarClase(BaseModel):
     motivo: str    
 
+class CambioProfesorTemporal(BaseModel):
+    profesor_id: int
+    fecha: date
+    motivo: str
 
+class CambioProfesorPermanente(BaseModel):
+    profesor_id: int
+    motivo: str

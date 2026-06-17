@@ -145,6 +145,28 @@
     color: #ff5555;
 }
 
+/* Botón cancelar */
+.btn-cancelar-dia {
+    background: transparent;
+    color: rgb(252, 153, 4);
+    border: 1px solid rgb(252, 153, 4);
+    border-radius: 8px;
+    padding: 5px 21px;
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: 600;
+}
+
+.btn-cancelar-dia:hover {
+    background: #ff8f0fe3;
+    border-color:rgb(252, 153, 4);
+    color: #ffffff;
+}
+
 /* Modal */
 .modal-overlay {
     position: fixed;
@@ -410,4 +432,36 @@
     padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
+}
+
+.btn-cancelar:hover,
+.btn-eliminar:hover {
+    transform: translateY(-2px);
+}
+
+.clase-mini-alumnos {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.error-modal-cancelacion {
+    margin-top: 12px;
+    padding: 10px;
+
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid rgba(255, 0, 0, 0.4);
+
+    border-radius: 8px;
+
+    color: #ff6b6b;
+    font-size: 14px;
+    text-align: center;
+}
+
+.modal-botones {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
 }

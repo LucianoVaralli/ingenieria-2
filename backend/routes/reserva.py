@@ -28,7 +28,6 @@ from services.mail_service import (
     enviar_mail_pago_exitoso,
     enviar_mail_lista_espera,
     enviar_mail_membresia,
-    enviar_mail_error_pago
 )
 
 from datetime import timedelta

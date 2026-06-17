@@ -152,3 +152,29 @@ Fechas ingresadas en lista de espera:
     fm = FastMail(conf)
 
     await fm.send_message(mensaje)
+
+async def enviar_mail_profesor(profesor, password_temporal):
+    asunto = "Bienvenido al sistema - Credenciales de acceso"
+
+    cuerpo = f"""
+Hola {profesor.nombre},
+
+Se te ha creado una cuenta en el sistema.
+
+📧 Email: {profesor.email}
+🔐 Contraseña temporal: {password_temporal}
+
+⚠️ Al iniciar sesión, deberás cambiar la contraseña obligatoriamente.
+
+Saludos.
+"""
+
+    message = MessageSchema(
+        subject=asunto,
+        recipients=[profesor.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)

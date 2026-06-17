@@ -1,6 +1,7 @@
 import os
 import re
-import shutil  # Para guardar el archivo en el disco
+import shutil
+import token  # Para guardar el archivo en el disco
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -12,6 +13,10 @@ from services.auth import get_password_hash, oauth2_scheme, obtener_usuario_actu
 import secrets
 
 router = APIRouter(prefix="/socios", tags=["Socios"])
+
+from services.mail_service import (
+    enviar_mail_profesor,
+)
 
 
 @router.post("/registrar")
@@ -188,7 +193,7 @@ def cambiar_contrasena_perfil(
     return {"mensaje": "Contraseña actualizada con éxito"}
 
 @router.post("/crear_profesores")
-def crear_profesor(
+async def crear_profesor(
     datos: ProfesorCreate,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
@@ -200,6 +205,9 @@ def crear_profesor(
             status_code=403,
             detail="Solo un administrador puede crear profesores"
         )
+    print("TOKEN:", token)
+    print("USUARIO:", usuario.email)
+    print("ROL:", usuario.rol) 
 
     errores = {}
 
@@ -251,6 +259,14 @@ def crear_profesor(
     db.add(nuevo_profesor)
     db.commit()
     db.refresh(nuevo_profesor)
+
+    try:
+        await enviar_mail_profesor(
+            profesor=nuevo_profesor,
+            password_temporal=password_temporal
+        )
+    except Exception as e:
+        print(f"⚠️ Mail profesor no enviado: {e}")
 
     return {
         "mensaje": "Profesor creado correctamente",
@@ -375,3 +391,42 @@ def editar_profesor(
     return {
         "mensaje": "Profesor actualizado correctamente"
     }    
+
+@router.delete("/profesores/{profesor_id}")
+async def eliminar_profesor(
+    profesor_id: int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    from models.clase import Clase
+
+    usuario = obtener_usuario_actual(token, db)
+
+    if usuario.rol != Rol.Admin.value:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un administrador puede eliminar profesores"
+        )
+    
+    clase = db.query(Clase).filter(
+        Clase.profesor_id == profesor_id
+    ).first()
+
+    if not clase:
+        db.query(Socio).filter(Socio.id == profesor_id).delete()
+        db.commit()
+        return {"mensaje": "Profesor eliminado correctamente"}
+
+    clases = db.query(Clase).filter(
+        Clase.profesor_id == profesor_id
+    ).all()
+
+    nombres_clases = [c.nombre for c in clases]
+
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "mensaje": "El profesor está asignado a clases",
+            "clases": nombres_clases
+        }
+    )
