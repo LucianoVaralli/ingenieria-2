@@ -152,3 +152,33 @@ Fechas ingresadas en lista de espera:
     fm = FastMail(conf)
 
     await fm.send_message(mensaje)
+
+
+async def enviar_mail_cupo_disponible(
+    socio: Socio,
+    clase: Clase,
+    fecha_clase: str
+):
+    """
+    Notifica al socio que se liberó un cupo en una clase de la lista de espera.
+    """
+    cuerpo = f"""
+Se liberó un cupo en la clase que solicitaste.
+
+Actividad: {clase.actividad}
+Fecha: {fecha_clase}
+Horario: {clase.horario}
+
+Para aceptar el cupo, ingresá a tu perfil en Sportify y apretá el botón "Aceptar cupo".
+Tenés un tiempo limitado para confirmar tu lugar.
+"""
+
+    mensaje = MessageSchema(
+        subject="¡Cupo disponible! - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
