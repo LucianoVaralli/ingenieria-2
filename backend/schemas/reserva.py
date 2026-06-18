@@ -53,3 +53,6 @@ class ConfirmarPagoMembresia(BaseModel):
 class ListaEsperaMembresiaCreate(BaseModel):
     clase_id: int
     fechas_sin_cupo: list[str]
+
+class RenovarMembresiaRequest(BaseModel):
+    clase_ids: list[int]

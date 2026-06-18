@@ -29,8 +29,7 @@ from services.mail_service import (
 )
 from datetime import timedelta
 
-# ── Import de la función helper de membresía ──
-from routes.membresia import _actualizar_membresia_activa_hasta
+from routes.membresia import _actualizar_membresia_activa_hasta, _calcular_fechas_mes, _mes_siguiente, DIA_A_WEEKDAY
 
 router = APIRouter(
     prefix="/reservas",
@@ -94,16 +93,42 @@ def crear_reserva_membresia(
             detail="No quedan clases futuras para este mes. No se puede crear la membresía."
         )
 
-    if _ya_tiene_reserva_en_horario(db, socio.id, clase.dia, clase.horario, fechas_futuras):
+    # ── FIX: verificar conflicto SOLO contra fechas que no sean del mismo
+    # mes/clase que ya tiene reservada (para no bloquear renovaciones) ──
+    fechas_sin_reserva_previa = []
+    for fecha in fechas_futuras:
+        ya_tiene = db.query(Reserva).join(Clase).filter(
+            Reserva.socio_id    == socio.id,
+            Clase.dia           == clase.dia,
+            Clase.horario       == clase.horario,
+            Reserva.fecha_clase == fecha,
+            Reserva.estado.in_(["confirmada", "pendiente_pago", "en_espera"])
+        ).first()
+        if ya_tiene:
+            # Si la reserva existente es de membresía para la misma clase → ok (ya cubierta)
+            # Si es de otra clase en el mismo horario → conflicto real
+            if ya_tiene.clase_id != datos.clase_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ya tiene una reserva en ese horario para el {fecha}."
+                )
+            # Mismo clase_id → fecha ya reservada, simplemente la ignoramos
+        else:
+            fechas_sin_reserva_previa.append(fecha)
+
+    # Solo procesamos las fechas que realmente no están cubiertas aún
+    fechas_a_procesar = fechas_sin_reserva_previa
+
+    if not fechas_a_procesar:
         raise HTTPException(
             status_code=400,
-            detail="Ya tiene una reserva confirmada o pendiente para este horario en los días solicitados."
+            detail="Todas las fechas ya están reservadas para esta clase."
         )
 
     fechas_con_cupo = []
     fechas_sin_cupo = []
 
-    for fecha in fechas_futuras:
+    for fecha in fechas_a_procesar:
         ocupadas = db.query(Reserva).filter(
             Reserva.clase_id    == datos.clase_id,
             Reserva.fecha_clase == fecha,
@@ -116,9 +141,9 @@ def crear_reserva_membresia(
             fechas_sin_cupo.append(fecha)
 
     total_clases    = len(datos.fechas_clase)
-    clases_validas  = len(fechas_futuras)
+    clases_validas  = len(fechas_a_procesar)
     clases_perdidas = total_clases - clases_validas
-    clases_a_reservar = len(fechas_futuras)
+    clases_a_reservar = len(fechas_a_procesar)
 
     creditos_disponibles = socio.creditos_disponibles
     creditos_a_usar = min(creditos_disponibles, clases_a_reservar)
@@ -250,7 +275,7 @@ async def confirmar_pago_membresia(
         elif not datos.pago_exitoso:
             raise HTTPException(status_code=402, detail="No se pudo procesar el pago.")
 
-    # 3. Crear reservas confirmadas
+    # 3. Crear reservas confirmadas del mes actual
     reservas_creadas = []
     for fecha in datos.fechas_con_cupo:
         ocupadas = db.query(Reserva).filter(
@@ -273,9 +298,49 @@ async def confirmar_pago_membresia(
             db.add(r)
             reservas_creadas.append(r)
 
+    # 4. Crear reservas "pendiente_pago" del mes siguiente (reserva el cupo anticipado)
+    #    Solo se crean si no existen ya para ese mes
+    weekday = DIA_A_WEEKDAY.get(clase.dia.lower().strip(), -1)
+    if weekday != -1 and datos.fechas_con_cupo:
+        # Determinar el mes de las clases que se acaban de pagar
+        primera_fecha_pagada = datetime.strptime(
+            sorted(datos.fechas_con_cupo)[0], "%Y-%m-%d"
+        ).date()
+        anio_sig, mes_sig = _mes_siguiente(primera_fecha_pagada.year, primera_fecha_pagada.month)
+        fechas_mes_sig    = _calcular_fechas_mes(anio_sig, mes_sig, weekday)
+
+        for fecha in fechas_mes_sig:
+            # Verificar que no exista ya una reserva para esa fecha
+            ya_existe = db.query(Reserva).filter(
+                Reserva.socio_id    == socio.id,
+                Reserva.clase_id    == datos.clase_id,
+                Reserva.fecha_clase == fecha,
+                Reserva.estado.in_(["confirmada", "pendiente_pago", "en_espera"])
+            ).first()
+            if ya_existe:
+                continue
+
+            # Verificar que haya cupo disponible
+            ocupadas_sig = db.query(Reserva).filter(
+                Reserva.clase_id    == datos.clase_id,
+                Reserva.fecha_clase == fecha,
+                Reserva.estado.in_(["confirmada", "pendiente_pago"])
+            ).count()
+
+            if ocupadas_sig < clase.cupo:
+                db.add(Reserva(
+                    socio_id      = socio.id,
+                    clase_id      = datos.clase_id,
+                    tipo          = TipoReserva.Membresia.value,
+                    estado        = "pendiente_pago",
+                    fecha_clase   = fecha,
+                    monto_total   = 0,   # se calculará al renovar
+                    monto_pagado  = 0,
+                    es_recurrente = True,
+                ))
+
     db.commit()
 
-    # ── Actualizar membresia_activa_hasta con la última fecha real ──
     _actualizar_membresia_activa_hasta(socio.id, db)
     db.commit()
 
@@ -291,9 +356,9 @@ async def confirmar_pago_membresia(
         print(f"⚠️ Mail no enviado: {e}")
 
     return {
-        "mensaje":             "Reserva procesada",
+        "mensaje":              "Reserva procesada",
         "reservas_confirmadas": len(reservas_creadas),
-        "monto_pagado":        datos.monto_total,
+        "monto_pagado":         datos.monto_total,
     }
 
 
@@ -318,11 +383,9 @@ def cancelar_reserva(
     if not reserva:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
-    clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
     reserva.estado = "cancelada"
     db.commit()
 
-    # Recalcular vencimiento después de cancelar
     _actualizar_membresia_activa_hasta(socio.id, db)
     db.commit()
 
@@ -344,12 +407,21 @@ def cancelar_reserva(
 
 # ──────────────────────────────────────────────────────────────
 # Endpoint: mis reservas
+# ── Ahora incluye reservas futuras (confirmadas) para que el
+#    perfil muestre las clases del mes renovado
 # ──────────────────────────────────────────────────────────────
 
 @router.get("/mis-reservas")
 def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     socio = obtener_usuario_actual(db=db, token=token)
-    reservas = db.query(Reserva).filter(Reserva.socio_id == socio.id).all()
+    hoy   = date.today()
+
+    # Traer confirmadas futuras + en_espera futuras + pendiente_pago
+    reservas = db.query(Reserva).filter(
+        Reserva.socio_id == socio.id,
+        Reserva.estado.in_(["confirmada", "en_espera", "pendiente_pago"]),
+        Reserva.fecha_clase >= str(hoy),
+    ).order_by(Reserva.fecha_clase.asc()).all()
 
     resultado = []
     for r in reservas:
@@ -656,10 +728,10 @@ async def pagar_reserva_individual(
     titular_normalizado = " ".join(datos.titular.split())
 
     tarjeta = db.query(TarjetaSimulada).filter(
-        TarjetaSimulada.numero            == numero_limpio,
+        TarjetaSimulada.numero              == numero_limpio,
         func.lower(TarjetaSimulada.titular) == titular_normalizado.lower(),
-        TarjetaSimulada.cvv               == datos.cvv,
-        TarjetaSimulada.fecha_vencimiento == datos.fecha_vencimiento
+        TarjetaSimulada.cvv                 == datos.cvv,
+        TarjetaSimulada.fecha_vencimiento   == datos.fecha_vencimiento
     ).first()
 
     if not tarjeta:
