@@ -27,6 +27,12 @@ const OPCIONES = [
         titulo: "Preguntas Frecuentes",
         desc: "Administrá las preguntas y respuestas visibles para los usuarios."
     },
+    {
+        to: "/admin/gestion-profesores",
+        icon: "👤",
+        titulo: "Gestión de Profesores",
+        desc: "Administrá la información y disponibilidad de los profesores."
+    }
 ];
 
 function AdminDashboard() {
