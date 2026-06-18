@@ -205,9 +205,6 @@ async def crear_profesor(
             status_code=403,
             detail="Solo un administrador puede crear profesores"
         )
-    print("TOKEN:", token)
-    print("USUARIO:", usuario.email)
-    print("ROL:", usuario.rol) 
 
     errores = {}
 

@@ -19,7 +19,11 @@ function ListaClasesAdmin() {
 
     const [fechaCancelar, setFechaCancelar] = useState("");
     const [motivoCancelar, setMotivoCancelar] = useState("");
-    const [errorCancelarDia, setErrorCancelarDia] = useState("");
+    const [errorCancelarDia, setErrorCancelarDia] = useState({
+        fecha:"",
+        motivo: "",
+        general:""
+    });
 
     const diasSemana = [
         "lunes", "martes", "miercoles",
@@ -27,6 +31,26 @@ function ListaClasesAdmin() {
     ];
     
     const [fechasDisponibles, setFechasDisponibles] = useState([]);
+
+    const [mostrarModalCambioProfesor, setMostrarModalCambioProfesor] = useState(false);
+    const [claseCambioProfesor, setClaseCambioProfesor] = useState(null);
+
+    const [modoCambioProfesor, setModoCambioProfesor] = useState(""); 
+    // "temporal" | "permanente"
+
+    const [profesores, setProfesores] = useState([]);
+    const [profesorSeleccionado, setProfesorSeleccionado] = useState("");
+    const [fechaCambio, setFechaCambio] = useState("");
+    const [motivoCambio, setMotivoCambio] = useState("");
+
+    const [fechasCambio, setFechasCambio] = useState([]);
+
+    const [erroresCambioProfesor, setErroresCambioProfesor] = useState({
+        profesor: "",
+        fecha: "",
+        motivo: "",
+        general:""
+    });
 
     const normalizarTexto = (txt) =>
         txt
@@ -46,6 +70,166 @@ function ListaClasesAdmin() {
         } catch (error) {
             console.error("Error cargando clases", error);
         }
+    };
+
+    useEffect(() => {
+        const cargarProfes = async () => {
+            try {
+                const res = await api.get("/socios/profesores");
+                setProfesores(res.data);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        cargarProfes();
+    }, []);
+
+    const abrirCambioProfesor = (clase) => {
+        setClaseCambioProfesor(clase);
+        setMostrarModalCambioProfesor(true);
+
+        setModoCambioProfesor("");
+        setProfesorSeleccionado("");
+        setFechaCambio("");
+        setMotivoCambio("");
+        setErroresCambioProfesor({
+            profesor: "",
+            fecha: "",
+            motivo: ""
+        });
+    };
+
+    const seleccionarModoCambio = (modo) => {
+        setModoCambioProfesor(modo);
+
+        setErroresCambioProfesor({
+            profesor: "",
+            fecha: "",
+            motivo: ""
+        });
+        setProfesorSeleccionado("");
+        setFechaCambio("");
+        setMotivoCambio("");
+
+        if (modo === "temporal") {
+            const fechas = generarFechasPorDiaSemana(claseCambioProfesor.dia);
+            setFechasCambio(fechas);
+        }
+    };
+
+    const confirmarCambioTemporal = async () => {
+        const nuevosErrores = {
+            profesor: "",
+            fecha: "",
+            motivo: ""
+        };
+
+        let hayError = false;
+
+        if (!profesorSeleccionado) {
+            nuevosErrores.profesor = "Debe seleccionar un profesor";
+            hayError = true;
+        }
+
+        if (!fechaCambio) {
+            nuevosErrores.fecha = "Debe seleccionar una fecha";
+            hayError = true;
+        }
+
+        if (motivoCambio.trim().length < 5) {
+            nuevosErrores.motivo = "El motivo debe tener al menos 5 caracteres";
+            hayError = true;
+        }
+
+        setErroresCambioProfesor(nuevosErrores);
+
+        if (hayError) return;
+
+        try {
+            await api.put(
+                `/clases/cambiar-profesor-temporal/${claseCambioProfesor.id}`,
+                {
+                    profesor_id: profesorSeleccionado,
+                    fecha: fechaCambio,
+                    motivo: motivoCambio
+                }
+            );
+
+            await cargarClases();
+            setMostrarModalCambioProfesor(false);
+            setMensajeExito("Cambio temporal de profesor exitoso.");
+
+            setTimeout(() => {
+                setMensajeExito("");
+            }, 3000);
+
+        } catch (err) {
+            setErroresCambioProfesor(prev => ({
+                ...prev,
+                general: err.response?.data?.detail || "Error"
+            }));
+        }
+    };
+
+    const confirmarCambioPermanente = async () => {
+        const nuevosErrores = {
+            profesor: "",
+            fecha: "",
+            motivo: ""
+        };
+
+        let hayError = false;
+
+        if (!profesorSeleccionado) {
+            nuevosErrores.profesor = "Debe seleccionar un profesor";
+            hayError = true;
+        }
+
+        if (motivoCambio.trim().length < 5) {
+            nuevosErrores.motivo = "El motivo debe tener al menos 5 caracteres";
+            hayError = true;
+        }
+        
+        setErroresCambioProfesor(nuevosErrores);
+
+        if (hayError) return;
+
+        try {
+            await api.put(
+                `/clases/cambiar-profesor-permanente/${claseCambioProfesor.id}`,
+                {
+                    profesor_id: profesorSeleccionado,
+                    motivo: motivoCambio
+                }
+            );
+
+            await cargarClases();
+            setMostrarModalCambioProfesor(false);
+            setMensajeExito("Cambio permanente de profesor exitoso.");
+
+            setTimeout(() => {
+                setMensajeExito("");
+            }, 3000);
+
+        } catch (err) {
+            setErroresCambioProfesor(prev => ({
+                ...prev,
+                general: err.response?.data?.detail || "Error"
+            }));
+        }
+    };
+
+    const resetModalCambioProfesor = () => {
+        setModoCambioProfesor(null);
+        setProfesorSeleccionado("");
+        setFechaCambio("");
+        setMotivoCambio("");
+        setErroresCambioProfesor({
+            profesor: "",
+            fecha: "",
+            motivo: ""
+        });
     };
 
     const generarFechasPorDiaSemana = (diaSemana) => {
@@ -141,25 +325,33 @@ function ListaClasesAdmin() {
 
         setFechaCancelar("");
         setMotivoCancelar("");
-        setErrorCancelarDia("");
+        setErrorCancelarDia({
+            fecha: "",
+            motivo: ""
+        });
         setMostrarModalCancelarDia(true);
     };
 
     const cancelarDiaClase = async () => {
-        setErrorCancelarDia("");
+        const nuevosErrores = {
+            fecha: "",
+            motivo: ""
+        };
+
+        let hayError = false;
+
         if (!fechaCancelar) {
-            setErrorCancelarDia(
-                "Debe seleccionar una fecha"
-            );
-            return;
+            nuevosErrores.fecha = "Debe seleccionar una fecha";
+            hayError=true;
         }
 
         if (motivoCancelar.trim().length < 5) {
-            setErrorCancelarDia(
-                "El motivo debe tener al menos 5 caracteres"
-            );
-            return;
+            nuevosErrores.motivo="El motivo debe tener al menos 5 caracteres";
+            hayError=true;
         }
+        setErrorCancelarDia(nuevosErrores);
+        
+        if (hayError) return;
 
         try {
             await api.put(
@@ -179,15 +371,18 @@ function ListaClasesAdmin() {
             }, 3000);
 
         } catch (error) {
-            setErrorCancelarDia(
-                error.response?.data?.detail ||
+            setErrorCancelarDia(prev => ({
+                ...prev,
+                general: error.response?.data?.detail ||
                 "Error cancelando clase"
-            );
+            }));
         }
     };
 
     const capitalize = (texto) =>
-    texto.charAt(0).toUpperCase() + texto.slice(1);
+        texto
+            ? texto.charAt(0).toUpperCase() + texto.slice(1)
+            : "";
 
     const formatearFecha = (fecha) => {
         const [anio, mes, dia] = fecha.split("-");
@@ -311,6 +506,13 @@ function ListaClasesAdmin() {
                                                         >
                                                             Eliminar
                                                         </button>
+
+                                                        <button
+                                                            className="btn-cambiar-profesor"
+                                                            onClick={() => abrirCambioProfesor(clase)}
+                                                        >
+                                                            Cambiar profesor
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ))
@@ -385,34 +587,59 @@ function ListaClasesAdmin() {
                             {capitalize(claseCancelarDia?.dia)} - {claseCancelarDia?.horario?.slice(0, 5)} hs
                         </p>
 
-                        <label>Fecha</label>
-                        <select
-                            value={fechaCancelar}
-                            onChange={(e) => {
-                                setFechaCancelar(e.target.value);
-                                setErrorCancelarDia("");
-                            }}
-                        >
-                            <option value="">Seleccionar fecha</option>
-                            {fechasDisponibles.map((fecha) => (
-                                <option key={fecha} value={fecha}>
-                                    {formatearFecha(fecha)} ({capitalize(claseCancelarDia?.dia)})
-                                </option>
-                            ))}
-                        </select>
+                        <div className="cancelar-dia-field">
+                            <label className="cancelar-dia-field-label">Fecha</label>
 
-                        <label>Motivo</label>
-                        <textarea
-                            value={motivoCancelar}
-                            onChange={(e) =>{
-                                setMotivoCancelar(e.target.value);
-                                setErrorCancelarDia("");
-                            }}
-                        />
+                            <select
+                                value={fechaCancelar}
+                                onChange={(e) => {
+                                    setFechaCancelar(e.target.value);
+                                    setErrorCancelarDia(prev => ({
+                                        ...prev,
+                                        fecha: ""
+                                    }));
+                                }}
+                                className={`cancelar-dia-select ${errorCancelarDia ? "error" : ""}`}
+                            >
+                                <option value="">Seleccionar fecha</option>
+                                {fechasDisponibles.map((fecha) => (
+                                    <option key={fecha} value={fecha}>
+                                        {formatearFecha(fecha)} ({capitalize(claseCancelarDia?.dia)})
+                                    </option>
+                                ))}
+                            </select>
 
-                        {errorCancelarDia && (
-                            <p className="error-modal-cancelacion">
-                                {errorCancelarDia}
+                            {errorCancelarDia.fecha && (
+                                <p className="cancelar-dia-error-field">
+                                    {errorCancelarDia.fecha}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="cancelar-dia-field">
+                            <label className="cancelar-dia-field-label">Motivo</label>
+
+                            <textarea
+                                value={motivoCancelar}
+                                onChange={(e) => {
+                                    setMotivoCancelar(e.target.value);
+                                    setErrorCancelarDia(prev => ({
+                                        ...prev,
+                                        motivo: ""
+                                    }));
+                                }}
+                                className={`cancelar-dia-textarea ${errorCancelarDia ? "error" : ""}`}
+                            />
+
+                            {errorCancelarDia.motivo && (
+                                <p className="cancelar-dia-error-field">
+                                    {errorCancelarDia.motivo}
+                                </p>
+                            )}
+                        </div>
+                        {errorCancelarDia.general && (
+                            <p className="cancelar-dia-error-field">
+                                {errorCancelarDia.general}
                             </p>
                         )}
 
@@ -433,6 +660,181 @@ function ListaClasesAdmin() {
                                 Confirmar cancelación
                             </button>
                         </div>
+
+                    </div>
+                </div>
+            )}
+
+           {/** MODAL CAMBIAR PROFESOR */}
+            {mostrarModalCambioProfesor && (
+                <div className="modal-overlay">
+                    <div className="modal-confirmacion">
+
+                        <h3>Cambiar profesor</h3>
+                        <p>
+                            {capitalize(claseCambioProfesor?.actividad)}
+                        </p>
+
+                        <p>
+                            {capitalize(claseCambioProfesor?.dia)} - {claseCambioProfesor?.horario?.slice(0, 5)} hs
+                        </p>
+
+                        {!modoCambioProfesor && (
+                            <div className="modal-botones">
+                                <button className="btn-cambio-t" 
+                                        onClick={() => seleccionarModoCambio("temporal")}>
+                                    Cambio temporal
+                                </button>
+
+                                <button className="btn-cambio-p" onClick={() => seleccionarModoCambio("permanente")}>
+                                    Cambio permanente
+                                </button>
+
+                                <button className="btn-cancelar" onClick={() => {resetModalCambioProfesor();
+                                    setMostrarModalCambioProfesor(false)}}>
+                                    Cancelar
+                                </button>
+                            </div>
+                        )}
+
+                        {/* TEMPORAL */}
+                        {modoCambioProfesor === "temporal" && (
+                            <>
+                                <div className="cancelar-dia-field">
+                                    <label className="cancelar-dia-field-label">Fecha</label>
+
+                                    <select
+                                        value={fechaCambio}
+                                        onChange={(e) => setFechaCambio(e.target.value)}
+                                        className={`cancelar-dia-select ${erroresCambioProfesor ? "error" : ""}`}
+                                    >
+                                        <option value="">Seleccionar fecha</option>
+                                        {fechasCambio.map(f => (
+                                            <option key={f} value={f}>
+                                                {formatearFecha(f)} ({capitalize(claseCambioProfesor?.dia)})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {erroresCambioProfesor.fecha && (
+                                    <p className="cancelar-dia-error-field">
+                                        {erroresCambioProfesor.fecha}
+                                    </p>
+                                )}
+
+                                <div className="cancelar-dia-field">
+                                    <label className="cancelar-dia-field-label">Profesor</label>
+
+                                    <select
+                                        value={profesorSeleccionado}
+                                        onChange={(e) => setProfesorSeleccionado(e.target.value)}
+                                        className={`cancelar-dia-select ${erroresCambioProfesor ? "error" : ""}`}
+                                    >
+                                        <option value="">Seleccionar profesor</option>
+                                        {profesores.map(p => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.email} ({p.nombre} {p.apellido})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {erroresCambioProfesor.profesor && (
+                                    <p className="cancelar-dia-error-field">
+                                        {erroresCambioProfesor.profesor}
+                                    </p>
+                                )}
+
+                                <div className="cancelar-dia-field">
+                                    <label className="cancelar-dia-field-label">Motivo</label>
+
+                                    <textarea
+                                        value={motivoCambio}
+                                        onChange={(e) => setMotivoCambio(e.target.value)}
+                                        className={`cancelar-dia-textarea ${erroresCambioProfesor ? "error" : ""}`}
+                                    />
+                                </div>
+
+                                {erroresCambioProfesor.motivo && (
+                                    <p className="cancelar-dia-error-field">
+                                        {erroresCambioProfesor.motivo}
+                                    </p>
+                                )}
+                                {erroresCambioProfesor.general && (
+                                    <p className="cancelar-dia-error-field">
+                                        {erroresCambioProfesor.general}
+                                    </p>
+                                )}
+                                <div className="modal-botones">
+                                    <button className="btn-cancelar" onClick={() => {resetModalCambioProfesor();
+                                        setModoCambioProfesor(null)}}>
+                                        Cancelar
+                                    </button>
+                                    
+                                    <button className="btn-confirmar" onClick={confirmarCambioTemporal}>
+                                        Confirmar
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {/* PERMANENTE */}
+                        {modoCambioProfesor === "permanente" && (
+                            <>
+                                <div className="cancelar-dia-field">
+                                    <label className="cancelar-dia-field-label">Profesor</label>
+
+                                    <select
+                                        value={profesorSeleccionado}
+                                        onChange={(e) => setProfesorSeleccionado(e.target.value)}
+                                        className={`cancelar-dia-select ${erroresCambioProfesor ? "error" : ""}`}
+                                    >
+                                        <option value="">Seleccionar profesor</option>
+                                        {profesores.map(p => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.email} ({p.nombre} {p.apellido})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {erroresCambioProfesor.profesor && (
+                                    <p className="cancelar-dia-error-field">
+                                        {erroresCambioProfesor.profesor}
+                                    </p>
+                                )}
+
+                                <div className="cancelar-dia-field">
+                                    <label className="cancelar-dia-field-label">Motivo</label>
+
+                                    <textarea
+                                        value={motivoCambio}
+                                        onChange={(e) => setMotivoCambio(e.target.value)}
+                                        className={`cancelar-dia-textarea ${erroresCambioProfesor ? "error" : ""}`}
+                                    />
+                                </div>
+
+                                {erroresCambioProfesor.motivo && (
+                                    <p className="cancelar-dia-error-field">
+                                        {erroresCambioProfesor.motivo}
+                                    </p>
+                                )}
+                                {erroresCambioProfesor.general && (
+                                    <p className="cancelar-dia-error-field">
+                                        {erroresCambioProfesor.general}
+                                    </p>
+                                )}
+                                <div className="modal-botones">
+                                    <button className="btn-cancelar" onClick={() => {resetModalCambioProfesor(); setModoCambioProfesor(null)}}>
+                                        Cancelar
+                                    </button>
+                                    
+                                    <button className="btn-confirmar" onClick={confirmarCambioPermanente}>
+                                        Confirmar
+                                    </button>
+
+                                    
+                                </div>
+                            </>
+                        )}
 
                     </div>
                 </div>

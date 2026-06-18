@@ -5,19 +5,23 @@ from models.reserva_MIO import Reserva
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
-from models.enums import Rol, DiaSemana
+from models.enums import Rol, TipoReserva
 from models.clase import Clase
 from models.gimnasio import Gimnasio
 from models.socio import Socio
 from schemas.clase import (
     ClaseCreate,
     CancelarClaseDia,
-    EliminarClase
+    EliminarClase,
+    CambioProfesorTemporal,
+    CambioProfesorPermanente
 )
 
 from dependencies.database import get_db
 from services.notificaciones import crear_notificacion
-from models.enums import TipoReserva
+
+from models.cambioTemporal import CambioProfesorTemporal as CambioProfesorTemporalDB
+from models.cambioPermanente import CambioProfesorPermanente as CambioProfesorPermanenteDB
 
 router = APIRouter(
     prefix="/clases",
@@ -74,6 +78,116 @@ def validar_capacidad_horaria(
                 )
             )
 
+def validar_superposicion_profesor(
+    db,
+    profesor_id,
+    dia,
+    horario,
+    duracion,
+    clase_excluir_id=None, 
+    fecha=None
+):
+    nuevo_inicio = datetime.combine(
+        datetime.today(),
+        horario
+    )
+
+    nuevo_fin = nuevo_inicio + timedelta(
+        minutes=duracion
+    )
+
+    query = db.query(Clase).filter(
+        Clase.profesor_id == profesor_id,
+        Clase.dia == dia,
+        Clase.activa == True
+    )
+
+    # Para edición/cambio permanente evita compararse consigo misma
+    if clase_excluir_id is not None:
+        query = query.filter(
+            Clase.id != clase_excluir_id
+        )
+
+    clases_profesor = query.all()
+
+    # 1) Validar contra clases normales
+    for clase_existente in clases_profesor:
+
+        existente_inicio = datetime.combine(
+            datetime.today(),
+            clase_existente.horario
+        )
+
+        existente_fin = existente_inicio + timedelta(
+            minutes=clase_existente.duracion
+        )
+
+        nuevo_inicio = nuevo_inicio.replace(
+            tzinfo=None
+        )
+
+        nuevo_fin = nuevo_fin.replace(
+            tzinfo=None
+        )
+
+        existente_inicio = existente_inicio.replace(
+            tzinfo=None
+        )
+
+        existente_fin = existente_fin.replace(
+            tzinfo=None
+        )
+
+        if (
+            nuevo_inicio < existente_fin and
+            nuevo_fin > existente_inicio
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"El profesor ya tiene una clase "
+                    f"los {dia.value.capitalize()} "
+                    f"de {clase_existente.horario.strftime('%H:%M')} "
+                    f"a {existente_fin.strftime('%H:%M')}"
+                )
+            )
+
+    # 2) Validar contra reemplazos temporales
+    if fecha is not None:
+
+        cambios_temporales = db.query(
+            CambioProfesorTemporalDB
+        ).filter(
+            CambioProfesorTemporalDB.profesor_reemplazo_id == profesor_id,
+            CambioProfesorTemporalDB.fecha == fecha
+        ).all()
+
+        for cambio in cambios_temporales:
+
+            clase_temporal = db.query(Clase).filter(
+                Clase.id == cambio.clase_id
+            ).first()
+
+            if not clase_temporal:
+                continue
+
+            existente_inicio = datetime.combine(
+                datetime.today(),
+                clase_temporal.horario
+            )
+
+            existente_fin = existente_inicio + timedelta(
+                minutes=clase_temporal.duracion
+            )
+
+            if (
+                nuevo_inicio < existente_fin and
+                nuevo_fin > existente_inicio
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="El profesor ya tiene un reemplazo temporal asignado en ese horario"
+                )
 
 @router.post("/crear")
 async def crear_clase(
@@ -129,45 +243,13 @@ async def crear_clase(
         raise HTTPException(status_code=400, detail="Creación de clase fallido por profesor inexistente")
     
     # VALIDACIÓN DE SUPERPOSICIÓN HORARIA
-    nuevo_inicio = datetime.combine(
-        datetime.today(),
-        clase.horario
+    validar_superposicion_profesor(
+        db=db,
+        profesor_id=profesor.id,
+        dia=clase.dia,
+        horario=clase.horario,
+        duracion=clase.duracion
     )
-
-    nuevo_fin = nuevo_inicio + timedelta(
-        minutes=clase.duracion
-    )
-
-    clases_profesor = db.query(Clase).filter(
-        Clase.profesor_id == profesor.id,
-        Clase.dia == clase.dia
-    ).all()    
-
-    for clase_existente in clases_profesor:
-        existente_inicio = datetime.combine(
-            datetime.today(),
-            clase_existente.horario
-        )
-
-        existente_fin = existente_inicio + timedelta(
-            minutes=clase_existente.duracion
-        )
-
-        # Limpiamos zonas horarias por seguridad
-        nuevo_inicio = nuevo_inicio.replace(tzinfo=None)
-        nuevo_fin = nuevo_fin.replace(tzinfo=None)
-        existente_inicio = existente_inicio.replace(tzinfo=None)
-        existente_fin = existente_fin.replace(tzinfo=None)
-
-        # Si hay cualquier tipo de cruce de horarios para el mismo profesor...
-        if (
-            nuevo_inicio < existente_fin and
-            nuevo_fin > existente_inicio
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="El profesor ya tiene una clase en ese horario"
-            )  
         
     # Crear la clase si todo está OK 
     nueva_clase = Clase(
@@ -580,6 +662,12 @@ def obtener_calendario(
         fecha_actual = f_inicio + timedelta(days=i)
         weekday_actual = fecha_actual.weekday() # 0 a 6
         fecha_actual_str = fecha_actual.strftime("%Y-%m-%d")
+        cambio_temporal = db.query(
+            CambioProfesorTemporalDB
+        ).filter(
+            CambioProfesorTemporalDB.clase_id == cb.id,
+            CambioProfesorTemporalDB.fecha == fecha_actual
+        ).first()
 
         for cb in clases_base:
             # Verificar si la clase base corresponde al día de la semana actual
@@ -613,7 +701,14 @@ def obtener_calendario(
                 cupo_disponible = max(0, cb.cupo - cupos_ocupados)
 
                 # Obtener info del profesor para el objeto visual
-                profesor = db.query(Socio).filter(Socio.id == cb.profesor_id).first()
+                profesor_id = cb.profesor_id
+
+                if cambio_temporal:
+                    profesor_id = cambio_temporal.profesor_reemplazo_id
+
+                profesor = db.query(Socio).filter(
+                    Socio.id == profesor_id
+                ).first()
 
                 calendario_eventos.append({
                     "clase_id": cb.id,
@@ -662,3 +757,182 @@ def cambiar_rol(socio_id: int, rol: str, db: Session = Depends(get_db)):
     socio.rol = rol
     db.commit()
     return {"mensaje": f"Rol cambiado a {rol}"}
+
+
+@router.put("/cambiar-profesor-temporal/{clase_id}")
+async def cambiar_profesor_temporal(
+    clase_id: int,
+    datos: CambioProfesorTemporal,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(
+        Clase.id == clase_id,
+        Clase.activa == True
+    ).first()
+
+    if not clase:
+        raise HTTPException(
+            status_code=404,
+            detail="Clase no encontrada"
+        )
+    
+    if datos.fecha < date.today():
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede asignar un reemplazo para una fecha pasada"
+        )
+
+    profesor = db.query(Socio).filter(
+        Socio.id == datos.profesor_id,
+        Socio.rol == Rol.Profesor.value
+    ).first()
+
+    if not profesor:
+        raise HTTPException(
+            status_code=400,
+            detail="Profesor inválido"
+        )
+
+    if datos.profesor_id == clase.profesor_id:
+        raise HTTPException(
+            status_code=400,
+            detail="La clase ya tiene asignado ese profesor"
+        )
+
+    if len(datos.motivo.strip()) < 5:
+        raise HTTPException(
+            status_code=400,
+            detail="El motivo debe tener al menos 5 caracteres"
+        )
+
+    cambio_existente = db.query(
+        CambioProfesorTemporalDB
+    ).filter(
+        CambioProfesorTemporalDB.clase_id == clase.id,
+        CambioProfesorTemporalDB.fecha == datos.fecha
+    ).first()
+
+    if cambio_existente:
+        raise HTTPException(
+            status_code=400,
+            detail="Ya existe un cambio temporal para esa fecha"
+        )
+
+    validar_superposicion_profesor(
+        db=db,
+        profesor_id=datos.profesor_id,
+        dia=clase.dia,
+        horario=clase.horario,
+        duracion=clase.duracion,
+        fecha=datos.fecha
+    )
+
+    nuevo_cambio = CambioProfesorTemporalDB(
+        clase_id=clase.id,
+        profesor_original_id=clase.profesor_id,
+        profesor_reemplazo_id=datos.profesor_id,
+        fecha=datos.fecha,
+        motivo=datos.motivo.strip()
+    )
+
+    db.add(nuevo_cambio)
+    db.commit()
+
+    reservas = db.query(Reserva).filter(
+        Reserva.clase_id == clase.id,
+        Reserva.estado.in_(["confirmada", "pendiente_pago"])
+    ).all()
+
+    for reserva in reservas:
+        crear_notificacion(
+            db,
+            reserva.socio_id,
+            "Cambio de profesor",
+            f"Se hizo un cambio temporal del profesor de la clase del día {clase.dia.value.capitalize()} {datos.fecha}. "
+            f"Motivo: {datos.motivo.strip().capitalize()}. "
+            f"Solo afecta la clase del día {datos.fecha} y el resto del calendario sigue con el profesor habitual."
+        )
+
+    return {
+        "mensaje": "Cambio temporal de profesor registrado correctamente"
+    }
+
+@router.put("/cambiar-profesor-permanente/{clase_id}")
+async def cambiar_profesor_permanente(
+    clase_id: int,
+    datos: CambioProfesorPermanente,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(
+        Clase.id == clase_id,
+        Clase.activa == True
+    ).first()
+
+    if not clase:
+        raise HTTPException(
+            status_code=404,
+            detail="Clase no encontrada"
+        )
+
+    profesor = db.query(Socio).filter(
+        Socio.id == datos.profesor_id,
+        Socio.rol == Rol.Profesor.value
+    ).first()
+
+    if not profesor:
+        raise HTTPException(
+            status_code=400,
+            detail="Profesor inválido"
+        )
+
+    if datos.profesor_id == clase.profesor_id:
+        raise HTTPException(
+            status_code=400,
+            detail="La clase ya tiene asignado ese profesor"
+        )
+
+    if len(datos.motivo.strip()) < 5:
+        raise HTTPException(
+            status_code=400,
+            detail="El motivo debe tener al menos 5 caracteres"
+        )
+
+    validar_superposicion_profesor(
+        db=db,
+        profesor_id=datos.profesor_id,
+        dia=clase.dia,
+        horario=clase.horario,
+        duracion=clase.duracion,
+        clase_excluir_id=clase.id
+    )
+
+    registro = CambioProfesorPermanenteDB(
+        clase_id=clase.id,
+        profesor_anterior_id=clase.profesor_id,
+        profesor_nuevo_id=datos.profesor_id,
+        motivo=datos.motivo.strip()
+    )
+
+    db.add(registro)
+
+    clase.profesor_id = datos.profesor_id
+
+    db.commit()
+
+    reservas = db.query(Reserva).filter(
+        Reserva.clase_id == clase.id,
+        Reserva.estado.in_(["confirmada", "pendiente_pago"])
+    ).all()
+
+    for reserva in reservas:
+        crear_notificacion(
+            db,
+            reserva.socio_id,
+            "Cambio de profesor",
+            f"Se hizo un cambio permanente del profesor de la clase del {clase.dia.value} a las {clase.horario.strftime('%H:%M')}. "
+            f"Motivo: {datos.motivo.strip().capitalize()}."
+        )
+
+    return {
+        "mensaje": "Profesor cambiado permanentemente"
+    }
