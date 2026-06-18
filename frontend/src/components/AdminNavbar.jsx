@@ -8,6 +8,7 @@ const NAV_ITEMS = [
     { to: "/admin/eliminar-clase",  label: "Ver Clases",          icon: "☰" },
     { to: "/admin/editar-capacidad",label: "Capacidad",       icon: "◎" },
     { to: "/admin/preguntas-frecuentes", label: "Preguntas Frecuentes", icon: "❓" },
+    { to: "/admin/gestion-profesores", label: "Gestión de Profesores", icon: "👨‍🏫" },
 ];
 
 function AdminNavbar({ setToken, abierto, setAbierto }) {
