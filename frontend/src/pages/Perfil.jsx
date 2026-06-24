@@ -76,7 +76,7 @@ const Perfil = ({ token, setToken }) => {
 
     const renovarMembresia = async () => {
         try {
-            setLoadingRenovar(true);
+            setCargandoRenovar(true);
 
             const res = await api.post("/membresia/renovar");
 
@@ -89,7 +89,7 @@ const Perfil = ({ token, setToken }) => {
             console.error(err);
             alert(err?.response?.data?.detail || "Error al renovar membresía");
         } finally {
-            setLoadingRenovar(false);
+            setCargandoRenovar(false);
         }
     };
 
@@ -531,9 +531,12 @@ const Perfil = ({ token, setToken }) => {
                                                                                         </span>
                                                                                     )}
 
-                                                                                    {r.lista_espera && (
+                                                                                    {r.lista_espera && r.estado === 'en_espera' && (
                                                                                         <>
-                                                                                            <span className="reserva-mini-espera">En Espera</span>
+                                                                                            <span className="reserva-mini-espera">
+                                                                                                En Espera
+                                                                                            </span>
+
                                                                                             <button
                                                                                                 className="btn-salir-espera"
                                                                                                 onClick={() => salirListaEspera(r.id)}
@@ -541,6 +544,42 @@ const Perfil = ({ token, setToken }) => {
                                                                                                 Salir de lista de espera
                                                                                             </button>
                                                                                         </>
+                                                                                    )}
+
+                                                                                    {r.notificado && (
+                                                                                        <span className="reserva-mini-notificado">
+                                                                                            ¡Cupo disponible!
+                                                                                        </span>
+                                                                                    )}
+
+                                                                                    {/* Cancelar reserva */}
+                                                                                    {r.estado === 'confirmada' && (
+                                                                                        <button
+                                                                                            className="btn-cancelar-reserva"
+                                                                                            onClick={() => iniciarCancelacion(r)}
+                                                                                        >
+                                                                                            Cancelar
+                                                                                        </button>
+                                                                                    )}
+
+                                                                                    {/* Aceptar cupo */}
+                                                                                    {r.notificado && (
+                                                                                        <button
+                                                                                            className="btn-aceptar-cupo"
+                                                                                            onClick={() => aceptarCupo(r.id)}
+                                                                                        >
+                                                                                            Aceptar cupo
+                                                                                        </button>
+                                                                                    )}
+
+                                                                                    {/* Rechazar cupo */}
+                                                                                    {r.notificado && (
+                                                                                        <button
+                                                                                            className="btn-rechazar-cupo"
+                                                                                            onClick={() => rechazarCupo(r.id)}
+                                                                                        >
+                                                                                            Rechazar cupo
+                                                                                        </button>
                                                                                     )}
                                                                                 </div>
                                                                             </div>
