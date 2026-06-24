@@ -797,6 +797,7 @@ body,
 }
 
 
+<<<<<<< HEAD
  
 /* ═══════════════════════════════════════════════════
    CHIP DE VENCIMIENTO en las cards de reserva
@@ -1029,3 +1030,79 @@ body,
     white-space: nowrap;
 }
  
+=======
+/* ── BOTONES DE ACCIONES EN RESERVAS ── */
+.btn-cancelar-reserva,
+.btn-aceptar-cupo,
+.btn-salir-espera {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Lora', serif;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.btn-cancelar-reserva {
+    background-color: #ff5555;
+    color: white;
+}
+
+.btn-cancelar-reserva:hover {
+    background-color: #bb2d3b;
+}
+
+.btn-aceptar-cupo {
+    background-color: #5CB84D;
+    color: white;
+}
+
+.btn-aceptar-cupo:hover {
+    background-color: #4a9940;
+}
+
+.btn-salir-espera {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-salir-espera:hover {
+    background-color: #bb2d3b;
+}
+
+/* ── ESTADO NOTIFICADO ── */
+.reserva-mini-notificado {
+    background: #5CB84D;
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    width: fit-content;
+    margin-top: 4px;
+}
+
+
+.btn-rechazar-cupo {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Lora', serif;
+    transition: all 0.2s ease;
+    width: 100%;
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-rechazar-cupo:hover {
+    background-color: #bb2d3b;
+}
+>>>>>>> main

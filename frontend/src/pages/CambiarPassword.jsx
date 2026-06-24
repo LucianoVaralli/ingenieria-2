@@ -80,7 +80,7 @@ const CambiarPassword = () => {
         }
 
         try {
-            // 💡 CLAVE: Antes de mandar la petición, vaciamos los errores viejos de la pantalla
+            // Antes de mandar la petición, vaciamos los errores viejos de la pantalla
             setErrors({ passwordActual: "", passwordNueva: "", confirmarPassword: "" });
 
             const res = await api.post("/socios/cambiar-password", {

@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
+import ModalConfirmacion from '../components/ModalConfirmacion.jsx';
+import ModalResultado from '../components/ModalResultado.jsx';
 
 const Perfil = ({ token, setToken }) => {
     const [user, setUser]           = useState(null);
@@ -13,12 +15,86 @@ const Perfil = ({ token, setToken }) => {
     const [membresiaActiva, setMembresiaActiva]   = useState(false);
     const [fechaVencimiento, setFechaVencimiento] = useState(null);
 
+<<<<<<< HEAD
     // ── Renovación ──
     const [membresíasRenovables, setMembresíasRenovables] = useState([]);
     const [modalAbierto, setModalAbierto]                 = useState(false);
     const [seleccionadas, setSeleccionadas]               = useState([]);
     const [cargandoRenovar, setCargandoRenovar]           = useState(false);
     const [errorRenovar, setErrorRenovar]                 = useState('');
+=======
+    const [creditos, setCreditos] = useState(0);
+
+    // ── MODALES ──
+    const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+    const [mostrarResultado, setMostrarResultado] = useState(false);
+    const [reservaAbordador, setReservaAbordador] = useState(null);
+    const [mensajeResultado, setMensajeResultado] = useState("");
+
+    const hoy = new Date();
+    const dia = hoy.getDate();
+
+    const puedeRenovar =
+        user?.rol === "miembro" &&
+        user?.membresia_vencimiento &&
+        dia >= 1 &&
+        dia <= 10;
+
+    useEffect(() => {
+        const cargarPerfil = async () => {
+            const res = await api.get('/socios/me');
+
+            setCreditos(res.data.creditos_disponibles || 0);
+            setRol(res.data.rol);
+            setMembresiaActiva(res.data.membresia_activa);
+            setFechaVencimiento(res.data.membresia_vencimiento);
+            setUser(res.data);
+        };
+
+        cargarPerfil();
+    }, []);
+
+    const salirListaEspera = async (reservaId) => {
+        try {
+
+            await api.delete(
+                `/reservas/lista-espera/cancelar/${reservaId}`
+            );
+
+            setReservas(prev =>
+                prev.filter(r => r.id !== reservaId)
+            );
+
+            setMensajeResultado("Baja exitosa");
+            setMostrarResultado(true);
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert("No se pudo salir de la lista de espera");
+        }
+    };
+
+    const renovarMembresia = async () => {
+        try {
+            setLoadingRenovar(true);
+
+            const res = await api.post("/membresia/renovar");
+
+            alert(res.data.mensaje || "Membresía renovada con éxito");
+
+            const resUser = await api.get("/socios/me");
+            setUser(resUser.data);
+
+        } catch (err) {
+            console.error(err);
+            alert(err?.response?.data?.detail || "Error al renovar membresía");
+        } finally {
+            setLoadingRenovar(false);
+        }
+    };
+>>>>>>> main
 
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
@@ -48,6 +124,17 @@ const Perfil = ({ token, setToken }) => {
                     }
                 }
 
+<<<<<<< HEAD
+=======
+                const activas = resReservas.data.filter(r =>
+                    (r.estado === 'confirmada' || r.estado === 'en_espera' || r.estado === 'notificado') &&
+                    new Date(r.fecha_clase) >= hoy
+                );
+
+                setReservas(activas);
+
+                // ALERTAS EN OTRO TRY (IMPORTANTE)
+>>>>>>> main
                 try {
                     const resAlertas = await api.get('/reservas/alertas-individuales');
                     setAlertaIndividual(resAlertas.data);
@@ -164,6 +251,7 @@ const Perfil = ({ token, setToken }) => {
             const key   = `${r.clase_id}-${fecha.getFullYear()}-${fecha.getMonth()}`;
             if (!map[key] || r.fecha_clase > map[key]) map[key] = r.fecha_clase;
         });
+<<<<<<< HEAD
         return map;
     }, [reservas]);
 
@@ -183,10 +271,119 @@ const Perfil = ({ token, setToken }) => {
         if (!esUltima) return null;
 
         return { tipo: 'vence' };
+=======
+    
+    // ── CANCELAR RESERVA ──
+    const iniciarCancelacion = (reserva) => {
+        setReservaAbordador(reserva);
+        setMostrarConfirmacion(true);
+    };
+
+    const confirmarCancelacion = async () => {
+        if (!reservaAbordador) return;
+
+        try {
+            setMostrarConfirmacion(false);
+
+            let endpoint = '';
+            if (reservaAbordador.tipo === 'membresia') {
+                endpoint = `/reservas/membresia/cancelar/${reservaAbordador.id}`;
+            } else {
+                endpoint = `/reservas/individual/cancelar-confirmada/${reservaAbordador.id}`;
+            }
+
+            let res;
+            if (reservaAbordador.tipo === 'membresia') {
+                res = await api.post(`/reservas/membresia/cancelar/${reservaAbordador.id}`);
+            } else {
+                res = await api.delete(`/reservas/individual/cancelar-confirmada/${reservaAbordador.id}`);
+            }
+
+            setMensajeResultado(res.data.mensaje);
+            setMostrarResultado(true);
+
+            // Actualizar la lista de reservas
+            setReservas(prev => prev.filter(r => r.id !== reservaAbordador.id));
+
+            // Actualizar créditos si se otorgó uno
+            if (res.data.credito_otorgado) {
+                setCreditos(res.data.creditos_disponibles);
+            }
+
+            setReservaAbordador(null);
+
+        } catch (error) {
+            console.error("Error cancelando reserva:", error);
+            setMostrarConfirmacion(false);
+            alert("Error: " + (error.response?.data?.detail || "No se pudo cancelar"));
+            setReservaAbordador(null);
+        }
+    };
+
+    const cancelarCancelacion = () => {
+        setMostrarConfirmacion(false);
+        setReservaAbordador(null);
+    };
+
+    // ── ACEPTAR CUPO ──
+    const aceptarCupo = async (reservaId) => {
+        try {
+            const res = await api.post(`/reservas/aceptar-cupo/${reservaId}`);
+
+            setMensajeResultado(res.data.mensaje);
+            setMostrarResultado(true);
+
+            // Actualizar estado de la reserva
+            setReservas(prev =>
+                prev.map(r =>
+                    r.id === reservaId ? { ...r, estado: 'confirmada', notificado: false } : r
+                )
+            );
+
+        } catch (error) {
+            console.error("Error aceptando cupo:", error);
+            alert("Error: " + (error.response?.data?.detail || "No se pudo aceptar el cupo"));
+        }
+    };
+
+    // ── RECHAZAR CUPO ──
+    const rechazarCupo = async (reservaId) => {
+        try {
+            const res = await api.post(`/reservas/rechazar-cupo/${reservaId}`);
+
+            setMensajeResultado(res.data.mensaje);
+            setMostrarResultado(true);
+
+            // Actualizar estado de la reserva
+            setReservas(prev =>
+                prev.map(r =>
+                    r.id === reservaId ? { ...r, estado: 'en_espera', notificado: false } : r
+                )
+            );
+
+        } catch (error) {
+            console.error("Error rechazando cupo:", error);
+            alert("Error: " + (error.response?.data?.detail || "No se pudo rechazar el cupo"));
+        }
+>>>>>>> main
     };
 
     return (
         <div className="perfil-container">
+            
+            <ModalConfirmacion
+                isOpen={mostrarConfirmacion}
+                titulo="¿Estás seguro?"
+                onConfirm={confirmarCancelacion}
+                onCancel={cancelarCancelacion}
+            />
+
+            <ModalResultado
+                isOpen={mostrarResultado}
+                mensaje={mensajeResultado}
+                onClose={() => setMostrarResultado(false)}
+            />
+
             {user ? (
                 <>
                     {/* ── HERO ── */}
@@ -223,7 +420,13 @@ const Perfil = ({ token, setToken }) => {
                         {user.rol === 'miembro' && (
                             <div className="dato-item">
                                 <span className="dato-label">Créditos disponibles</span>
+<<<<<<< HEAD
                                 <span className="dato-valor">🎟️ {user.creditos_disponibles || 0}</span>
+=======
+                                <span className="dato-valor">
+                                    🎟️ {creditos}  {/* Antes estaba "{user.creditos_disponibles || 0}" pero lo cambie porque me dijo esto claude "Si dejás user.creditos_disponibles, el número en pantalla no cambia después de la cancelación, porque user no se actualiza. Solo creditos (el estado nuevo) se actualiza." */}
+                                </span>
+>>>>>>> main
                             </div>
                         )}
 
@@ -292,6 +495,7 @@ const Perfil = ({ token, setToken }) => {
                                         </Link>
                                     </div>
                                 ) : (
+<<<<<<< HEAD
                                     Object.entries(reservasPorMes).map(([mesKey, { label, porDia }]) => (
                                         <div key={mesKey} className="perfil-mes-block">
                                             <h4 className="perfil-mes-titulo" style={{ textTransform: 'capitalize' }}>
@@ -320,6 +524,86 @@ const Perfil = ({ token, setToken }) => {
                                                                             <div
                                                                                 className={`reserva-card-mini ${esPendiente ? 'reserva-card-mini--pendiente' : ''}`}
                                                                                 key={r.id}
+=======
+                                    <div className="perfil-agenda-container">
+                                        {diasSemana.map(dia => {
+                                            const clasesDelDia = reservasPorDia[dia];
+                                            return (
+                                                <div className="agenda-columna" key={dia}>
+                                                    <div className="agenda-columna-header">
+                                                        <h4>{dia}</h4>
+                                                        <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
+                                                            {clasesDelDia.length}
+                                                        </span>
+                                                    </div>
+                                                    <div className="agenda-columna-body">
+                                                        {clasesDelDia.length === 0 ? (
+                                                            <p className="agenda-columna-vacio">Sin clases</p>
+                                                        ) : (
+                                                            clasesDelDia.map(r => (
+                                                                <div className="reserva-card-mini" key={r.id}>
+                                                                    <div className="reserva-mini-fecha">
+                                                                        {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                                            day: 'numeric',
+                                                                            month: 'short',
+                                                                        })}
+                                                                    </div>
+                                                                    <div className="reserva-mini-detalles">
+                                                                        <span className="reserva-mini-actividad">
+                                                                            {r.clase?.actividad || `Clase #${r.clase_id}`}
+                                                                        </span>
+                                                                        <span className="reserva-mini-horario">
+                                                                            {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
+                                                                        </span>
+                                                                        <span className="reserva-mini-tipo">
+                                                                            {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
+                                                                        </span>
+                                                                        {r.lista_espera && r.estado === 'en_espera' && (
+                                                                            <span className="reserva-mini-espera">
+                                                                                En Espera
+                                                                            </span>
+                                                                        )}
+
+                                                                        {r.notificado && (
+                                                                            <span className="reserva-mini-notificado">
+                                                                                ¡Cupo disponible!
+                                                                            </span>
+                                                                        )}
+
+                                                                        {/* Botones de acción */}
+                                                                        {r.estado === 'confirmada' && (
+                                                                            <button
+                                                                                className="btn-cancelar-reserva"
+                                                                                onClick={() => iniciarCancelacion(r)}
+                                                                            >
+                                                                                Cancelar
+                                                                            </button>
+                                                                        )}
+
+                                                                        {r.notificado && (
+                                                                            <button
+                                                                                className="btn-aceptar-cupo"
+                                                                                onClick={() => aceptarCupo(r.id)}
+                                                                            >
+                                                                                Aceptar cupo
+                                                                            </button>
+                                                                        )}
+
+                                                                        {r.notificado && (
+                                                                            <button
+                                                                                className="btn-rechazar-cupo"
+                                                                                onClick={() => rechazarCupo(r.id)}
+                                                                            >
+                                                                                Rechazar cupo
+                                                                            </button>
+                                                                        )}
+
+
+                                                                        {r.lista_espera && r.estado === 'en_espera' &&(
+                                                                            <button
+                                                                                className="btn-salir-espera"
+                                                                                onClick={() => salirListaEspera(r.id)}
+>>>>>>> main
                                                                             >
                                                                                 <div className="reserva-mini-fecha">
                                                                                     {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
