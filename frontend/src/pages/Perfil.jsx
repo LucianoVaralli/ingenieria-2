@@ -15,14 +15,12 @@ const Perfil = ({ token, setToken }) => {
     const [membresiaActiva, setMembresiaActiva]   = useState(false);
     const [fechaVencimiento, setFechaVencimiento] = useState(null);
 
-<<<<<<< HEAD
     // ── Renovación ──
     const [membresíasRenovables, setMembresíasRenovables] = useState([]);
     const [modalAbierto, setModalAbierto]                 = useState(false);
     const [seleccionadas, setSeleccionadas]               = useState([]);
     const [cargandoRenovar, setCargandoRenovar]           = useState(false);
     const [errorRenovar, setErrorRenovar]                 = useState('');
-=======
     const [creditos, setCreditos] = useState(0);
 
     // ── MODALES ──
@@ -94,7 +92,6 @@ const Perfil = ({ token, setToken }) => {
             setLoadingRenovar(false);
         }
     };
->>>>>>> main
 
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
@@ -124,8 +121,6 @@ const Perfil = ({ token, setToken }) => {
                     }
                 }
 
-<<<<<<< HEAD
-=======
                 const activas = resReservas.data.filter(r =>
                     (r.estado === 'confirmada' || r.estado === 'en_espera' || r.estado === 'notificado') &&
                     new Date(r.fecha_clase) >= hoy
@@ -134,7 +129,6 @@ const Perfil = ({ token, setToken }) => {
                 setReservas(activas);
 
                 // ALERTAS EN OTRO TRY (IMPORTANTE)
->>>>>>> main
                 try {
                     const resAlertas = await api.get('/reservas/alertas-individuales');
                     setAlertaIndividual(resAlertas.data);
@@ -152,16 +146,6 @@ const Perfil = ({ token, setToken }) => {
 
         fetchData();
     }, [token, navigate, setToken]);
-
-    const salirListaEspera = async (reservaId) => {
-        try {
-            await api.delete(`/reservas/lista-espera/cancelar/${reservaId}`);
-            setReservas(prev => prev.filter(r => r.id !== reservaId));
-            setMensajeExito('Baja exitosa');
-        } catch (error) {
-            alert('No se pudo salir de la lista de espera');
-        }
-    };
 
     const toggleSeleccion = (claseId) => {
         setSeleccionadas(prev =>
@@ -251,7 +235,6 @@ const Perfil = ({ token, setToken }) => {
             const key   = `${r.clase_id}-${fecha.getFullYear()}-${fecha.getMonth()}`;
             if (!map[key] || r.fecha_clase > map[key]) map[key] = r.fecha_clase;
         });
-<<<<<<< HEAD
         return map;
     }, [reservas]);
 
@@ -271,8 +254,7 @@ const Perfil = ({ token, setToken }) => {
         if (!esUltima) return null;
 
         return { tipo: 'vence' };
-=======
-    
+    }; 
     // ── CANCELAR RESERVA ──
     const iniciarCancelacion = (reserva) => {
         setReservaAbordador(reserva);
@@ -365,7 +347,6 @@ const Perfil = ({ token, setToken }) => {
             console.error("Error rechazando cupo:", error);
             alert("Error: " + (error.response?.data?.detail || "No se pudo rechazar el cupo"));
         }
->>>>>>> main
     };
 
     return (
@@ -420,13 +401,9 @@ const Perfil = ({ token, setToken }) => {
                         {user.rol === 'miembro' && (
                             <div className="dato-item">
                                 <span className="dato-label">Créditos disponibles</span>
-<<<<<<< HEAD
-                                <span className="dato-valor">🎟️ {user.creditos_disponibles || 0}</span>
-=======
                                 <span className="dato-valor">
                                     🎟️ {creditos}  {/* Antes estaba "{user.creditos_disponibles || 0}" pero lo cambie porque me dijo esto claude "Si dejás user.creditos_disponibles, el número en pantalla no cambia después de la cancelación, porque user no se actualiza. Solo creditos (el estado nuevo) se actualiza." */}
                                 </span>
->>>>>>> main
                             </div>
                         )}
 
@@ -495,7 +472,6 @@ const Perfil = ({ token, setToken }) => {
                                         </Link>
                                     </div>
                                 ) : (
-<<<<<<< HEAD
                                     Object.entries(reservasPorMes).map(([mesKey, { label, porDia }]) => (
                                         <div key={mesKey} className="perfil-mes-block">
                                             <h4 className="perfil-mes-titulo" style={{ textTransform: 'capitalize' }}>
@@ -524,86 +500,6 @@ const Perfil = ({ token, setToken }) => {
                                                                             <div
                                                                                 className={`reserva-card-mini ${esPendiente ? 'reserva-card-mini--pendiente' : ''}`}
                                                                                 key={r.id}
-=======
-                                    <div className="perfil-agenda-container">
-                                        {diasSemana.map(dia => {
-                                            const clasesDelDia = reservasPorDia[dia];
-                                            return (
-                                                <div className="agenda-columna" key={dia}>
-                                                    <div className="agenda-columna-header">
-                                                        <h4>{dia}</h4>
-                                                        <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
-                                                            {clasesDelDia.length}
-                                                        </span>
-                                                    </div>
-                                                    <div className="agenda-columna-body">
-                                                        {clasesDelDia.length === 0 ? (
-                                                            <p className="agenda-columna-vacio">Sin clases</p>
-                                                        ) : (
-                                                            clasesDelDia.map(r => (
-                                                                <div className="reserva-card-mini" key={r.id}>
-                                                                    <div className="reserva-mini-fecha">
-                                                                        {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
-                                                                            day: 'numeric',
-                                                                            month: 'short',
-                                                                        })}
-                                                                    </div>
-                                                                    <div className="reserva-mini-detalles">
-                                                                        <span className="reserva-mini-actividad">
-                                                                            {r.clase?.actividad || `Clase #${r.clase_id}`}
-                                                                        </span>
-                                                                        <span className="reserva-mini-horario">
-                                                                            {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
-                                                                        </span>
-                                                                        <span className="reserva-mini-tipo">
-                                                                            {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
-                                                                        </span>
-                                                                        {r.lista_espera && r.estado === 'en_espera' && (
-                                                                            <span className="reserva-mini-espera">
-                                                                                En Espera
-                                                                            </span>
-                                                                        )}
-
-                                                                        {r.notificado && (
-                                                                            <span className="reserva-mini-notificado">
-                                                                                ¡Cupo disponible!
-                                                                            </span>
-                                                                        )}
-
-                                                                        {/* Botones de acción */}
-                                                                        {r.estado === 'confirmada' && (
-                                                                            <button
-                                                                                className="btn-cancelar-reserva"
-                                                                                onClick={() => iniciarCancelacion(r)}
-                                                                            >
-                                                                                Cancelar
-                                                                            </button>
-                                                                        )}
-
-                                                                        {r.notificado && (
-                                                                            <button
-                                                                                className="btn-aceptar-cupo"
-                                                                                onClick={() => aceptarCupo(r.id)}
-                                                                            >
-                                                                                Aceptar cupo
-                                                                            </button>
-                                                                        )}
-
-                                                                        {r.notificado && (
-                                                                            <button
-                                                                                className="btn-rechazar-cupo"
-                                                                                onClick={() => rechazarCupo(r.id)}
-                                                                            >
-                                                                                Rechazar cupo
-                                                                            </button>
-                                                                        )}
-
-
-                                                                        {r.lista_espera && r.estado === 'en_espera' &&(
-                                                                            <button
-                                                                                className="btn-salir-espera"
-                                                                                onClick={() => salirListaEspera(r.id)}
->>>>>>> main
                                                                             >
                                                                                 <div className="reserva-mini-fecha">
                                                                                     {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
