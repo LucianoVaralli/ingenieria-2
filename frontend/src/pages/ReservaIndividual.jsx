@@ -18,22 +18,20 @@ const ReservaIndividual = () => {
     const navigate = useNavigate();
     const { clase, fechaSeleccionada } = location.state || {};
 
-    // pasos: lista_espera | creditos | tipo_pago | pago | exito | error
+    // pasos: cargando | lista_espera | creditos | tipo_pago | pago | exito | exito_espera | error
     const [paso, setPaso]         = useState('cargando');
     const [mensaje, setMensaje]   = useState('');
     const [cargando, setCargando] = useState(false);
 
-    const [tipoPago, setTipoPago]               = useState('sena');
-    const [monto, setMonto]                     = useState(clase ? Number(clase.precio_individual) * 0.5 : 0);
-    const [debeListaEspera, setDebeListaEspera] = useState(false);
-    const [vinoDeEspera, setVinoDeEspera] = useState(false);
+    const [tipoPago, setTipoPago]                 = useState('sena');
+    const [monto, setMonto]                       = useState(clase ? Number(clase.precio_individual) * 0.5 : 0);
     const [creditosDisponibles, setCreditosDisponibles] = useState(0);
-    const [usaCredito, setUsaCredito]           = useState(false);
+    const [usaCredito, setUsaCredito]             = useState(false);
 
     // Datos de tarjeta
-    const [nroTarjeta, setNroTarjeta] = useState('');
-    const [titular, setTitular]       = useState('');
-    const [cvv, setCvv]               = useState('');
+    const [nroTarjeta, setNroTarjeta]   = useState('');
+    const [titular, setTitular]         = useState('');
+    const [cvv, setCvv]                 = useState('');
     const [vencimiento, setVencimiento] = useState('');
 
     useEffect(() => {
@@ -41,13 +39,12 @@ const ReservaIndividual = () => {
             setCargando(true);
             try {
                 const res = await api.post('/reservas/individual/verificar-cupo', {
-                    clase_id: clase.id,
+                    clase_id:    clase.id,
                     fecha_clase: fechaSeleccionada,
-                    tipo_pago: 'sena'
+                    tipo_pago:   'sena'
                 });
 
                 setCreditosDisponibles(res.data.creditos_disponibles || 0);
-                setDebeListaEspera(res.data.debe_lista_espera);
 
                 if (res.data.puede_usar_credito) {
                     setUsaCredito(true);
@@ -94,41 +91,64 @@ const ReservaIndividual = () => {
         );
     };
 
-    const handleVerificarCupo = async () => {
+    // NUEVO: lista de espera sin pago — solo agrega y vuelve al inicio
+    const handleAceptarEspera = async () => {
         setCargando(true);
         setMensaje('');
         try {
-            const res = await api.post('/reservas/individual/verificar-cupo', {
-                clase_id: clase.id,
+            await api.post('/reservas/individual/lista-espera', {
+                clase_id:    clase.id,
                 fecha_clase: fechaSeleccionada,
-                tipo_pago: tipoPago
             });
-
-            setDebeListaEspera(res.data.debe_lista_espera);
-            setCreditosDisponibles(res.data.creditos_disponibles || 0);
-
-            if (res.data.puede_usar_credito) {
-                setUsaCredito(true);
-                setMonto(0);
-            }
-            setVinoDeEspera(true);
-            
-            if (res.data.creditos_disponibles > 0) {
-                setPaso('creditos');
-            } else {
-                setPaso('tipo_pago');
-            }
+            setPaso('exito_espera');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'Error al verificar la disponibilidad.');
+            setMensaje(err.response?.data?.detail || 'Error al agregar a lista de espera.');
             setPaso('error');
         } finally {
             setCargando(false);
         }
     };
 
-    // Pagar / Confirmar Operación
+    const handleContinuarDesdeCreditos = () => {
+        if (usaCredito) {
+            // Crédito cubre todo → confirmar sin pasar por pago
+            handlePagarConCredito();
+        } else {
+            setPaso('tipo_pago');
+        }
+    };
+
+    const handlePagarConCredito = async () => {
+        setCargando(true);
+        setMensaje('');
+        try {
+            const resReserva = await api.post('/reservas/individual/crear', {
+                clase_id:    clase.id,
+                fecha_clase: fechaSeleccionada,
+                tipo_pago:   tipoPago
+            });
+
+            await api.post('/reservas/individual/pagar', {
+                reserva_id:          resReserva.data.reserva_id,
+                numero_tarjeta:      '0000000000000000',
+                titular:             'credito',
+                cvv:                 '000',
+                fecha_vencimiento:   '12/99',
+                acepta_lista_espera: false,
+                usa_credito:         true
+            });
+
+            setPaso('exito');
+        } catch (err) {
+            setMensaje(err.response?.data?.detail || 'No se pudo confirmar con créditos.');
+            setPaso('error');
+        } finally {
+            setCargando(false);
+        }
+    };
+
     const handlePagar = async () => {
-        if (monto > 0 && (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim())) {
+        if (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim()) {
             setMensaje('Por favor, completá todos los datos de la tarjeta.');
             return;
         }
@@ -137,19 +157,19 @@ const ReservaIndividual = () => {
         setMensaje('');
         try {
             const resReserva = await api.post('/reservas/individual/crear', {
-                clase_id: clase.id,
+                clase_id:    clase.id,
                 fecha_clase: fechaSeleccionada,
-                tipo_pago: tipoPago
+                tipo_pago:   tipoPago
             });
 
             await api.post('/reservas/individual/pagar', {
                 reserva_id:          resReserva.data.reserva_id,
-                numero_tarjeta:      monto > 0 ? nroTarjeta : '0000000000000000',
-                titular:             monto > 0 ? titular : 'credito',
-                cvv:                 monto > 0 ? cvv : '000',
-                fecha_vencimiento:   monto > 0 ? vencimiento : '12/99',
-                acepta_lista_espera: debeListaEspera,
-                usa_credito:         usaCredito
+                numero_tarjeta:      nroTarjeta.replace(/\s/g, ''),
+                titular,
+                cvv,
+                fecha_vencimiento:   vencimiento,
+                acepta_lista_espera: false,
+                usa_credito:         false
             });
 
             setPaso('exito');
@@ -161,21 +181,10 @@ const ReservaIndividual = () => {
         }
     };
 
-    // Desde el paso créditos → Decisión Directa
-    const handleContinuarDesdeCreditos = () => {
-        if (usaCredito) {
-            // Si el crédito cubre todo, gatilla directamente la confirmación sin pasar por pantallas raras
-            handlePagar();
-        } else {
-            // Sin créditos suficientes → Elegir modalidad habitual
-            setPaso('tipo_pago');
-        }
-    };
-
     const handleVolver = () => {
         if (paso === 'creditos')  return setPaso('lista_espera');
-        if (paso === 'tipo_pago') return setPaso(vinoDeEspera ? 'lista_espera' : 'cargando');
-        if (paso === 'pago')      return setPaso(usaCredito ? 'creditos' : 'tipo_pago');
+        if (paso === 'tipo_pago') return setPaso(creditosDisponibles > 0 ? 'creditos' : 'lista_espera');
+        if (paso === 'pago')      return setPaso('tipo_pago');
         navigate(-1);
     };
 
@@ -213,20 +222,24 @@ const ReservaIndividual = () => {
                             <span>Precio base</span>
                             <span>${Number(clase.precio_individual).toFixed(2)}</span>
                         </div>
-                        <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
-                            <span>Concepto</span>
-                            <span>{tipoPago === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
-                        </div>
+                        {paso !== 'lista_espera' && paso !== 'exito_espera' && (
+                            <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
+                                <span>Concepto</span>
+                                <span>{tipoPago === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
+                            </div>
+                        )}
                         {usaCredito && (
                             <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
                                 <span>🎟️ Crédito aplicado</span>
                                 <span>-${Number(clase.precio_individual).toFixed(2)}</span>
                             </div>
                         )}
-                        <div className="reserva-desglose-total">
-                            <span>Total a abonar</span>
-                            <span>${Number(monto).toFixed(2)}</span>
-                        </div>
+                        {paso !== 'lista_espera' && paso !== 'exito_espera' && (
+                            <div className="reserva-desglose-total">
+                                <span>Total a abonar</span>
+                                <span>${Number(monto).toFixed(2)}</span>
+                            </div>
+                        )}
                     </div>
 
                     {paso === 'pago' && monto > 0 && (
@@ -251,24 +264,25 @@ const ReservaIndividual = () => {
 
                 {/* COLUMNA DERECHA */}
                 <div className="reserva-accion-col">
+
                     {paso === 'cargando' && (
                         <div className="reserva-accion-card" style={{ textAlign: 'center' }}>
                             <span className="reserva-spinner" />
                         </div>
                     )}
 
-                    {/* PASO: lista de espera */}
+                    {/* PASO: lista de espera — sin pago */}
                     {paso === 'lista_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
                             <h3 className="reserva-accion-titulo">Clase sin cupos disponibles</h3>
                             <p className="reserva-accion-desc">
                                 No hay vacantes para el {formatearFecha(fechaSeleccionada)}.
-                                Si se libera un lugar, te notificaremos.
+                                Podés anotarte en lista de espera sin costo — si se libera un lugar, te notificamos.
                             </p>
                             <div className="reserva-espera-botones">
-                                <button className="boton-accion" onClick={handleVerificarCupo} disabled={cargando}>
-                                    {cargando ? <span className="reserva-spinner" /> : 'Acepto entrar en espera'}
+                                <button className="boton-accion" onClick={handleAceptarEspera} disabled={cargando}>
+                                    {cargando ? <span className="reserva-spinner" /> : 'Anotarme en lista de espera'}
                                 </button>
                                 <button className="boton-cancelar" onClick={() => navigate('/')} disabled={cargando}>
                                     No, volver al inicio
@@ -277,25 +291,27 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO: créditos */}
+                    {/* PASO: créditos disponibles */}
                     {paso === 'creditos' && (
                         <div className="reserva-accion-card">
                             <div className="pago-credito-icon">🎟️</div>
                             <h3 className="reserva-accion-titulo">Tenés créditos disponibles</h3>
                             <p className="reserva-accion-desc">
-                                Tenés <strong>{creditosDisponibles} crédito{creditosDisponibles > 1 ? 's' : ''}</strong> disponible{creditosDisponibles > 1 ? 's' : ''}.
+                                Tenés <strong>{creditosDisponibles} crédito{creditosDisponibles > 1 ? 's' : ''}</strong> disponible{creditosDisponibles > 1 ? 's' : ''}.{' '}
                                 {usaCredito
-                                    ? 'Esta clase quedará completamente cubierta con tus créditos.'
-                                    : 'No alcanza para cubrir esta clase, continuá para abonar el saldo.'}
+                                    ? 'Esta clase quedará completamente cubierta con tus créditos, sin cargo adicional.'
+                                    : 'No alcanza para cubrir esta clase. Continuá para abonar el saldo.'}
                             </p>
                             {mensaje && <p className="pago-error-msg">{mensaje}</p>}
                             <button className="boton-accion" onClick={handleContinuarDesdeCreditos} disabled={cargando}>
-                                {cargando ? <span className="reserva-spinner" /> : (usaCredito ? 'Confirmar Reserva con Crédito' : 'Continuar →')}
+                                {cargando
+                                    ? <span className="reserva-spinner" />
+                                    : usaCredito ? 'Confirmar con crédito →' : 'Continuar →'}
                             </button>
                         </div>
                     )}
 
-                    {/* PASO: elegir modalidad */}
+                    {/* PASO: elegir modalidad de pago */}
                     {paso === 'tipo_pago' && (
                         <div className="reserva-accion-card">
                             <h3 className="reserva-accion-titulo">Configurá tu pago</h3>
@@ -334,8 +350,8 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO: formulario de pago manual */}
-                    {paso === 'pago' && monto > 0 && (
+                    {/* PASO: formulario de pago */}
+                    {paso === 'pago' && (
                         <div className="pago-form-card">
                             <h2 className="pago-form-titulo">Datos de pago</h2>
                             <div className="pago-field">
@@ -343,9 +359,9 @@ const ReservaIndividual = () => {
                                 <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
                                     placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
                                     onChange={(e) => {
-                                        const numeros = e.target.value.replace(/\D/g, '');
+                                        const n = e.target.value.replace(/\D/g, '');
                                         const parts = [];
-                                        for (let i = 0; i < numeros.length; i += 4) parts.push(numeros.substring(i, i + 4));
+                                        for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
                                         setNroTarjeta(parts.join(' '));
                                     }}
                                 />
@@ -370,9 +386,9 @@ const ReservaIndividual = () => {
                                     <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
                                         value={vencimiento}
                                         onChange={(e) => {
-                                            let valor = e.target.value.replace(/\D/g, '');
-                                            if (valor.length > 2) valor = valor.slice(0, 2) + '/' + valor.slice(2, 4);
-                                            setVencimiento(valor);
+                                            let v = e.target.value.replace(/\D/g, '');
+                                            if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                            setVencimiento(v);
                                         }}
                                     />
                                 </div>
@@ -381,15 +397,28 @@ const ReservaIndividual = () => {
                             <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
                                 {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${Number(monto).toFixed(2)}`}
                             </button>
+                            <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
                         </div>
                     )}
 
-                    {/* PASO: éxito */}
+                    {/* PASO: éxito reserva con pago o crédito */}
                     {paso === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">✓</div>
-                            <h3>¡Reserva procesada!</h3>
-                            <p>Tu solicitud fue registrada correctamente con tus créditos.</p>
+                            <h3>¡Reserva confirmada!</h3>
+                            <p>Tu clase fue reservada correctamente.</p>
+                            <button className="pago-btn-primary" onClick={() => navigate('/')}>
+                                Volver al inicio
+                            </button>
+                        </div>
+                    )}
+
+                    {/* PASO: éxito lista de espera */}
+                    {paso === 'exito_espera' && (
+                        <div className="pago-resultado pago-resultado--ok">
+                            <div className="pago-resultado-icon">🕐</div>
+                            <h3>¡Estás en lista de espera!</h3>
+                            <p>Te avisaremos si se libera un cupo para el {formatearFecha(fechaSeleccionada)}.</p>
                             <button className="pago-btn-primary" onClick={() => navigate('/')}>
                                 Volver al inicio
                             </button>
@@ -406,6 +435,7 @@ const ReservaIndividual = () => {
                             </button>
                         </div>
                     )}
+
                 </div>
             </div>
         </div>

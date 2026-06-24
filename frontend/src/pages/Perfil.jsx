@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
@@ -6,18 +6,21 @@ import ModalConfirmacion from '../components/ModalConfirmacion.jsx';
 import ModalResultado from '../components/ModalResultado.jsx';
 
 const Perfil = ({ token, setToken }) => {
-    const [user, setUser] = useState(null);
-    const [reservas, setReservas] = useState([]);
-    const [loadingRenovar, setLoadingRenovar] = useState(false);
-    const navigate = useNavigate();
+    const [user, setUser]           = useState(null);
+    const [reservas, setReservas]   = useState([]);
+    const navigate                  = useNavigate();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
-    const [mensajeExito, setMensajeExito] = useState("");
-    const [usuario, setUsuario] = useState(null);
-    const [rol, setRol] = useState("");
-
-    const [membresiaActiva, setMembresiaActiva] = useState(false);
+    const [mensajeExito, setMensajeExito]         = useState('');
+    const [rol, setRol]             = useState('');
+    const [membresiaActiva, setMembresiaActiva]   = useState(false);
     const [fechaVencimiento, setFechaVencimiento] = useState(null);
 
+    // ── Renovación ──
+    const [membresíasRenovables, setMembresíasRenovables] = useState([]);
+    const [modalAbierto, setModalAbierto]                 = useState(false);
+    const [seleccionadas, setSeleccionadas]               = useState([]);
+    const [cargandoRenovar, setCargandoRenovar]           = useState(false);
+    const [errorRenovar, setErrorRenovar]                 = useState('');
     const [creditos, setCreditos] = useState(0);
 
     // ── MODALES ──
@@ -73,7 +76,7 @@ const Perfil = ({ token, setToken }) => {
 
     const renovarMembresia = async () => {
         try {
-            setLoadingRenovar(true);
+            setCargandoRenovar(true);
 
             const res = await api.post("/membresia/renovar");
 
@@ -86,10 +89,12 @@ const Perfil = ({ token, setToken }) => {
             console.error(err);
             alert(err?.response?.data?.detail || "Error al renovar membresía");
         } finally {
-            setLoadingRenovar(false);
+            setCargandoRenovar(false);
         }
     };
 
+    const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
 
     useEffect(() => {
         if (!token) { navigate('/login'); return; }
@@ -102,9 +107,19 @@ const Perfil = ({ token, setToken }) => {
                 ]);
 
                 setUser(resUser.data);
+                setRol(resUser.data.rol);
+                setMembresiaActiva(resUser.data.membresia_activa);
+                setFechaVencimiento(resUser.data.membresia_vencimiento);
+                setReservas(resReservas.data);
 
-                const hoy = new Date();
-                hoy.setHours(0, 0, 0, 0);
+                if (resUser.data.rol === 'miembro') {
+                    try {
+                        const resRen = await api.get('/membresia/renovables');
+                        setMembresíasRenovables(resRen.data);
+                    } catch (e) {
+                        setMembresíasRenovables([]);
+                    }
+                }
 
                 const activas = resReservas.data.filter(r =>
                     (r.estado === 'confirmada' || r.estado === 'en_espera' || r.estado === 'notificado') &&
@@ -118,43 +133,128 @@ const Perfil = ({ token, setToken }) => {
                     const resAlertas = await api.get('/reservas/alertas-individuales');
                     setAlertaIndividual(resAlertas.data);
                 } catch (e) {
-                    console.log("sin alertas, no rompe sesión");
                     setAlertaIndividual([]);
                 }
 
             } catch (err) {
-                console.error("Error cargando perfil", err);
+                console.error('Error cargando perfil', err);
                 localStorage.removeItem('token');
                 setToken(null);
                 navigate('/login');
             }
         };
+
         fetchData();
     }, [token, navigate, setToken]);
 
-    // ── LÓGICA DE AGRUPACIÓN PARA LA AGENDA SEMANAL ──
-    const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    const mapeoDias = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
+    const toggleSeleccion = (claseId) => {
+        setSeleccionadas(prev =>
+            prev.includes(claseId)
+                ? prev.filter(id => id !== claseId)
+                : [...prev, claseId]
+        );
+    };
 
-    const reservasPorDia = diasSemana.reduce((acc, dia) => {
-        acc[dia] = [];
-        return acc;
-    }, {});
+    const handleConfirmarRenovacion = async () => {
+        if (seleccionadas.length === 0) return;
+        setCargandoRenovar(true);
+        setErrorRenovar('');
 
-    [...reservas]
-        .sort((a, b) => {
-            const momentoA = `${a.fecha_clase}T${a.clase?.horario || '00:00:00'}`;
-            const momentoB = `${b.fecha_clase}T${b.clase?.horario || '00:00:00'}`;
-            return momentoA.localeCompare(momentoB);
-        })
-        .forEach(r => {
-            const fecha = new Date(r.fecha_clase + 'T00:00:00');
-            const nombreDia = mapeoDias[fecha.getDay()];
-            if (reservasPorDia[nombreDia]) {
-                reservasPorDia[nombreDia].push(r);
+        try {
+            const res = await api.post('/membresia/cotizar-renovacion', {
+                clase_ids: seleccionadas,
+            });
+
+            setModalAbierto(false);
+
+            if (res.data.length === 1) {
+                const item = res.data[0];
+                navigate('/reservar/membresia', {
+                    state: {
+                        clase:        item.clase,
+                        fechasDelMes: item.fechas_mes,
+                        esRenovacion: true,
+                        mesLabel:     item.mes_label,
+                    }
+                });
+                return;
             }
+
+            const [primera, ...resto] = res.data;
+            if (resto.length > 0) {
+                sessionStorage.setItem('renovaciones_pendientes', JSON.stringify(resto));
+            }
+            navigate('/reservar/membresia', {
+                state: {
+                    clase:        primera.clase,
+                    fechasDelMes: primera.fechas_mes,
+                    esRenovacion: true,
+                    mesLabel:     primera.mes_label,
+                }
+            });
+
+        } catch (err) {
+            setErrorRenovar(err.response?.data?.detail || 'Error al cotizar renovación.');
+        } finally {
+            setCargandoRenovar(false);
+        }
+    };
+
+    const formatearFecha = (fechaStr, opciones = { day: 'numeric', month: 'long' }) => {
+        if (!fechaStr) return null;
+        return new Date(fechaStr + 'T00:00:00').toLocaleDateString('es-AR', opciones);
+    };
+
+    // ── Agrupar por mes → dentro de cada mes por día ──
+    const reservasPorMes = useMemo(() => {
+        const meses = {};
+        [...reservas]
+            .sort((a, b) => a.fecha_clase.localeCompare(b.fecha_clase))
+            .forEach(r => {
+                const fecha    = new Date(r.fecha_clase + 'T00:00:00');
+                const mesKey   = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+                const mesLabel = fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+                if (!meses[mesKey]) {
+                    meses[mesKey] = { label: mesLabel, porDia: {} };
+                    diasSemana.forEach(d => { meses[mesKey].porDia[d] = []; });
+                }
+                const nombreDia = mapeoDias[fecha.getDay()];
+                if (meses[mesKey].porDia[nombreDia]) {
+                    meses[mesKey].porDia[nombreDia].push(r);
+                }
+            });
+        return meses;
+    }, [reservas]);
+
+    // ── Última fecha confirmada por clase/mes (para chip "Última del mes") ──
+    const ultimaFechaPorClaseYMes = useMemo(() => {
+        const map = {};
+        reservas.forEach(r => {
+            if (r.tipo !== 'membresia' || r.estado !== 'confirmada') return;
+            const fecha = new Date(r.fecha_clase + 'T00:00:00');
+            const key   = `${r.clase_id}-${fecha.getFullYear()}-${fecha.getMonth()}`;
+            if (!map[key] || r.fecha_clase > map[key]) map[key] = r.fecha_clase;
         });
-    
+        return map;
+    }, [reservas]);
+
+    // ── Chip por reserva ──
+    const chipMembresia = (reserva) => {
+        if (reserva.tipo !== 'membresia') return null;
+
+        // Reserva pendiente de pago = mes siguiente pre-reservado
+        if (reserva.estado === 'pendiente_pago') {
+            return { tipo: 'pendiente' };
+        }
+
+        // Reserva confirmada: marcar solo la última del mes
+        const fecha    = new Date(reserva.fecha_clase + 'T00:00:00');
+        const key      = `${reserva.clase_id}-${fecha.getFullYear()}-${fecha.getMonth()}`;
+        const esUltima = ultimaFechaPorClaseYMes[key] === reserva.fecha_clase;
+        if (!esUltima) return null;
+
+        return { tipo: 'vence' };
+    }; 
     // ── CANCELAR RESERVA ──
     const iniciarCancelacion = (reserva) => {
         setReservaAbordador(reserva);
@@ -250,7 +350,6 @@ const Perfil = ({ token, setToken }) => {
     };
 
     return (
-        
         <div className="perfil-container">
             
             <ModalConfirmacion
@@ -268,9 +367,8 @@ const Perfil = ({ token, setToken }) => {
 
             {user ? (
                 <>
-                    {/* ── BLOQUE 1: INFORMACIÓN DEL SOCIO (Estructura superior aislada) ── */}
+                    {/* ── HERO ── */}
                     <div className="perfil-info-block">
-                        {/* HERO */}
                         <div className="perfil-hero">
                             <div className="perfil-hero-bg" />
                             <div className="perfil-hero-inner">
@@ -285,25 +383,12 @@ const Perfil = ({ token, setToken }) => {
                         </div>
                     </div>
 
-                    {/* ── DATOS PERSONALES (Unificado sin duplicaciones) ── */}
+                    {/* ── DATOS PERSONALES ── */}
                     <div className="perfil-datos-row">
                         <div className="dato-item">
                             <span className="dato-label">Email</span>
                             <span className="dato-valor">{user.email || 'No registrado'}</span>
                         </div>
-                        
-                        {puedeRenovar && (
-                            <div className="dato-item btn-container">
-                                <button
-                                    className="btn-cambiar-pass"
-                                    onClick={renovarMembresia}
-                                    disabled={loadingRenovar}
-                                >
-                                    {loadingRenovar ? "Renovando..." : "Renovar membresía"}
-                                </button>
-                            </div>
-                        )}
-
                         <div className="dato-item">
                             <span className="dato-label">DNI</span>
                             <span className="dato-valor">{user.dni || '—'}</span>
@@ -312,7 +397,8 @@ const Perfil = ({ token, setToken }) => {
                             <span className="dato-label">Teléfono</span>
                             <span className="dato-valor">{user.telefono || '—'}</span>
                         </div>
-                        {user.rol === 'Miembro' && (
+
+                        {user.rol === 'miembro' && (
                             <div className="dato-item">
                                 <span className="dato-label">Créditos disponibles</span>
                                 <span className="dato-valor">
@@ -320,16 +406,13 @@ const Perfil = ({ token, setToken }) => {
                                 </span>
                             </div>
                         )}
+
                         <div className="dato-item btn-container">
-                            <button
-                                className="btn-cambiar-pass"
-                                onClick={() => navigate('/cambiar-password')}
-                            >
+                            <button className="btn-cambiar-pass" onClick={() => navigate('/cambiar-password')}>
                                 Cambiar Contraseña
                             </button>
                         </div>
-                        
-                        {/* APTO FÍSICO */}
+
                         {user.rol !== 'profesor' && (
                             <div className="perfil-acta-section">
                                 <div className="perfil-section-header">
@@ -337,55 +420,38 @@ const Perfil = ({ token, setToken }) => {
                                     <h3 className="perfil-section-title">Apto Físico</h3>
                                 </div>
                                 {user.apto_fisico ? (
-                                    <a
-                                        href={`http://localhost:8000/${user.apto_fisico}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="btn-ver-acta"
-                                    >
+                                    <a href={`http://localhost:8000/${user.apto_fisico}`} target="_blank" rel="noreferrer" className="btn-ver-acta">
                                         Ver PDF
                                     </a>
                                 ) : (
-                                    <p className="acta-faltante">
-                                        No tenés un apto físico cargado.
-                                    </p>
+                                    <p className="acta-faltante">No tenés un apto físico cargado.</p>
                                 )}
                             </div>
                         )}
 
-                    {rol === "miembro" && (
-                        membresiaActiva ? (
+                        {/* MEMBRESÍA */}
+                        {rol === 'miembro' && (
                             <div className="perfil-membresia">
-                                <p>
-                                    🟢 Membresía activa hasta: {fechaVencimiento}
-                                </p>
+                                {membresiaActiva && fechaVencimiento ? (
+                                    <p>🟢 Membresía activa hasta: <strong>{fechaVencimiento}</strong></p>
+                                ) : (
+                                    <p>🔴 No tenés membresía activa</p>
+                                )}
+                                {membresíasRenovables.length > 0 && (
+                                    <button
+                                        className="boton-accion"
+                                        onClick={() => { setModalAbierto(true); setSeleccionadas([]); setErrorRenovar(''); }}
+                                    >
+                                        Renovar membresías
+                                    </button>
+                                )}
                             </div>
-                        ) : (
-                            <div className="perfil-membresia">
-                                <p>
-                                    🔴 No tenés membresía activa
-                                </p>
-
-                                <button
-                                    onClick={() => navigate('/renovar-membresia')}
-                                    className="boton-accion"
-                                >
-                                    Renovar membresía
-                                </button>
-                            </div>
-                        )
-                    )}
-
+                        )}
                     </div>
 
-                    {mensajeExito && (
-                        <div className="mensaje-exito">
-                            {mensajeExito}
-                        </div>
-                    )}
+                    {mensajeExito && <div className="mensaje-exito">{mensajeExito}</div>}
 
-                    
-                    {/* ── BLOQUE 2: CALENDARIO DE RESERVAS (Totalmente independiente) ── */}
+                    {/* ── CALENDARIO ── */}
                     {user.rol !== 'profesor' && (
                         <div className="perfil-calendar-block">
                             <div className="perfil-reservas-section">
@@ -400,113 +466,204 @@ const Perfil = ({ token, setToken }) => {
                                 {reservas.length === 0 ? (
                                     <div className="reserva-empty">
                                         <span className="reserva-empty-icon">🏋️</span>
-                                        <p>No tenés turnos reservados para esta semana.</p>
+                                        <p>No tenés turnos reservados.</p>
                                         <Link to="/" className="reserva-empty-link">
                                             Andá al inicio para agendar una clase
                                         </Link>
                                     </div>
                                 ) : (
-                                    <div className="perfil-agenda-container">
-                                        {diasSemana.map(dia => {
-                                            const clasesDelDia = reservasPorDia[dia];
-                                            return (
-                                                <div className="agenda-columna" key={dia}>
-                                                    <div className="agenda-columna-header">
-                                                        <h4>{dia}</h4>
-                                                        <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
-                                                            {clasesDelDia.length}
-                                                        </span>
-                                                    </div>
-                                                    <div className="agenda-columna-body">
-                                                        {clasesDelDia.length === 0 ? (
-                                                            <p className="agenda-columna-vacio">Sin clases</p>
-                                                        ) : (
-                                                            clasesDelDia.map(r => (
-                                                                <div className="reserva-card-mini" key={r.id}>
-                                                                    <div className="reserva-mini-fecha">
-                                                                        {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
-                                                                            day: 'numeric',
-                                                                            month: 'short',
-                                                                        })}
-                                                                    </div>
-                                                                    <div className="reserva-mini-detalles">
-                                                                        <span className="reserva-mini-actividad">
-                                                                            {r.clase?.actividad || `Clase #${r.clase_id}`}
-                                                                        </span>
-                                                                        <span className="reserva-mini-horario">
-                                                                            {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
-                                                                        </span>
-                                                                        <span className="reserva-mini-tipo">
-                                                                            {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
-                                                                        </span>
-                                                                        {r.lista_espera && r.estado === 'en_espera' && (
-                                                                            <span className="reserva-mini-espera">
-                                                                                En Espera
-                                                                            </span>
-                                                                        )}
-
-                                                                        {r.notificado && (
-                                                                            <span className="reserva-mini-notificado">
-                                                                                ¡Cupo disponible!
-                                                                            </span>
-                                                                        )}
-
-                                                                        {/* Botones de acción */}
-                                                                        {r.estado === 'confirmada' && (
-                                                                            <button
-                                                                                className="btn-cancelar-reserva"
-                                                                                onClick={() => iniciarCancelacion(r)}
+                                    Object.entries(reservasPorMes).map(([mesKey, { label, porDia }]) => (
+                                        <div key={mesKey} className="perfil-mes-block">
+                                            <h4 className="perfil-mes-titulo" style={{ textTransform: 'capitalize' }}>
+                                                📆 {label}
+                                            </h4>
+                                            <div className="perfil-agenda-container">
+                                                {diasSemana.map(dia => {
+                                                    const clasesDelDia = porDia[dia] || [];
+                                                    return (
+                                                        <div className="agenda-columna" key={dia}>
+                                                            <div className="agenda-columna-header">
+                                                                <h4>{dia}</h4>
+                                                                <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
+                                                                    {clasesDelDia.length}
+                                                                </span>
+                                                            </div>
+                                                            <div className="agenda-columna-body">
+                                                                {clasesDelDia.length === 0 ? (
+                                                                    <p className="agenda-columna-vacio">Sin clases</p>
+                                                                ) : (
+                                                                    clasesDelDia.map(r => {
+                                                                        const chip = chipMembresia(r);
+                                                                        // Las pendiente_pago de membresía tienen estilo diferente
+                                                                        const esPendiente = r.tipo === 'membresia' && r.estado === 'pendiente_pago';
+                                                                        return (
+                                                                            <div
+                                                                                className={`reserva-card-mini ${esPendiente ? 'reserva-card-mini--pendiente' : ''}`}
+                                                                                key={r.id}
                                                                             >
-                                                                                Cancelar
-                                                                            </button>
-                                                                        )}
+                                                                                <div className="reserva-mini-fecha">
+                                                                                    {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                                                        day: 'numeric', month: 'short'
+                                                                                    })}
+                                                                                </div>
+                                                                                <div className="reserva-mini-detalles">
+                                                                                    <span className="reserva-mini-actividad">
+                                                                                        {r.clase?.actividad || `Clase #${r.clase_id}`}
+                                                                                    </span>
+                                                                                    <span className="reserva-mini-horario">
+                                                                                        {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
+                                                                                    </span>
+                                                                                    <span className="reserva-mini-tipo">
+                                                                                        {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
+                                                                                    </span>
 
-                                                                        {r.notificado && (
-                                                                            <button
-                                                                                className="btn-aceptar-cupo"
-                                                                                onClick={() => aceptarCupo(r.id)}
-                                                                            >
-                                                                                Aceptar cupo
-                                                                            </button>
-                                                                        )}
+                                                                                    {/* Chip: pendiente de pago (mes siguiente pre-reservado) */}
+                                                                                    {chip?.tipo === 'pendiente' && (
+                                                                                        <span className="reserva-mini-pendiente">
+                                                                                            ⏳ Cupo reservado · Pendiente de pago
+                                                                                        </span>
+                                                                                    )}
 
-                                                                        {r.notificado && (
-                                                                            <button
-                                                                                className="btn-rechazar-cupo"
-                                                                                onClick={() => rechazarCupo(r.id)}
-                                                                            >
-                                                                                Rechazar cupo
-                                                                            </button>
-                                                                        )}
+                                                                                    {/* Chip: última clase confirmada del mes */}
+                                                                                    {chip?.tipo === 'vence' && (
+                                                                                        <span className="reserva-mini-vencimiento">
+                                                                                            📅 Última del mes
+                                                                                        </span>
+                                                                                    )}
 
+                                                                                    {r.lista_espera && r.estado === 'en_espera' && (
+                                                                                        <>
+                                                                                            <span className="reserva-mini-espera">
+                                                                                                En Espera
+                                                                                            </span>
 
-                                                                        {r.lista_espera && r.estado === 'en_espera' &&(
-                                                                            <button
-                                                                                className="btn-salir-espera"
-                                                                                onClick={() => salirListaEspera(r.id)}
-                                                                            >
-                                                                                Salir de lista de espera
-                                                                            </button>
-                                                                        )}
+                                                                                            <button
+                                                                                                className="btn-salir-espera"
+                                                                                                onClick={() => salirListaEspera(r.id)}
+                                                                                            >
+                                                                                                Salir de lista de espera
+                                                                                            </button>
+                                                                                        </>
+                                                                                    )}
 
+                                                                                    {r.notificado && (
+                                                                                        <span className="reserva-mini-notificado">
+                                                                                            ¡Cupo disponible!
+                                                                                        </span>
+                                                                                    )}
 
-                                                                    </div>
-                                                                </div>
-                                                            ))
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                                                    {/* Cancelar reserva */}
+                                                                                    {r.estado === 'confirmada' && (
+                                                                                        <button
+                                                                                            className="btn-cancelar-reserva"
+                                                                                            onClick={() => iniciarCancelacion(r)}
+                                                                                        >
+                                                                                            Cancelar
+                                                                                        </button>
+                                                                                    )}
+
+                                                                                    {/* Aceptar cupo */}
+                                                                                    {r.notificado && (
+                                                                                        <button
+                                                                                            className="btn-aceptar-cupo"
+                                                                                            onClick={() => aceptarCupo(r.id)}
+                                                                                        >
+                                                                                            Aceptar cupo
+                                                                                        </button>
+                                                                                    )}
+
+                                                                                    {/* Rechazar cupo */}
+                                                                                    {r.notificado && (
+                                                                                        <button
+                                                                                            className="btn-rechazar-cupo"
+                                                                                            onClick={() => rechazarCupo(r.id)}
+                                                                                        >
+                                                                                            Rechazar cupo
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))
                                 )}
                             </div>
                         </div>
                     )}
+
                     {user.rol !== 'profesor' && (
                         <Link to="/historial-pagos" className="btn-historial">
                             Ver historial de pagos
                         </Link>
+                    )}
+
+                    {/* ── MODAL RENOVACIÓN ── */}
+                    {modalAbierto && (
+                        <div className="modal-overlay" onClick={() => setModalAbierto(false)}>
+                            <div className="modal-renovar" onClick={e => e.stopPropagation()}>
+                                <div className="modal-renovar-header">
+                                    <h3>Renovar membresías</h3>
+                                    <button className="modal-cerrar" onClick={() => setModalAbierto(false)}>✕</button>
+                                </div>
+                                <p className="modal-renovar-desc">
+                                    Seleccioná las clases que querés renovar para el mes que viene.
+                                </p>
+                                <div className="modal-renovar-lista">
+                                    {membresíasRenovables.map(m => (
+                                        <div
+                                            key={m.clase_id}
+                                            className={`modal-renovar-item ${seleccionadas.includes(m.clase_id) ? 'selected' : ''}`}
+                                            onClick={() => toggleSeleccion(m.clase_id)}
+                                        >
+                                            <div className="modal-renovar-item-check">
+                                                {seleccionadas.includes(m.clase_id) ? '✓' : ''}
+                                            </div>
+                                            <div className="modal-renovar-item-info">
+                                                <span className="modal-renovar-actividad" style={{ textTransform: 'capitalize' }}>
+                                                    {m.actividad}
+                                                </span>
+                                                <span className="modal-renovar-detalle">
+                                                    {m.dia} · {m.horario} hs · {m.total_clases} clase{m.total_clases !== 1 ? 's' : ''}
+                                                </span>
+                                                <span className="modal-renovar-mes">
+                                                    📅 Para {m.mes_renovacion}
+                                                </span>
+                                                {m.ultima_fecha_reservada && (
+                                                    <span className="modal-renovar-vence">
+                                                        ⚠️ Venció el {formatearFecha(m.ultima_fecha_reservada)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="modal-renovar-precio">
+                                                ${(m.precio_individual * m.total_clases).toFixed(2)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {errorRenovar && (
+                                    <p className="pago-error-msg" style={{ margin: '0 22px' }}>{errorRenovar}</p>
+                                )}
+                                <div className="modal-renovar-footer">
+                                    <span className="modal-renovar-selec">
+                                        {seleccionadas.length} seleccionada{seleccionadas.length !== 1 ? 's' : ''}
+                                    </span>
+                                    <button
+                                        className="boton-accion"
+                                        onClick={handleConfirmarRenovacion}
+                                        disabled={seleccionadas.length === 0 || cargandoRenovar}
+                                    >
+                                        {cargandoRenovar ? 'Cargando...' : 'Continuar →'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </>
             ) : (

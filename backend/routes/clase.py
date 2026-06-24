@@ -16,6 +16,8 @@ from schemas.clase import (
     CambioProfesorTemporal,
     CambioProfesorPermanente
 )
+from routes.membresia import _actualizar_membresia_activa_hasta
+
 
 from dependencies.database import get_db
 from services.notificaciones import crear_notificacion
@@ -367,56 +369,51 @@ async def eliminar_clase(
     gimnasio = db.query(Gimnasio).first()
     if not gimnasio:
         raise HTTPException(status_code=404, detail="Configuración de gimnasio no encontrada")
-
+ 
     hoy_str = date.today().strftime("%Y-%m-%d")
-
-    # 2. Buscar reservas futuras (confirmadas o pendientes de pago)
+ 
     reservas_futuras = db.query(Reserva).filter(
         Reserva.clase_id == clase.id,
         Reserva.estado.in_(["confirmada", "pendiente_pago"]),
         Reserva.fecha_clase >= hoy_str
     ).all()
-
-    # =======================================================================
-    # CASO 1: Si no tiene alumnos con reservas futuras, se elimina física y completamente
-    # =======================================================================
-    if not reservas_futuras:        
-        #ya no necesito devolver nada porque es dinamicamente
+ 
+    # ── CASO 1: Sin alumnos → eliminación física ──
+    if not reservas_futuras:
         db.delete(clase)
         db.commit()
         return {"mensaje": "Eliminación completada exitosamente"}
-
-    # =======================================================================
-    # CASO 2: Si tiene alumnos, se procesan los créditos/pagos y se da de baja lógica
-    # =======================================================================
-    clase.activa = False
+ 
+    # ── CASO 2: Con alumnos → baja lógica + compensaciones ──
+    clase.activa      = False
     clase.motivo_baja = datos.motivo
-
-    # Procesar cada reserva pendiente del mes/futuro para otorgar beneficios
+ 
+    socios_afectados = set()  # ← NUEVO: para recalcular membresía al final
+ 
     for reserva in reservas_futuras:
         estado_previo = reserva.estado
-        reserva.estado = "cancelada"
-        reserva.tipo_cancelacion = "eliminacion_definitiva"
+        reserva.estado             = "cancelada"
+        reserva.tipo_cancelacion   = "eliminacion_definitiva"
         reserva.motivo_cancelacion = datos.motivo
-
-        # Si nunca pagó, solo se cancela el turno sin beneficios
+ 
+        # Pendiente de pago → solo notificar, sin compensación económica
         if estado_previo == "pendiente_pago":
-
             crear_notificacion(
                 db,
                 reserva.socio_id,
                 "Clase Eliminada",
-                f"La clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')} fue eliminada antes de tu pago."
+                f"La clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')} "
+                f"fue eliminada antes de tu pago."
             )
             reserva.mensaje_admin = "Cancelada sin impacto económico"
-            continue 
-
-        # Si estaba CONFIRMADA, entregamos créditos o simulamos reembolsos
+            socios_afectados.add(reserva.socio_id)  # ← NUEVO
+            continue
+ 
+        # Confirmada de membresía → crédito
         if reserva.tipo == TipoReserva.Membresia.value:
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
             if socio:
                 socio.creditos_disponibles += 1
-
                 crear_notificacion(
                     db,
                     socio.id,
@@ -424,14 +421,13 @@ async def eliminar_clase(
                     f"Se eliminó la clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')}. "
                     f"Se te otorgó 1 crédito como compensación por cada clase faltante de mes."
                 )
-
             reserva.credito_generado = True
-            reserva.mensaje_admin = "Crédito otorgado por eliminación de clase"
-                    
+            reserva.mensaje_admin    = "Crédito otorgado por eliminación de clase"
+            socios_afectados.add(reserva.socio_id)  # ← NUEVO
+ 
+        # Confirmada individual → reembolso
         elif reserva.tipo == TipoReserva.Individual.value:
-
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
-
             if socio:
                 crear_notificacion(
                     db,
@@ -440,27 +436,33 @@ async def eliminar_clase(
                     f"Se eliminó la clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')}. "
                     f"Se te devolvió el {reserva.porcentaje_pagado}% del pago."
                 )
-
             reserva.reembolso_realizado = True
-            reserva.mensaje_admin = "Reembolso procesado" 
-
-    # avisar a los usuarios de la lista de espera de esa clase que fue eliminada, para que no queden colgados esperando un turno que ya no existe
+            reserva.mensaje_admin       = "Reembolso procesado"
+ 
+    # Avisar lista de espera
     espera = db.query(ListaEspera).filter(
-        ListaEspera.clase_id == clase.id,
+        ListaEspera.clase_id    == clase.id,
         ListaEspera.fecha_clase >= hoy_str,
-        ListaEspera.estado == "esperando"
+        ListaEspera.estado      == "esperando"
     ).all()
-
+ 
     for item in espera:
         item.estado = "clase_eliminada"
-
         crear_notificacion(
             db,
             item.socio_id,
             "Clase Eliminada",
-            f"La clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')} fue eliminada y ya no estará disponible."
+            f"La clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')} "
+            f"fue eliminada y ya no estará disponible."
         )
-
+ 
+    db.flush()  # aplicar todo antes de recalcular
+ 
+    # ── NUEVO: recalcular membresia_activa_hasta para cada socio afectado ──
+    # Esto limpia la fecha y el flag cuota_al_dia si no le quedan reservas confirmadas
+    for socio_id in socios_afectados:
+        _actualizar_membresia_activa_hasta(socio_id, db)
+ 
     db.commit()
     return {"mensaje": "Clase dada de baja correctamente con notificaciones y compensaciones"}
 
