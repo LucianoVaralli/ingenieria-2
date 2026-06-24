@@ -5,6 +5,7 @@ from database import SessionLocal
 from models.lista_espera import ListaEspera
 from models.reserva_MIO import Reserva
 from models.clase import Clase
+from models.membresia import Membresia
 
 def limpiar_pagos_expirados(db):
     """
@@ -22,9 +23,36 @@ def limpiar_pagos_expirados(db):
         # Si es individual o membresía que nunca se pagó, la borramos para limpiar la DB
         db.delete(r)
 
+def liberar_prioridades_vencidas(db):
+
+    hoy = datetime.now()
+
+    if hoy.day <= 10:
+        return
+
+    membresias = db.query(Membresia).filter(
+        Membresia.activa == True
+    ).all()
+
+    for m in membresias:
+
+        mes_siguiente = m.mes_vigente + 1
+        anio_siguiente = m.anio_vigente
+
+        if mes_siguiente == 13:
+            mes_siguiente = 1
+            anio_siguiente += 1
+
+        if m.fecha_expiracion and datetime.now() > m.fecha_expiracion:
+            m.activa = False
+
 def procesar_lista_espera():
+
     db = SessionLocal()
     try:
+
+        liberar_prioridades_vencidas(db)
+        
         # 1. Ejecutar primero la limpieza de reservas colgadas sin pagar
         limpiar_pagos_expirados(db)
         db.commit()

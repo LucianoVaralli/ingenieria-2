@@ -9,11 +9,17 @@ from models.clase        import Clase
 from services.auth       import oauth2_scheme, obtener_usuario_actual
 from schemas.reserva     import ReservaMembresiaCreate, ConfirmarPagoMembresia
 from models.enums import Rol, TipoReserva
-from sqlalchemy import func
+from sqlalchemy import func, case
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 from schemas.reserva_individual import (
     ReservaIndividualCreate,
     ConfirmarPagoIndividual
 )
+
+from models.membresia import Membresia
 
 from models.tarjeta_simulada import TarjetaSimulada
 from services.auth import validar_membresia
@@ -22,7 +28,8 @@ from services.mail_service import (
     enviar_mail_pago_exitoso,
     enviar_mail_lista_espera,
     enviar_mail_membresia,
-    enviar_mail_error_pago
+    enviar_mail_error_pago,
+    enviar_mail_cupo_disponible
 )
 
 from datetime import timedelta
@@ -91,6 +98,7 @@ def crear_reserva_membresia(
             raise HTTPException(403, "Membresía vencida")
     
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
+    hoy = datetime.now()
     
     if not clase or not clase.activa:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
@@ -98,8 +106,8 @@ def crear_reserva_membresia(
 
     # Separamos fechas pasadas y futuras
     # Las pasadas no se reservan pero sí generan descuento
-    fechas_pasadas  = [f for f in datos.fechas_clase if datetime.strptime(f, "%Y-%m-%d").date() < hoy]
-    fechas_futuras  = [f for f in datos.fechas_clase if datetime.strptime(f, "%Y-%m-%d").date() >= hoy]
+    fechas_pasadas  = [f for f in datos.fechas_clase if datetime.strptime(f, "%Y-%m-%d").date() < hoy.date()]
+    fechas_futuras  = [f for f in datos.fechas_clase if datetime.strptime(f, "%Y-%m-%d").date() >= hoy.date()]
 
     if not fechas_futuras:
         raise HTTPException(
@@ -270,6 +278,37 @@ async def confirmar_pago_membresia(
 
     db.commit()
 
+    membresia = db.query(Membresia).filter(
+        Membresia.socio_id == socio.id,
+        Membresia.clase_id == datos.clase_id
+    ).first()
+
+    if membresia:
+
+        membresia.mes_vigente = datetime.now().month
+        membresia.anio_vigente = datetime.now().year
+        membresia.activa = True
+        membresia.fecha_expiracion = datetime(
+            membresia.anio_vigente,
+            membresia.mes_vigente,
+            1
+        ) + relativedelta(months=1)
+
+    else:
+
+        membresia = Membresia(
+            socio_id=socio.id,
+            clase_id=datos.clase_id,
+            mes_vigente=datetime.now().month,
+            anio_vigente=datetime.now().year,
+            activa=True
+        )
+
+        db.add(membresia)
+
+    db.commit()
+
+
     try:
         await enviar_mail_membresia(
             socio=socio,
@@ -287,48 +326,369 @@ async def confirmar_pago_membresia(
         "monto_pagado": datos.monto_total,
     }
  
-# Endpoint 3: cancelar reserva y notificar al siguiente en lista de espera
+# ──────────────────────────────────────────────────────────────
+# Función auxiliar: notificar al siguiente en lista de espera
+# Usada por todos los endpoints de cancelación
+# ──────────────────────────────────────────────────────────────
+
+def _notificar_siguiente_en_espera(
+    db: Session,
+    clase_id: int,
+    fecha_clase: str
+) -> ListaEspera | None:
+    """
+    Busca al siguiente en lista de espera para esa clase y fecha,
+    respetando la prioridad: membresía primero, luego individual,
+    y dentro de cada tipo, el que lleva más tiempo esperando.
+    Cambia su estado a 'notificado' y actualiza la Reserva asociada.
+    Retorna la entrada de ListaEspera notificada, o None si no había nadie.
+    """
+    siguiente = db.query(ListaEspera).filter(
+        ListaEspera.clase_id    == clase_id,
+        ListaEspera.fecha_clase == fecha_clase,
+        ListaEspera.estado      == "esperando"
+    ).order_by(
+        # Prioridad explícita en vez de orden alfabético
+        # membresia = 0, individual = 1 → invertimos con case
+        case(
+            (ListaEspera.tipo == TipoReserva.Membresia.value, 0),
+            else_=1
+        ),
+        ListaEspera.fecha_ingreso.asc()
+    ).first()
+
+    if siguiente:
+        siguiente.estado = "notificado"
+
+        # Actualizar también la Reserva asociada a esta entrada
+        reserva_espera = db.query(Reserva).filter(
+            Reserva.socio_id    == siguiente.socio_id,
+            Reserva.clase_id    == siguiente.clase_id,
+            Reserva.fecha_clase == siguiente.fecha_clase,
+            Reserva.estado      == "en_espera"
+        ).first()
+
+        if reserva_espera:
+            reserva_espera.estado = "notificado"
+
+    return siguiente
+
+
+# ──────────────────────────────────────────────────────────────
+# Endpoint: cancelar reserva de membresía confirmada
+# Modificado: valida tipo, lógica 48hs, crédito
+# ──────────────────────────────────────────────────────────────
+
 @router.post("/membresia/cancelar/{reserva_id}")
-def cancelar_reserva(
+async def cancelar_reserva_membresia(
     reserva_id: int,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
     socio = obtener_usuario_actual(db=db, token=token)
- 
+
+    # Opción B: buscar primero, validar tipo después
     reserva = db.query(Reserva).filter(
         Reserva.id       == reserva_id,
         Reserva.socio_id == socio.id,
         Reserva.estado   == "confirmada"
     ).first()
- 
+
     if not reserva:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
- 
-    # Liberar el cupo
+
+    if reserva.tipo != TipoReserva.Membresia.value:
+        raise HTTPException(status_code=400, detail="Esta reserva no es de membresía")
+
+    # Validar que la clase no haya comenzado
     clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
+    horario_str = str(clase.horario)[:5]
+    fecha_hora_clase = datetime.strptime(
+        f"{reserva.fecha_clase} {horario_str}",
+        "%Y-%m-%d %H:%M"
+    )
+
+    ahora = datetime.now()
+
+    if ahora >= fecha_hora_clase:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede cancelar una clase que ya comenzó"
+        )
+
+    # Regla de negocio: ≥ 48hs → crédito
+    horas_restantes = (fecha_hora_clase - ahora).total_seconds() / 3600
+    credito_otorgado = horas_restantes >= 48
+
+    if credito_otorgado:
+        socio.creditos_disponibles += 1
+        reserva.credito_generado = True
+
+    # Cancelar la reserva
     reserva.estado = "cancelada"
+    reserva.tipo_cancelacion = "socio"
+    reserva.motivo_cancelacion = "Cancelación voluntaria"
+
     db.commit()
- 
-    # Buscar el siguiente con prioridad:
-    # 1ro: membresía ordenados por fecha_ingreso (más antiguo primero)
-    # 2do: individual ordenados por fecha_ingreso (más antiguo primero)
-    siguiente = db.query(ListaEspera).filter(
+
+    # Notificar al siguiente en lista de espera
+    siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
+    db.commit()
+
+    # Enviar mails
+    try:
+        await enviar_mail_pago_exitoso(socio, clase, reserva)
+    except Exception as e:
+        print(f"⚠️ Mail de cancelación no enviado: {e}")
+
+    if siguiente:
+        siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
+        if siguiente_socio:
+            try:
+                await enviar_mail_cupo_disponible(siguiente_socio, clase, siguiente.fecha_clase)
+            except Exception as e:
+                print(f"⚠️ Mail de cupo disponible no enviado: {e}")
+
+    mensaje = (
+        "Cancelación exitosa con crédito otorgado"
+        if credito_otorgado
+        else "Cancelación exitosa sin crédito otorgado"
+    )
+
+    return {
+        "mensaje": mensaje,
+        "credito_otorgado": credito_otorgado,
+        "creditos_disponibles": socio.creditos_disponibles,
+        "notificado": siguiente is not None
+    }
+
+
+# ──────────────────────────────────────────────────────────────
+# Endpoint: cancelar reserva individual confirmada
+# Nuevo: cubre el caso que antes no existía
+# ──────────────────────────────────────────────────────────────
+
+@router.delete("/individual/cancelar-confirmada/{reserva_id}")
+async def cancelar_reserva_individual_confirmada(
+    reserva_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    reserva = db.query(Reserva).filter(
+        Reserva.id       == reserva_id,
+        Reserva.socio_id == socio.id,
+        Reserva.tipo     == TipoReserva.Individual.value,
+        Reserva.estado   == "confirmada"
+    ).first()
+
+    if not reserva:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+
+    # Validar que la clase no haya comenzado
+    clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
+    horario_str = str(clase.horario)[:5]
+    fecha_hora_clase = datetime.strptime(
+        f"{reserva.fecha_clase} {horario_str}",
+        "%Y-%m-%d %H:%M"
+    )
+
+    ahora = datetime.now()
+
+    if ahora >= fecha_hora_clase:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede cancelar una clase que ya comenzó"
+        )
+
+    # Regla de negocio: ≥ 24hs → reembolso
+    horas_restantes = (fecha_hora_clase - ahora).total_seconds() / 3600
+    reembolso = horas_restantes >= 24
+
+    # Cancelar la reserva
+    reserva.estado = "cancelada"
+    reserva.tipo_cancelacion = "socio"
+    reserva.motivo_cancelacion = "Cancelación voluntaria"
+
+    if reembolso:
+        reserva.reembolso_realizado = True
+
+    db.commit()
+
+    # Notificar al siguiente en lista de espera
+    siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
+    db.commit()
+
+    # Enviar mails
+    try:
+        await enviar_mail_pago_exitoso(socio, clase, reserva)
+    except Exception as e:
+        print(f"⚠️ Mail de cancelación no enviado: {e}")
+
+    if siguiente:
+        siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
+        if siguiente_socio:
+            try:
+                await enviar_mail_cupo_disponible(siguiente_socio, clase, siguiente.fecha_clase)
+            except Exception as e:
+                print(f"⚠️ Mail de cupo disponible no enviado: {e}")
+
+    mensaje = (
+        "Cancelación exitosa con devolución"
+        if reembolso
+        else "Cancelación exitosa sin devolución"
+    )
+
+    return {
+        "mensaje": mensaje,
+        "reembolso": reembolso,
+        "notificado": siguiente is not None
+    }
+
+
+# ──────────────────────────────────────────────────────────────
+# Endpoint: aceptar cupo notificado desde lista de espera
+# Nuevo: permite al notificado confirmar su lugar
+# ──────────────────────────────────────────────────────────────
+
+@router.post("/aceptar-cupo/{reserva_id}")
+def aceptar_cupo(
+    reserva_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    reserva = db.query(Reserva).filter(
+        Reserva.id       == reserva_id,
+        Reserva.socio_id == socio.id,
+        Reserva.estado   == "notificado"
+    ).first()
+
+    if not reserva:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró un cupo pendiente de aceptación para esta reserva"
+        )
+
+    clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
+
+    # Verificar que el cupo sigue disponible
+    # (pudo ocuparse entre la notificación y la aceptación)
+    ocupadas = db.query(Reserva).filter(
+        Reserva.clase_id    == clase.id,
+        Reserva.fecha_clase == reserva.fecha_clase,
+        Reserva.estado      == "confirmada"
+    ).count()
+
+    if ocupadas >= clase.cupo:
+        # El cupo ya no está disponible, notificar al siguiente
+        reserva.estado = "en_espera"
+
+        entrada_lista = db.query(ListaEspera).filter(
+            ListaEspera.socio_id    == socio.id,
+            ListaEspera.clase_id    == reserva.clase_id,
+            ListaEspera.fecha_clase == reserva.fecha_clase,
+            ListaEspera.estado      == "notificado"
+        ).first()
+
+        if entrada_lista:
+            entrada_lista.estado = "esperando"
+
+        db.commit()
+
+        # Intentar notificar al siguiente
+        siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
+        db.commit()
+
+        raise HTTPException(
+            status_code=409,
+            detail="El cupo ya no está disponible, seguís en lista de espera"
+        )
+
+    # Cupo disponible: confirmar la reserva
+    reserva.estado = "confirmada"
+
+    entrada_lista = db.query(ListaEspera).filter(
+        ListaEspera.socio_id    == socio.id,
         ListaEspera.clase_id    == reserva.clase_id,
         ListaEspera.fecha_clase == reserva.fecha_clase,
-        ListaEspera.estado      == "esperando"
-    ).order_by(
-        ListaEspera.tipo.desc(),         # "membresia" > "individual" alfabéticamente
-        ListaEspera.fecha_ingreso.asc()  # más antiguo primero dentro del mismo tipo
+        ListaEspera.estado      == "notificado"
     ).first()
- 
+
+    if entrada_lista:
+        db.delete(entrada_lista)
+
+    db.commit()
+
+    # TODO: enviar mail confirmando la reserva
+
+    return {
+        "mensaje": "Cupo aceptado, reserva confirmada",
+        "reserva_id": reserva.id,
+        "clase": clase.actividad,
+        "fecha": reserva.fecha_clase
+    }
+
+@router.post("/rechazar-cupo/{reserva_id}")
+async def rechazar_cupo(
+    reserva_id: int,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    reserva = db.query(Reserva).filter(
+        Reserva.id       == reserva_id,
+        Reserva.socio_id == socio.id,
+        Reserva.estado   == "notificado"
+    ).first()
+
+    if not reserva:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró una reserva notificada para rechazar"
+        )
+
+    clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
+
+    # Primero buscar y notificar al siguiente ANTES de cambiar nuestro estado
+    siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
+    db.commit()
+
+    # AHORA cambiar nuestro estado a en_espera
+    reserva.estado = "en_espera"
+    
+    # Y cambiar nuestra entrada en lista de espera a "esperando"
+    entrada_lista = db.query(ListaEspera).filter(
+        ListaEspera.socio_id    == socio.id,
+        ListaEspera.clase_id    == reserva.clase_id,
+        ListaEspera.fecha_clase == reserva.fecha_clase,
+        ListaEspera.estado      == "notificado"
+    ).first()
+
+    if entrada_lista:
+        entrada_lista.estado = "esperando"
+
+    db.commit()
+
+    # Enviar mail al siguiente si existe
     if siguiente:
-        siguiente.estado = "notificado"
-        db.commit()
-        # TODO: enviar mail al socio notificándole que se liberó un cupo
- 
-    return {"mensaje": "Reserva cancelada, cupo liberado"}
- 
+        siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
+        if siguiente_socio:
+            try:
+                await enviar_mail_cupo_disponible(siguiente_socio, clase, siguiente.fecha_clase)
+            except Exception as e:
+                print(f"⚠️ Mail de cupo disponible no enviado: {e}")
+
+    return {
+        "mensaje": "Cupo rechazado, siguiente notificado",
+        "reserva_id": reserva.id,
+        "clase": clase.actividad,
+        "fecha": reserva.fecha_clase
+    }
+
 # Endpoint 4: mis reservas
 @router.get("/mis-reservas")
 def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -346,7 +706,7 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
 
         ListaEspera.fecha_clase == r.fecha_clase,
 
-        ListaEspera.estado == "esperando"
+        ListaEspera.estado.in_(["esperando", "notificado"])
 
         ).first()
 
@@ -356,6 +716,7 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
             "tipo":         r.tipo,
             "estado":       r.estado,
             "lista_espera": lista_espera is not None,
+            "notificado":   lista_espera is not None and lista_espera.estado == "notificado",
             "fecha_clase":  str(r.fecha_clase),
             "monto_total":  r.monto_total,
             "monto_pagado": r.monto_pagado,        # ← agregar

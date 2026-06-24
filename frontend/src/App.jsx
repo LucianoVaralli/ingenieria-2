@@ -21,6 +21,8 @@ import CambiarPassword from "./pages/CambiarPassword";
 import ResetPassword from './pages/ResetPassword';
 import ForgotPassword from './pages/ForgotPassword';
 import GestionPreguntasFrecuentes from './pages/admin/GestionPreguntasFrecuentes';
+import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
+import GestionProfesores from './pages/admin/GestionProfesores';
 
 // 🌟 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
@@ -28,6 +30,10 @@ function AppContent({ token, setToken }) {
 
   // 🌟 2. Definimos en qué rutas NO queremos que aparezca el Navbar común, aca se define en todos los paneles de admin
   const esRutaAdmin = location.pathname.startsWith("/admin");
+
+  const isAdmin = () => {
+      return localStorage.getItem("rol")?.toLowerCase() === "admin";
+  };
 
   return (
     <>
@@ -45,7 +51,6 @@ function AppContent({ token, setToken }) {
         <Route path="/reservar/individual" element={<ReservaIndividual />} />
         <Route path="/pago" element={<Pago />} />
         <Route path="/mis-reservas" element={<MisReservas />} />
-        <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
         <Route path="/notificaciones" element={<Notificaciones />} />
 
         {/* Rutas de Autenticación y Password */}
@@ -53,23 +58,20 @@ function AppContent({ token, setToken }) {
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<Perfil token={token} setToken={setToken} />} />
         <Route path="/historial-pagos" element={<HistorialPagos />} />
-    
-        {/*<Route path="/admin" element={
-          localStorage.getItem("rol") === "admin"
-            ? <AdminDashboard />
-            : <Navigate to="/" />}/>   
-              
-        */}
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/cambiar-password" element={<CambiarPassword />} />
 
         {/* Rutas de Administración */}
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={ isAdmin()
+            ? <AdminDashboard />
+            : <Navigate to="/" /> } />
         <Route path="/admin/crear-clase" element={<CrearClase />} />
         <Route path="/admin/eliminar-clase" element={<ListaClasesAdmin />} />
         <Route path="/admin/editar-capacidad" element={<EditarCapacidad />} />
         <Route path="/admin/preguntas-frecuentes" element={<GestionPreguntasFrecuentes />} />
+        <Route path="/admin/gestion-profesores" element={<GestionProfesores />} />
+        <Route path="/cambiar-password-inicial" element={<CambiarPasswordInicial />} />
 
         {/* Ruta 404 - Captura cualquier ruta inexistente */}
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
