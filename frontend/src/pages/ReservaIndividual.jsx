@@ -2,74 +2,66 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
-import '../assets/css/Pago.css';
 
 const formatearHora = (hora) => hora?.slice(0, 5);
 
-const formatearFecha = (fechaStr) => {
-    const fecha = new Date(fechaStr + 'T00:00:00');
-    return fecha.toLocaleDateString('es-AR', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-    });
-};
-
-const ReservaIndividual = () => {
+const ReservaMembresia = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { clase, fechaSeleccionada } = location.state || {};
+    const { clase, fechasDelMes } = location.state || {};
 
-    // pasos: cargando | lista_espera | creditos | tipo_pago | pago | exito | exito_espera | error
-    const [paso, setPaso]         = useState('cargando');
-    const [mensaje, setMensaje]   = useState('');
-    const [cargando, setCargando] = useState(false);
+    // pasos: cargando | lista_espera | creditos | pago | exito | exito_espera | error
+    const [paso, setPaso]                 = useState('cargando');
+    const [mensaje, setMensaje]           = useState('');
+    const [cargando, setCargando]         = useState(false);
+    const [datosReserva, setDatosReserva] = useState(null);
+    const [creditos, setCreditos]         = useState(0);
 
-    const [tipoPago, setTipoPago]                 = useState('sena');
-    const [monto, setMonto]                       = useState(clase ? Number(clase.precio_individual) * 0.5 : 0);
-    const [creditosDisponibles, setCreditosDisponibles] = useState(0);
-    const [usaCredito, setUsaCredito]             = useState(false);
-
-    // Datos de tarjeta
     const [nroTarjeta, setNroTarjeta]   = useState('');
     const [titular, setTitular]         = useState('');
     const [cvv, setCvv]                 = useState('');
     const [vencimiento, setVencimiento] = useState('');
 
     useEffect(() => {
-        const verificar = async () => {
+        if (!clase || !fechasDelMes) return;
+
+        const inicializar = async () => {
             setCargando(true);
             try {
-                const res = await api.post('/reservas/individual/verificar-cupo', {
-                    clase_id:    clase.id,
-                    fecha_clase: fechaSeleccionada,
-                    tipo_pago:   'sena'
-                });
+                const [perfilRes, cotizarRes] = await Promise.all([
+                    api.get('/socios/me'),
+                    api.post('/reservas/membresia/crear', {
+                        clase_id:         clase.id,
+                        fechas_clase:     fechasDelMes,
+                        total_clases_mes: fechasDelMes.length,
+                    })
+                ]);
 
-                setCreditosDisponibles(res.data.creditos_disponibles || 0);
+                const creditosActuales = perfilRes.data.creditos_disponibles || 0;
+                setCreditos(creditosActuales);
+                setDatosReserva(cotizarRes.data);
 
-                if (res.data.puede_usar_credito) {
-                    setUsaCredito(true);
-                    setMonto(0);
-                }
-
-                if (res.data.debe_lista_espera) {
+                // Nuevo flujo: lista de espera va primero y NO continúa al pago
+                if (cotizarRes.data.hay_lista_espera) {
                     setPaso('lista_espera');
-                } else if (res.data.creditos_disponibles > 0) {
+                } else if (creditosActuales > 0) {
                     setPaso('creditos');
                 } else {
-                    setPaso('tipo_pago');
+                    setPaso('pago');
                 }
             } catch (err) {
-                setMensaje(err.response?.data?.detail || 'Error al verificar disponibilidad.');
+                const detalle = err.response?.data?.detail;
+                setMensaje(typeof detalle === 'string' ? detalle : 'Error al inicializar.');
                 setPaso('error');
             } finally {
                 setCargando(false);
             }
         };
 
-        if (clase && fechaSeleccionada) verificar();
+        inicializar();
     }, []);
 
-    if (!clase || !fechaSeleccionada) {
+    if (!clase || !fechasDelMes) {
         return (
             <div className="reserva-empty-state">
                 <span className="reserva-empty-icon">📭</span>
@@ -79,30 +71,28 @@ const ReservaIndividual = () => {
         );
     }
 
+    const clasesPerdidas = datosReserva?.clases_perdidas ?? 0;
+    const clasesFuturas  = fechasDelMes.length - clasesPerdidas;
+    const descuento      = Number(datosReserva?.descuento_aplicado ?? 0);
+    const montoFinal     = Number(datosReserva?.monto_total ?? clase.precio_individual * fechasDelMes.length);
+
     const emojiDisciplina = {
         yoga: '🧘', pilates: '🤸', funcional: '⚡'
     }[clase.actividad?.toLowerCase()] || '🏋️';
 
-    const handleCambioModalidad = (tipo) => {
-        setTipoPago(tipo);
-        setMonto(tipo === 'sena'
-            ? Number(clase.precio_individual) * 0.5
-            : Number(clase.precio_individual)
-        );
-    };
-
-    // NUEVO: lista de espera sin pago — solo agrega y vuelve al inicio
+    // NUEVO: lista de espera sin pago — solo agrega y termina
     const handleAceptarEspera = async () => {
         setCargando(true);
         setMensaje('');
         try {
-            await api.post('/reservas/individual/lista-espera', {
-                clase_id:    clase.id,
-                fecha_clase: fechaSeleccionada,
+            await api.post('/reservas/membresia/lista-espera', {
+                clase_id:        clase.id,
+                fechas_sin_cupo: datosReserva.fechas_sin_cupo || [],
             });
             setPaso('exito_espera');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'Error al agregar a lista de espera.');
+            const detalle = err.response?.data?.detail;
+            setMensaje(typeof detalle === 'string' ? detalle : 'Error al agregar a lista de espera.');
             setPaso('error');
         } finally {
             setCargando(false);
@@ -110,37 +100,34 @@ const ReservaIndividual = () => {
     };
 
     const handleContinuarDesdeCreditos = () => {
-        if (usaCredito) {
-            // Crédito cubre todo → confirmar sin pasar por pago
-            handlePagarConCredito();
+        if (montoFinal === 0) {
+            handleConfirmarConCreditos();
         } else {
-            setPaso('tipo_pago');
+            setPaso('pago');
         }
     };
 
-    const handlePagarConCredito = async () => {
+    const handleConfirmarConCreditos = async () => {
         setCargando(true);
         setMensaje('');
         try {
-            const resReserva = await api.post('/reservas/individual/crear', {
-                clase_id:    clase.id,
-                fecha_clase: fechaSeleccionada,
-                tipo_pago:   tipoPago
-            });
-
-            await api.post('/reservas/individual/pagar', {
-                reserva_id:          resReserva.data.reserva_id,
+            await api.post('/reservas/membresia/pagar', {
+                clase_id:            clase.id,
+                creditos_a_usar:     datosReserva.creditos_a_usar || 0,
+                monto_total:         0,
+                fechas_con_cupo:     datosReserva.fechas_con_cupo || [],
+                fechas_sin_cupo:     [],
+                acepta_lista_espera: false,
+                pago_exitoso:        true,
                 numero_tarjeta:      '0000000000000000',
                 titular:             'credito',
                 cvv:                 '000',
                 fecha_vencimiento:   '12/99',
-                acepta_lista_espera: false,
-                usa_credito:         true
             });
-
             setPaso('exito');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'No se pudo confirmar con créditos.');
+            const detalle = err.response?.data?.detail;
+            setMensaje(typeof detalle === 'string' ? detalle : 'Error al confirmar con créditos.');
             setPaso('error');
         } finally {
             setCargando(false);
@@ -148,43 +135,38 @@ const ReservaIndividual = () => {
     };
 
     const handlePagar = async () => {
-        if (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim()) {
+        if (!nroTarjeta || !titular || !cvv || !vencimiento) {
             setMensaje('Por favor, completá todos los datos de la tarjeta.');
             return;
         }
-
         setCargando(true);
         setMensaje('');
         try {
-            const resReserva = await api.post('/reservas/individual/crear', {
-                clase_id:    clase.id,
-                fecha_clase: fechaSeleccionada,
-                tipo_pago:   tipoPago
-            });
-
-            await api.post('/reservas/individual/pagar', {
-                reserva_id:          resReserva.data.reserva_id,
+            await api.post('/reservas/membresia/pagar', {
+                clase_id:            clase.id,
+                creditos_a_usar:     datosReserva.creditos_a_usar || 0,
+                monto_total:         montoFinal,
+                fechas_con_cupo:     datosReserva.fechas_con_cupo || [],
+                fechas_sin_cupo:     [],
+                acepta_lista_espera: false,
+                pago_exitoso:        true,
                 numero_tarjeta:      nroTarjeta.replace(/\s/g, ''),
                 titular,
                 cvv,
                 fecha_vencimiento:   vencimiento,
-                acepta_lista_espera: false,
-                usa_credito:         false
             });
-
             setPaso('exito');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'No se pudo procesar la reserva.');
-            setPaso('error');
+            const detalle = err.response?.data?.detail;
+            setMensaje(typeof detalle === 'string' ? detalle : 'Error al procesar el pago.');
         } finally {
             setCargando(false);
         }
     };
 
     const handleVolver = () => {
-        if (paso === 'creditos')  return setPaso('lista_espera');
-        if (paso === 'tipo_pago') return setPaso(creditosDisponibles > 0 ? 'creditos' : 'lista_espera');
-        if (paso === 'pago')      return setPaso('tipo_pago');
+        if (paso === 'creditos') return setPaso('cargando');
+        if (paso === 'pago')     return setPaso(creditos > 0 ? 'creditos' : 'cargando');
         navigate(-1);
     };
 
@@ -192,74 +174,55 @@ const ReservaIndividual = () => {
         <div className="reserva-page">
             <div className="reserva-page-header">
                 <button className="reserva-back" onClick={handleVolver}>← Volver</button>
-                <span className="reserva-page-label">Reserva Individual</span>
+                <span className="reserva-page-label">Membresía mensual</span>
             </div>
 
             <div className="reserva-layout">
+
                 {/* COLUMNA IZQUIERDA */}
                 <div className="reserva-info-col">
                     <div className="reserva-clase-hero">
                         <div className="reserva-clase-emoji">{emojiDisciplina}</div>
                         <div>
-                            <h2 className="reserva-clase-nombre" style={{ textTransform: 'capitalize' }}>
-                                {clase.actividad}
-                            </h2>
-                            <p className="reserva-clase-sub">
-                                {clase.dia} · {formatearHora(clase.horario)}
-                            </p>
+                            <h2 className="reserva-clase-nombre">{clase.actividad}</h2>
+                            <p className="reserva-clase-sub">{clase.dia} · {formatearHora(clase.horario)}</p>
                         </div>
                     </div>
 
                     <div className="reserva-desglose">
-                        <div className="reserva-desglose-titulo">Detalle de la sesión</div>
-                        <div className="reserva-desglose-fila" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                            <span style={{ fontWeight: '500' }}>Fecha elegida:</span>
-                            <span style={{ textTransform: 'capitalize', color: '#555', marginTop: '2px' }}>
-                                {formatearFecha(fechaSeleccionada)}
-                            </span>
+                        <div className="reserva-desglose-titulo">Desglose del mes</div>
+                        <div className="reserva-desglose-fila">
+                            <span>Clases del mes</span>
+                            <span>{fechasDelMes.length}</span>
                         </div>
                         <div className="reserva-desglose-fila">
-                            <span>Precio base</span>
-                            <span>${Number(clase.precio_individual).toFixed(2)}</span>
+                            <span>Precio por clase</span>
+                            <span>${clase.precio_individual}</span>
                         </div>
-                        {paso !== 'lista_espera' && paso !== 'exito_espera' && (
-                            <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
-                                <span>Concepto</span>
-                                <span>{tipoPago === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
-                            </div>
-                        )}
-                        {usaCredito && (
+                        <div className="reserva-desglose-fila">
+                            <span>Clases Activas</span>
+                            <span>{clasesFuturas}</span>
+                        </div>
+                        {clasesPerdidas > 0 && (
                             <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
-                                <span>🎟️ Crédito aplicado</span>
-                                <span>-${Number(clase.precio_individual).toFixed(2)}</span>
+                                <span>Descuento ({clasesPerdidas} clase{clasesPerdidas > 1 ? 's' : ''} perdida{clasesPerdidas > 1 ? 's' : ''})</span>
+                                <span>-${descuento.toFixed(2)}</span>
                             </div>
                         )}
+                        {datosReserva?.creditos_a_usar > 0 && (
+                            <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
+                                <span>🎟️ Créditos ({datosReserva.creditos_a_usar} clase{datosReserva.creditos_a_usar > 1 ? 's' : ''} gratis)</span>
+                                <span>-${Number(datosReserva.descuento_creditos || 0).toFixed(2)}</span>
+                            </div>
+                        )}
+                        {/* Solo mostramos total si no estamos en flujo de espera */}
                         {paso !== 'lista_espera' && paso !== 'exito_espera' && (
                             <div className="reserva-desglose-total">
-                                <span>Total a abonar</span>
-                                <span>${Number(monto).toFixed(2)}</span>
+                                <span>Total</span>
+                                <span>${montoFinal.toFixed(2)}</span>
                             </div>
                         )}
                     </div>
-
-                    {paso === 'pago' && monto > 0 && (
-                        <div className="pago-card-visual" style={{ marginTop: '20px' }}>
-                            <div className="pago-card-chip">▬</div>
-                            <div className="pago-card-numero">{nroTarjeta || '···· ···· ···· ····'}</div>
-                            <div className="pago-card-bottom">
-                                <div>
-                                    <div className="pago-card-sublabel">Titular</div>
-                                    <div className="pago-card-valor" style={{ textTransform: 'uppercase' }}>
-                                        {titular || 'NOMBRE APELLIDO'}
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="pago-card-sublabel">CVV</div>
-                                    <div className="pago-card-valor">{cvv ? '•'.repeat(cvv.length) : '•••'}</div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* COLUMNA DERECHA */}
@@ -275,11 +238,17 @@ const ReservaIndividual = () => {
                     {paso === 'lista_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
-                            <h3 className="reserva-accion-titulo">Clase sin cupos disponibles</h3>
+                            <h3 className="reserva-accion-titulo">Algunas fechas sin cupo</h3>
                             <p className="reserva-accion-desc">
-                                No hay vacantes para el {formatearFecha(fechaSeleccionada)}.
-                                Podés anotarte en lista de espera sin costo — si se libera un lugar, te notificamos.
+                                Las siguientes fechas no tienen lugares disponibles. Si aceptás, te anotamos en lista de espera sin cargo — te avisaremos si se libera un cupo.
                             </p>
+                            <div className="reserva-fechas-lista" style={{ margin: '12px 0' }}>
+                                {datosReserva?.fechas_sin_cupo?.map((f, i) => (
+                                    <span key={i} className="reserva-fecha-chip reserva-fecha-chip--vacio">
+                                        {new Date(f + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                                    </span>
+                                ))}
+                            </div>
                             <div className="reserva-espera-botones">
                                 <button className="boton-accion" onClick={handleAceptarEspera} disabled={cargando}>
                                     {cargando ? <span className="reserva-spinner" /> : 'Anotarme en lista de espera'}
@@ -297,60 +266,21 @@ const ReservaIndividual = () => {
                             <div className="pago-credito-icon">🎟️</div>
                             <h3 className="reserva-accion-titulo">Tenés créditos disponibles</h3>
                             <p className="reserva-accion-desc">
-                                Tenés <strong>{creditosDisponibles} crédito{creditosDisponibles > 1 ? 's' : ''}</strong> disponible{creditosDisponibles > 1 ? 's' : ''}.{' '}
-                                {usaCredito
-                                    ? 'Esta clase quedará completamente cubierta con tus créditos, sin cargo adicional.'
-                                    : 'No alcanza para cubrir esta clase. Continuá para abonar el saldo.'}
+                                Tenés <strong>{creditos} crédito{creditos > 1 ? 's' : ''}</strong> disponible{creditos > 1 ? 's' : ''}.{' '}
+                                {montoFinal === 0
+                                    ? 'Cubren el total de la membresía, no necesitás pagar nada.'
+                                    : `Se aplicarán ${datosReserva?.creditos_a_usar} y abonarás el resto con tarjeta.`}
                             </p>
                             {mensaje && <p className="pago-error-msg">{mensaje}</p>}
                             <button className="boton-accion" onClick={handleContinuarDesdeCreditos} disabled={cargando}>
                                 {cargando
                                     ? <span className="reserva-spinner" />
-                                    : usaCredito ? 'Confirmar con crédito →' : 'Continuar →'}
+                                    : montoFinal === 0 ? 'Confirmar sin pago →' : 'Continuar al pago →'}
                             </button>
                         </div>
                     )}
 
-                    {/* PASO: elegir modalidad de pago */}
-                    {paso === 'tipo_pago' && (
-                        <div className="reserva-accion-card">
-                            <h3 className="reserva-accion-titulo">Configurá tu pago</h3>
-                            <p className="reserva-accion-desc">Seleccioná cómo querés abonar la clase:</p>
-                            <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
-                                <button
-                                    type="button"
-                                    style={{
-                                        flex: 1, padding: '12px', borderRadius: '8px',
-                                        border: tipoPago === 'sena' ? '2px solid #4caf50' : '1px solid #ccc',
-                                        backgroundColor: tipoPago === 'sena' ? 'rgba(76,175,80,0.1)' : 'transparent',
-                                        color: tipoPago === 'sena' ? '#4caf50' : '#aaa',
-                                        fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => handleCambioModalidad('sena')}
-                                >
-                                    Abonar Seña (50%)
-                                </button>
-                                <button
-                                    type="button"
-                                    style={{
-                                        flex: 1, padding: '12px', borderRadius: '8px',
-                                        border: tipoPago === 'total' ? '2px solid #4caf50' : '1px solid #ccc',
-                                        backgroundColor: tipoPago === 'total' ? 'rgba(76,175,80,0.1)' : 'transparent',
-                                        color: tipoPago === 'total' ? '#4caf50' : '#aaa',
-                                        fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => handleCambioModalidad('total')}
-                                >
-                                    Abonar Total (100%)
-                                </button>
-                            </div>
-                            <button className="boton-accion" onClick={() => setPaso('pago')} disabled={cargando}>
-                                Confirmar y pagar →
-                            </button>
-                        </div>
-                    )}
-
-                    {/* PASO: formulario de pago */}
+                    {/* PASO: pago con tarjeta */}
                     {paso === 'pago' && (
                         <div className="pago-form-card">
                             <h2 className="pago-form-titulo">Datos de pago</h2>
@@ -395,7 +325,7 @@ const ReservaIndividual = () => {
                             </div>
                             {mensaje && <p className="pago-error-msg">{mensaje}</p>}
                             <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
-                                {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${Number(monto).toFixed(2)}`}
+                                {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${montoFinal.toFixed(2)}`}
                             </button>
                             <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
                         </div>
@@ -405,10 +335,10 @@ const ReservaIndividual = () => {
                     {paso === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">✓</div>
-                            <h3>¡Reserva confirmada!</h3>
-                            <p>Tu clase fue reservada correctamente.</p>
-                            <button className="pago-btn-primary" onClick={() => navigate('/')}>
-                                Volver al inicio
+                            <h3>¡Membresía confirmada!</h3>
+                            <p>Tus clases del mes fueron reservadas correctamente.</p>
+                            <button className="pago-btn-primary" onClick={() => navigate('/perfil')}>
+                                Ver mis reservas
                             </button>
                         </div>
                     )}
@@ -418,7 +348,10 @@ const ReservaIndividual = () => {
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">🕐</div>
                             <h3>¡Estás en lista de espera!</h3>
-                            <p>Te avisaremos si se libera un cupo para el {formatearFecha(fechaSeleccionada)}.</p>
+                            <p>
+                                Te avisaremos si se libera un cupo para las fechas solicitadas.
+                                No se realizó ningún cobro.
+                            </p>
                             <button className="pago-btn-primary" onClick={() => navigate('/')}>
                                 Volver al inicio
                             </button>
@@ -442,4 +375,4 @@ const ReservaIndividual = () => {
     );
 };
 
-export default ReservaIndividual;
+export default ReservaMembresia;

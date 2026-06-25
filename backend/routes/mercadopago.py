@@ -1,0 +1,101 @@
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from dependencies.database import get_db
+from models.reserva_MIO import Reserva
+from models.clase import Clase
+from schemas.mercadopago import PreferenciaIndividualRequest, PreferenciaMembresiaRequest
+from services.auth import oauth2_scheme, obtener_usuario_actual
+from services.mercadopago_service import (
+    crear_preferencia_individual,
+    crear_preferencia_membresia,
+    procesar_pago_aprobado,
+)
+
+router = APIRouter(prefix="/mp", tags=["MercadoPago"])
+
+
+@router.post("/preferencia/individual")
+def preferencia_individual(
+    datos: PreferenciaIndividualRequest,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    socio = obtener_usuario_actual(token=token, db=db)
+
+    reserva = db.query(Reserva).filter(
+        Reserva.id       == datos.reserva_id,
+        Reserva.socio_id == socio.id,
+        Reserva.estado   == "pendiente_pago",
+    ).first()
+
+    if not reserva:
+        raise HTTPException(404, "Reserva no encontrada o ya procesada")
+
+    clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
+    if not clase:
+        raise HTTPException(404, "Clase no encontrada")
+
+    pref = crear_preferencia_individual(reserva, clase)
+
+    print("PREF INDIVIDUAL:", pref)  # ← para debug
+
+    if "id" not in pref:
+        raise HTTPException(500, f"Error de MP: {pref}")
+
+    reserva.mp_preference_id = pref["id"]
+    db.commit()
+
+    init_point = pref.get("sandbox_init_point") or pref.get("init_point")
+    return {"init_point": init_point}
+
+
+@router.post("/preferencia/membresia")
+def preferencia_membresia(
+    datos: PreferenciaMembresiaRequest,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    socio = obtener_usuario_actual(token=token, db=db)
+
+    clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
+    if not clase:
+        raise HTTPException(404, "Clase no encontrada")
+
+    if not datos.fechas_con_cupo:
+        raise HTTPException(400, "No hay fechas con cupo para reservar")
+
+    if datos.monto_total <= 0:
+        raise HTTPException(400, "El monto debe ser mayor a 0")
+
+    pref = crear_preferencia_membresia(
+        socio_id        = socio.id,
+        clase           = clase,
+        fechas_con_cupo = datos.fechas_con_cupo,
+        monto_total     = datos.monto_total,
+        creditos_a_usar = datos.creditos_a_usar,
+    )
+
+    print("PREF MEMBRESIA:", pref)  # ← para debug
+
+    if "id" not in pref:
+        raise HTTPException(500, f"Error de MP: {pref}")
+
+    init_point = pref.get("sandbox_init_point") or pref.get("init_point")
+    return {
+        "init_point":    init_point,
+        "preference_id": pref["id"],
+    }
+
+
+@router.post("/webhook")
+async def webhook_mp(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+
+    if data.get("type") != "payment":
+        return {"status": "ignored"}
+
+    payment_id = str(data["data"]["id"])
+    resultado  = procesar_pago_aprobado(payment_id, db)
+
+    return {"status": "ok", "resultado": resultado}

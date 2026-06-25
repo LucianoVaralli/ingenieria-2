@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
+import PagarConMP from '../components/PagarConMP';
 
 const formatearHora = (hora) => hora?.slice(0, 5);
 
@@ -16,6 +17,8 @@ const ReservaMembresia = () => {
     const [cargando, setCargando]         = useState(false);
     const [datosReserva, setDatosReserva] = useState(null);
     const [creditos, setCreditos]         = useState(0);
+
+    const [metodoPago, setMetodoPago]   = useState('tarjeta'); // 'tarjeta' | 'mp'
 
     const [nroTarjeta, setNroTarjeta]   = useState('');
     const [titular, setTitular]         = useState('');
@@ -280,54 +283,105 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: pago con tarjeta */}
+                    {/* PASO: pago */}
                     {paso === 'pago' && (
                         <div className="pago-form-card">
-                            <h2 className="pago-form-titulo">Datos de pago</h2>
-                            <div className="pago-field">
-                                <label className="pago-label">Número de tarjeta</label>
-                                <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
-                                    placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
-                                    onChange={(e) => {
-                                        const n = e.target.value.replace(/\D/g, '');
-                                        const parts = [];
-                                        for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
-                                        setNroTarjeta(parts.join(' '));
-                                    }}
-                                />
+                            <h2 className="pago-form-titulo">Elegí cómo pagar</h2>
+
+                            {/* Selector de método */}
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
+                                <button type="button" onClick={() => setMetodoPago('tarjeta')}
+                                    style={{
+                                        flex: 1, padding: '12px', borderRadius: '8px',
+                                        fontWeight: '600', cursor: 'pointer',
+                                        border: metodoPago === 'tarjeta' ? '2px solid #4caf50' : '1px solid #555',
+                                        backgroundColor: metodoPago === 'tarjeta' ? 'rgba(76,175,80,0.1)' : 'transparent',
+                                        color: metodoPago === 'tarjeta' ? '#4caf50' : '#aaa',
+                                    }}>
+                                    💳 Tarjeta
+                                </button>
+                                <button type="button" onClick={() => setMetodoPago('mp')}
+                                    style={{
+                                        flex: 1, padding: '12px', borderRadius: '8px',
+                                        fontWeight: '600', cursor: 'pointer',
+                                        border: metodoPago === 'mp' ? '2px solid #009ee3' : '1px solid #555',
+                                        backgroundColor: metodoPago === 'mp' ? 'rgba(0,158,227,0.1)' : 'transparent',
+                                        color: metodoPago === 'mp' ? '#009ee3' : '#aaa',
+                                    }}>
+                                    💙 Mercado Pago
+                                </button>
                             </div>
-                            <div className="pago-field">
-                                <label className="pago-label">Nombre del titular</label>
-                                <input className="pago-input pago-input--wide" type="text"
-                                    placeholder="Tal como aparece en la tarjeta" value={titular}
-                                    onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: '15px' }}>
-                                <div className="pago-field" style={{ flex: 1 }}>
-                                    <label className="pago-label">CVV</label>
-                                    <input className="pago-input" type="text" inputMode="numeric"
-                                        style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
-                                        value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                                    />
-                                </div>
-                                <div className="pago-field" style={{ flex: 1 }}>
-                                    <label className="pago-label">Vencimiento</label>
-                                    <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
-                                        value={vencimiento}
+
+                            {/* Formulario tarjeta */}
+                            {metodoPago === 'tarjeta' && (<>
+                                <div className="pago-field">
+                                    <label className="pago-label">Número de tarjeta</label>
+                                    <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
+                                        placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
                                         onChange={(e) => {
-                                            let v = e.target.value.replace(/\D/g, '');
-                                            if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
-                                            setVencimiento(v);
+                                            const n = e.target.value.replace(/\D/g, '');
+                                            const parts = [];
+                                            for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
+                                            setNroTarjeta(parts.join(' '));
                                         }}
                                     />
                                 </div>
-                            </div>
-                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
-                            <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
-                                {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${montoFinal.toFixed(2)}`}
-                            </button>
-                            <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                                <div className="pago-field">
+                                    <label className="pago-label">Nombre del titular</label>
+                                    <input className="pago-input pago-input--wide" type="text"
+                                        placeholder="Tal como aparece en la tarjeta" value={titular}
+                                        onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '15px' }}>
+                                    <div className="pago-field" style={{ flex: 1 }}>
+                                        <label className="pago-label">CVV</label>
+                                        <input className="pago-input" type="text" inputMode="numeric"
+                                            style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
+                                            value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                                        />
+                                    </div>
+                                    <div className="pago-field" style={{ flex: 1 }}>
+                                        <label className="pago-label">Vencimiento</label>
+                                        <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
+                                            value={vencimiento}
+                                            onChange={(e) => {
+                                                let v = e.target.value.replace(/\D/g, '');
+                                                if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                                setVencimiento(v);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                                <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
+                                    {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${montoFinal.toFixed(2)}`}
+                                </button>
+                                <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                            </>)}
+
+                            {/* Mercado Pago */}
+                            {metodoPago === 'mp' && (
+                                <div style={{ marginTop: '8px' }}>
+                                    <p style={{ color: '#aaa', marginBottom: '16px', fontSize: '14px' }}>
+                                        Serás redirigido al sitio de Mercado Pago para completar el pago de forma segura.
+                                    </p>
+                                    {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                                    <PagarConMP
+                                        tipo="membresia"
+                                        payload={{
+                                            clase_id:        clase.id,
+                                            fechas_con_cupo: datosReserva.fechas_con_cupo || [],
+                                            monto_total:     montoFinal,
+                                            creditos_a_usar: datosReserva.creditos_a_usar || 0,
+                                        }}
+                                        onError={setMensaje}
+                                    />
+                                    <p className="pago-seguro-txt" style={{ marginTop: '12px' }}>
+                                        🔒 Ambiente de pruebas (sandbox)
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
 
