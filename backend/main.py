@@ -34,6 +34,7 @@ from fastapi.staticfiles import StaticFiles
 
 from models.membresia import Membresia
 
+from models.Asistencia import Asistencia 
 # Crear las tablas en la base de datos
 Base.metadata.create_all(bind=engine)
 
