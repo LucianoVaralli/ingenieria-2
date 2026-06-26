@@ -14,7 +14,8 @@ from schemas.clase import (
     CancelarClaseDia,
     EliminarClase,
     CambioProfesorTemporal,
-    CambioProfesorPermanente
+    CambioProfesorPermanente,
+    EscanearQRRequest 
 )
 from routes.membresia import _actualizar_membresia_activa_hasta
 
@@ -25,6 +26,9 @@ from services.notificaciones import crear_notificacion
 from models.cambioTemporal import CambioProfesorTemporal as CambioProfesorTemporalDB
 from models.cambioPermanente import CambioProfesorPermanente as CambioProfesorPermanenteDB
 
+from services.auth import obtener_usuario_actual
+import uuid
+from models.Asistencia import Asistencia
 router = APIRouter(
     prefix="/clases",
     tags=["Clases"]
@@ -937,4 +941,88 @@ async def cambiar_profesor_permanente(
 
     return {
         "mensaje": "Profesor cambiado permanentemente"
+    }
+
+@router.post("/{clase_id}/generar-qr")
+def generar_qr(
+    clase_id: int,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(
+        Clase.id == clase_id,
+        Clase.activa == True
+    ).first()
+
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
+
+    if clase.codigo_qr:
+        return {
+            "clase_id": clase.id,
+            "codigo_qr": clase.codigo_qr,
+            "mensaje": "El QR ya fue generado anteriormente"
+        }
+
+    clase.codigo_qr = str(uuid.uuid4())
+    db.commit()
+
+    return {
+        "clase_id": clase.id,
+        "codigo_qr": clase.codigo_qr,
+        "mensaje": "QR generado exitosamente"
+    }
+
+
+@router.post("/escanear-qr")
+def escanear_qr(
+    datos: EscanearQRRequest,
+    db: Session = Depends(get_db),
+    socio_actual = Depends(obtener_usuario_actual)
+):
+    clase = db.query(Clase).filter(
+        Clase.codigo_qr == datos.codigo_qr,
+        Clase.activa == True
+    ).first()
+
+    if not clase:
+        raise HTTPException(status_code=404, detail="Código QR inválido")
+
+    from models.reserva_MIO import Reserva
+    reserva = db.query(Reserva).filter(
+        Reserva.clase_id == clase.id,
+        Reserva.socio_id == socio_actual.id,
+        Reserva.fecha_clase == datos.fecha_clase,
+        Reserva.estado == "confirmada"
+    ).first()
+
+    if not reserva:
+        raise HTTPException(
+            status_code=403,
+            detail="No estás registrado para esta clase en la fecha indicada"
+        )
+
+    asistencia_existente = db.query(Asistencia).filter(
+        Asistencia.socio_id == socio_actual.id,
+        Asistencia.clase_id == clase.id,
+        Asistencia.fecha_clase == datos.fecha_clase
+    ).first()
+
+    if asistencia_existente:
+        raise HTTPException(
+            status_code=400,
+            detail="Tu asistencia ya fue registrada para esta clase"
+        )
+
+    nueva_asistencia = Asistencia(
+        socio_id=socio_actual.id,
+        clase_id=clase.id,
+        fecha_clase=datos.fecha_clase
+    )
+    db.add(nueva_asistencia)
+    db.commit()
+
+    return {
+        "mensaje": "Asistencia registrada con éxito",
+        "clase": clase.actividad,
+        "fecha": datos.fecha_clase
     }

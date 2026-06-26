@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../../api/api";
 import "../../assets/css/ListaClasesAdmin.css";
 import AdminLayout from "../../layouts/AdminLayout";
-
+import QRProfesor from "../profesor/QRProfesor";
 function ListaClasesAdmin() {
     const [clases, setClases] = useState([]);
 
@@ -514,6 +514,7 @@ function ListaClasesAdmin() {
                                                             Cambiar profesor
                                                         </button>
                                                     </div>
+                                                    
                                                 </div>
                                             ))
                                         )}

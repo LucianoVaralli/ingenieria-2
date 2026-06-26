@@ -17,3 +17,5 @@ class Clase(Base):
 
     activa = Column(Boolean, default=True) #para ver si la clase aparece o no del calendario
     motivo_baja = Column(String, nullable=True)
+
+    codigo_qr = Column(String, nullable=True, unique=True)
