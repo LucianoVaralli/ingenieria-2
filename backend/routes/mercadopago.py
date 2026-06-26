@@ -12,6 +12,9 @@ from services.mercadopago_service import (
     procesar_pago_aprobado,
 )
 
+from fastapi.responses import RedirectResponse
+from typing import Optional
+
 router = APIRouter(prefix="/mp", tags=["MercadoPago"])
 
 
@@ -99,3 +102,26 @@ async def webhook_mp(request: Request, db: Session = Depends(get_db)):
     resultado  = procesar_pago_aprobado(payment_id, db)
 
     return {"status": "ok", "resultado": resultado}
+
+@router.get("/resultado-redirect")
+def resultado_redirect(
+    status:      str,
+    tipo:        str,
+    payment_id:  Optional[str] = None,
+    clase_id:    Optional[int] = None,
+    reserva_id:  Optional[int] = None,
+    db:          Session = Depends(get_db),
+):
+    # Si el pago fue aprobado, procesamos la reserva acá directamente
+    if status == "approved" and payment_id:
+        try:
+            procesar_pago_aprobado(payment_id, db)
+        except Exception as e:
+            print(f"Error procesando pago en redirect: {e}")
+
+    url = f"http://localhost:5173/pago/resultado?status={status}&tipo={tipo}"
+    if clase_id:
+        url += f"&clase_id={clase_id}"
+    if reserva_id:
+        url += f"&reserva_id={reserva_id}"
+    return RedirectResponse(url)

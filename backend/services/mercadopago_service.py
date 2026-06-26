@@ -20,6 +20,7 @@ from routes.membresia import (
 # ── Configuración ─────────────────────────────────────────────
 ACCESS_TOKEN = "APP_USR-1855583917258264-060413-2c0c94fcc77a60dd765973ed67bb3e29-3450942986"   
 FRONTEND_URL = "http://localhost:5173"
+BACKEND_URL  = "https://prompter-colony-ember.ngrok-free.dev"
 WEBHOOK_URL  = "https://prompter-colony-ember.ngrok-free.dev/mp/webhook"  # ← reemplazá con tu URL de ngrok
 
 sdk = mercadopago.SDK(ACCESS_TOKEN)
@@ -46,11 +47,11 @@ def crear_preferencia_individual(reserva: Reserva, clase: Clase) -> dict:
         },
         "external_reference": f"individual:{reserva.id}",
         "back_urls": {
-            "success": f"{FRONTEND_URL}/pago/resultado?tipo=individual&reserva_id={reserva.id}&status=approved",
-            "failure": f"{FRONTEND_URL}/pago/resultado?tipo=individual&reserva_id={reserva.id}&status=failure",
-            "pending": f"{FRONTEND_URL}/pago/resultado?tipo=individual&reserva_id={reserva.id}&status=pending",
+            "success": f"{BACKEND_URL}/mp/resultado-redirect?status=approved&tipo=individual&reserva_id={reserva.id}",
+            "failure": f"{BACKEND_URL}/mp/resultado-redirect?status=failure&tipo=individual&reserva_id={reserva.id}",
+            "pending": f"{BACKEND_URL}/mp/resultado-redirect?status=pending&tipo=individual&reserva_id={reserva.id}",
         },
-        "auto_return":        "approved",
+        "auto_return": "approved",
         "notification_url":   WEBHOOK_URL,
     }
 
@@ -83,10 +84,11 @@ def crear_preferencia_membresia(
         # Guardamos todo lo que necesitamos para confirmar en el webhook
         "external_reference": f"membresia:{socio_id}:{clase.id}:{fechas_str}:{creditos_a_usar}",
         "back_urls": {
-            "success": f"{FRONTEND_URL}/pago/resultado?tipo=membresia&clase_id={clase.id}&status=approved",
-            "failure": f"{FRONTEND_URL}/pago/resultado?tipo=membresia&clase_id={clase.id}&status=failure",
-            "pending": f"{FRONTEND_URL}/pago/resultado?tipo=membresia&clase_id={clase.id}&status=pending",
+            "success": f"{BACKEND_URL}/mp/resultado-redirect?status=approved&tipo=membresia&clase_id={clase.id}",
+            "failure": f"{BACKEND_URL}/mp/resultado-redirect?status=failure&tipo=membresia&clase_id={clase.id}",
+            "pending": f"{BACKEND_URL}/mp/resultado-redirect?status=pending&tipo=membresia&clase_id={clase.id}",
         },
+        "auto_return": "approved",
         "notification_url": WEBHOOK_URL,
     }
 
@@ -146,6 +148,18 @@ def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
     fechas_con_cupo = partes[3].split(",")
     creditos_a_usar = int(partes[4]) if len(partes) > 4 else 0
     monto_total     = payment["transaction_amount"]
+    payment_id      = str(payment["id"])
+
+    ya_procesado = db.query(Reserva).filter(
+        Reserva.socio_id         == socio_id,
+        Reserva.clase_id         == clase_id,
+        Reserva.fecha_clase.in_(fechas_con_cupo),
+        Reserva.estado           == "confirmada",
+        Reserva.mp_preference_id == payment_id,
+    ).first()
+
+    if ya_procesado:
+        return "ya_procesado"
 
     socio = db.query(Socio).filter(Socio.id == socio_id).first()
     clase = db.query(Clase).filter(Clase.id == clase_id).first()
@@ -153,11 +167,9 @@ def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
     if not socio or not clase:
         return "socio_o_clase_no_encontrado"
 
-    # Descontar créditos
     if creditos_a_usar > 0:
         socio.creditos_disponibles = max(0, socio.creditos_disponibles - creditos_a_usar)
 
-    # Crear reservas confirmadas
     for fecha in fechas_con_cupo:
         ocupadas = db.query(Reserva).filter(
             Reserva.clase_id    == clase_id,
@@ -167,17 +179,17 @@ def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
 
         if ocupadas < clase.cupo:
             db.add(Reserva(
-                socio_id      = socio_id,
-                clase_id      = clase_id,
-                tipo          = TipoReserva.Membresia.value,
-                estado        = "confirmada",
-                fecha_clase   = fecha,
-                monto_total   = monto_total,
-                monto_pagado  = monto_total,
-                es_recurrente = True,
+                socio_id         = socio_id,
+                clase_id         = clase_id,
+                tipo             = TipoReserva.Membresia.value,
+                estado           = "confirmada",
+                fecha_clase      = fecha,
+                monto_total      = monto_total,
+                monto_pagado     = monto_total,
+                es_recurrente    = True,
+                mp_preference_id = payment_id,  # ← guardamos el payment_id
             ))
 
-    # Reservas pendiente_pago del mes siguiente
     weekday = DIA_A_WEEKDAY.get(clase.dia.lower().strip(), -1)
     if weekday != -1 and fechas_con_cupo:
         primera = datetime.strptime(sorted(fechas_con_cupo)[0], "%Y-%m-%d").date()
@@ -211,7 +223,6 @@ def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
     db.flush()
     _actualizar_membresia_activa_hasta(socio_id, db)
 
-    # Actualizar o crear membresía
     membresia = db.query(Membresia).filter(
         Membresia.socio_id == socio_id,
         Membresia.clase_id == clase_id,
@@ -225,11 +236,11 @@ def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
         membresia.fecha_expiracion = datetime(ahora.year, ahora.month, 1) + relativedelta(months=1)
     else:
         db.add(Membresia(
-            socio_id       = socio_id,
-            clase_id       = clase_id,
-            mes_vigente    = ahora.month,
-            anio_vigente   = ahora.year,
-            activa         = True,
+            socio_id     = socio_id,
+            clase_id     = clase_id,
+            mes_vigente  = ahora.month,
+            anio_vigente = ahora.year,
+            activa       = True,
         ))
 
     db.commit()
