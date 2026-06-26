@@ -1103,3 +1103,22 @@ body,
 .btn-rechazar-cupo:hover {
     background-color: #bb2d3b;
 }
+
+/* ===========================
+   MODAL DE PAGO
+=========================== */
+
+.modal-content {
+    background: #111;
+    color: white;
+    border-radius: 16px;
+    width: min(650px, 95vw);
+
+    max-height: 90vh;
+    overflow-y: auto;
+
+    padding: 28px;
+    position: relative;
+}
+
+.modal-pago-cupo { width: 1200px; max-width: 95vw; max-height: 92vh; overflow-y: auto; }

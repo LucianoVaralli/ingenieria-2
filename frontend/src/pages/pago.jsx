@@ -34,6 +34,7 @@ const Pago = () => {
         claseId          = null,
         creditosUsados   = 0,
         esPrimeraMembresia = false,
+        reservaId = null,
     } = location.state || {};
 
     const [nroTarjeta, setNroTarjeta] = useState('');
@@ -66,6 +67,33 @@ const Pago = () => {
 
         setCargando(true);
         setMensaje('');
+
+        if (reservaId) {
+            try {
+                const res = await api.post('/reservas/individual/pagar', {
+                    reserva_id: reservaId,
+                    numero_tarjeta: nroTarjeta,
+                    titular: titular,
+                    cvv: cvv,
+                    fecha_vencimiento: vencimiento,
+                    acepta_lista_espera: true,
+                    usa_credito: false
+                });
+
+                setMensaje('Reserva confirmada');
+                setEstado('exito');
+
+                return; // 🔴 IMPORTANTE: corta el flujo
+            } catch (err) {
+                setMensaje(
+                    typeof err.response?.data?.detail === 'string'
+                        ? err.response.data.detail
+                        : 'No se pudo procesar el pago.'
+                );
+                setEstado('error');
+                return;
+            }
+        }
 
         try {
             const res = await api.post('/reservas/membresia/confirmar-pago', {
