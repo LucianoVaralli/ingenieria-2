@@ -18,7 +18,7 @@ const ReservaMembresia = () => {
     const [datosReserva, setDatosReserva] = useState(null);
     const [creditos, setCreditos]         = useState(0);
 
-    const [metodoPago, setMetodoPago]   = useState('tarjeta'); // 'tarjeta' | 'mp'
+    const [metodoPago, setMetodoPago] = useState('tarjeta'); // 'tarjeta' | 'mp'
 
     const [nroTarjeta, setNroTarjeta]   = useState('');
     const [titular, setTitular]         = useState('');
@@ -44,7 +44,6 @@ const ReservaMembresia = () => {
                 setCreditos(creditosActuales);
                 setDatosReserva(cotizarRes.data);
 
-                // Nuevo flujo: lista de espera va primero y NO continúa al pago
                 if (cotizarRes.data.hay_lista_espera) {
                     setPaso('lista_espera');
                 } else if (creditosActuales > 0) {
@@ -83,7 +82,6 @@ const ReservaMembresia = () => {
         yoga: '🧘', pilates: '🤸', funcional: '⚡'
     }[clase.actividad?.toLowerCase()] || '🏋️';
 
-    // NUEVO: lista de espera sin pago — solo agrega y termina
     const handleAceptarEspera = async () => {
         setCargando(true);
         setMensaje('');
@@ -218,7 +216,6 @@ const ReservaMembresia = () => {
                                 <span>-${Number(datosReserva.descuento_creditos || 0).toFixed(2)}</span>
                             </div>
                         )}
-                        {/* Solo mostramos total si no estamos en flujo de espera */}
                         {paso !== 'lista_espera' && paso !== 'exito_espera' && (
                             <div className="reserva-desglose-total">
                                 <span>Total</span>
@@ -232,12 +229,11 @@ const ReservaMembresia = () => {
                 <div className="reserva-accion-col">
 
                     {paso === 'cargando' && (
-                        <div className="reserva-accion-card" style={{ textAlign: 'center' }}>
+                        <div className="reserva-accion-card reserva-accion-card--cargando">
                             <span className="reserva-spinner" />
                         </div>
                     )}
 
-                    {/* PASO: lista de espera — sin pago */}
                     {paso === 'lista_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
@@ -245,7 +241,7 @@ const ReservaMembresia = () => {
                             <p className="reserva-accion-desc">
                                 Las siguientes fechas no tienen lugares disponibles. Si aceptás, te anotamos en lista de espera sin cargo — te avisaremos si se libera un cupo.
                             </p>
-                            <div className="reserva-fechas-lista" style={{ margin: '12px 0' }}>
+                            <div className="reserva-fechas-lista reserva-fechas-lista--margen">
                                 {datosReserva?.fechas_sin_cupo?.map((f, i) => (
                                     <span key={i} className="reserva-fecha-chip reserva-fecha-chip--vacio">
                                         {new Date(f + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
@@ -263,7 +259,6 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: créditos disponibles */}
                     {paso === 'creditos' && (
                         <div className="reserva-accion-card">
                             <div className="pago-credito-icon">🎟️</div>
@@ -283,36 +278,27 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: pago */}
                     {paso === 'pago' && (
                         <div className="pago-form-card">
                             <h2 className="pago-form-titulo">Elegí cómo pagar</h2>
 
-                            {/* Selector de método */}
-                            <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
-                                <button type="button" onClick={() => setMetodoPago('tarjeta')}
-                                    style={{
-                                        flex: 1, padding: '12px', borderRadius: '8px',
-                                        fontWeight: '600', cursor: 'pointer',
-                                        border: metodoPago === 'tarjeta' ? '2px solid #4caf50' : '1px solid #555',
-                                        backgroundColor: metodoPago === 'tarjeta' ? 'rgba(76,175,80,0.1)' : 'transparent',
-                                        color: metodoPago === 'tarjeta' ? '#4caf50' : '#aaa',
-                                    }}>
-                                    💳 Tarjeta
+                            <div className="metodo-pago-selector">
+                                <button
+                                    type="button"
+                                    className={`metodo-pago-btn metodo-pago-btn--tarjeta ${metodoPago === 'tarjeta' ? 'activo' : ''}`}
+                                    onClick={() => setMetodoPago('tarjeta')}
+                                >
+                                    Tarjeta
                                 </button>
-                                <button type="button" onClick={() => setMetodoPago('mp')}
-                                    style={{
-                                        flex: 1, padding: '12px', borderRadius: '8px',
-                                        fontWeight: '600', cursor: 'pointer',
-                                        border: metodoPago === 'mp' ? '2px solid #009ee3' : '1px solid #555',
-                                        backgroundColor: metodoPago === 'mp' ? 'rgba(0,158,227,0.1)' : 'transparent',
-                                        color: metodoPago === 'mp' ? '#009ee3' : '#aaa',
-                                    }}>
-                                    💙 Mercado Pago
+                                <button
+                                    type="button"
+                                    className={`metodo-pago-btn metodo-pago-btn--mp ${metodoPago === 'mp' ? 'activo' : ''}`}
+                                    onClick={() => setMetodoPago('mp')}
+                                >
+                                    Mercado Pago
                                 </button>
                             </div>
 
-                            {/* Formulario tarjeta */}
                             {metodoPago === 'tarjeta' && (<>
                                 <div className="pago-field">
                                     <label className="pago-label">Número de tarjeta</label>
@@ -333,15 +319,15 @@ const ReservaMembresia = () => {
                                         onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
                                     />
                                 </div>
-                                <div style={{ display: 'flex', gap: '15px' }}>
-                                    <div className="pago-field" style={{ flex: 1 }}>
+                                <div className="pago-row-cvv">
+                                    <div className="pago-field">
                                         <label className="pago-label">CVV</label>
                                         <input className="pago-input" type="text" inputMode="numeric"
                                             style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
                                             value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
                                         />
                                     </div>
-                                    <div className="pago-field" style={{ flex: 1 }}>
+                                    <div className="pago-field">
                                         <label className="pago-label">Vencimiento</label>
                                         <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
                                             value={vencimiento}
@@ -357,13 +343,12 @@ const ReservaMembresia = () => {
                                 <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
                                     {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${montoFinal.toFixed(2)}`}
                                 </button>
-                                <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                                <p className="pago-seguro-txt">Pago simulado — tus datos no se almacenan</p>
                             </>)}
 
-                            {/* Mercado Pago */}
                             {metodoPago === 'mp' && (
-                                <div style={{ marginTop: '8px' }}>
-                                    <p style={{ color: '#aaa', marginBottom: '16px', fontSize: '14px' }}>
+                                <div className="mp-bloque">
+                                    <p className="mp-descripcion">
                                         Serás redirigido al sitio de Mercado Pago para completar el pago de forma segura.
                                     </p>
                                     {mensaje && <p className="pago-error-msg">{mensaje}</p>}
@@ -377,15 +362,12 @@ const ReservaMembresia = () => {
                                         }}
                                         onError={setMensaje}
                                     />
-                                    <p className="pago-seguro-txt" style={{ marginTop: '12px' }}>
-                                        🔒 Ambiente de pruebas (sandbox)
-                                    </p>
+                                    <p className="pago-seguro-txt">Ambiente de pruebas (sandbox)</p>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* PASO: éxito reserva con pago o crédito */}
                     {paso === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">✓</div>
@@ -397,10 +379,9 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: éxito lista de espera */}
                     {paso === 'exito_espera' && (
                         <div className="pago-resultado pago-resultado--ok">
-                            <div className="pago-resultado-icon">🕐</div>
+                            <div className="pago-resultado-icon"></div>
                             <h3>¡Estás en lista de espera!</h3>
                             <p>
                                 Te avisaremos si se libera un cupo para las fechas solicitadas.
@@ -412,7 +393,6 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: error */}
                     {paso === 'error' && (
                         <div className="pago-resultado pago-resultado--error">
                             <div className="pago-resultado-icon pago-resultado-icon--error">✕</div>
