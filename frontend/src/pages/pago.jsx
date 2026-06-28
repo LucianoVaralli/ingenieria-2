@@ -68,7 +68,7 @@ const Pago = () => {
         setMensaje('');
 
         try {
-            const res = await api.post('/reservas/membresia/confirmar-pago', {
+            const res = await api.post('/reservas/membresia/pagar', {
                 clase_id:            claseId,
                 fechas_con_cupo:     fechasConCupo,
                 fechas_sin_cupo:     fechasSinCupo,
@@ -76,7 +76,7 @@ const Pago = () => {
                 pago_exitoso:        true,
                 monto_total:         monto,
                 numero_tarjeta:      nroTarjeta,
-                titular:      titular,  // 👈 Enviamos el nombre
+                titular:      titular,  
                 cvv:                 cvv,
                 fecha_vencimiento: vencimiento,
             });
@@ -147,10 +147,6 @@ const Pago = () => {
                             <span>${Number(monto || 0).toFixed(2)}</span>
                         </div>
 
-                        <div className="pago-resumen-total">
-                            <span>Total</span>
-                            <span>${Number(monto || 0).toFixed(2)}</span>
-                        </div>
                     </div>
 
                     {/* Card visual de tarjeta */}

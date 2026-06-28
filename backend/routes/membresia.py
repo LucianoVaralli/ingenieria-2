@@ -10,6 +10,7 @@ from models.clase import Clase
 from models.enums import TipoReserva
 from services.auth import oauth2_scheme, obtener_usuario_actual
 from pydantic import BaseModel
+from schemas.membresia import RenovarMembresiaRequest
 
 router = APIRouter(
     prefix="/membresia",
@@ -41,17 +42,14 @@ def _mes_siguiente(anio: int, mes: int) -> tuple[int, int]:
 
 
 def _actualizar_membresia_activa_hasta(socio_id: int, db: Session):
-    """
-    Recalcula membresia_activa_hasta como la última fecha de reserva
-    de membresía confirmada del socio. Se llama después de cada pago/cancelación.
-    """
     ultima = (
         db.query(Reserva)
         .filter(
-            Reserva.socio_id      == socio_id,
+            Reserva.socio_id      == socio_id,      # ← socio_id, no socio.id
             Reserva.tipo          == TipoReserva.Membresia.value,
             Reserva.estado        == "confirmada",
             Reserva.es_recurrente == True,
+            # No filtra por clase_id — busca la última de CUALQUIER clase
         )
         .order_by(Reserva.fecha_clase.desc())
         .first()
@@ -59,18 +57,13 @@ def _actualizar_membresia_activa_hasta(socio_id: int, db: Session):
 
     socio = db.query(Socio).filter(Socio.id == socio_id).first()
     if ultima:
-        socio.membresia_activa_hasta = datetime.strptime(
-            ultima.fecha_clase, "%Y-%m-%d"
-        ).date()
+        ultima_fecha = datetime.strptime(ultima.fecha_clase, "%Y-%m-%d").date()
+        anio_sig, mes_sig = _mes_siguiente(ultima_fecha.year, ultima_fecha.month)
+        socio.membresia_activa_hasta = date(anio_sig, mes_sig, 1)
         socio.cuota_al_dia = True
     else:
         socio.membresia_activa_hasta = None
         socio.cuota_al_dia = False
-
-
-# ── Schema ──
-class RenovarMembresiaRequest(BaseModel):
-    clase_ids: list[int]
 
 
 # ─────────────────────────────────────────────
@@ -106,9 +99,16 @@ def activar_membresia(
 
 # ─────────────────────────────────────────────
 # RENOVABLES
-# Lógica corregida: el botón solo aparece cuando hoy >= día 1 del mes
-# siguiente al último mes reservado, Y el socio no tiene ya reservas
-# confirmadas en ese mes destino.
+#
+# Regla de anticipación:
+#   - Se busca la última reserva (confirmada O pendiente_pago) para determinar
+#     hasta qué mes llegó el socio.
+#   - El mes destino es siempre el mes siguiente a esa última reserva.
+#   - Si ese mes destino ya tiene reservas CONFIRMADAS → ya pagó, no mostrar.
+#   - Si tiene pendiente_pago → todavía no pagó ese mes, mostrar botón para pagar.
+#   - Límite natural de 1 mes adelanto: el pendiente_pago del mes siguiente
+#     se crea automáticamente al confirmar el pago del mes actual. No se puede
+#     pagar 2 meses adelante porque el pendiente_pago de ese mes aún no existe.
 # ─────────────────────────────────────────────
 
 @router.get("/renovables")
@@ -119,11 +119,11 @@ def obtener_membresias_renovables(
     socio = obtener_usuario_actual(token=token, db=db)
     hoy   = date.today()
 
-    # Traer todas las reservas de membresía confirmadas
+    # Traer todas las reservas de membresía confirmadas o pendiente_pago
     reservas = db.query(Reserva).filter(
         Reserva.socio_id      == socio.id,
         Reserva.tipo          == TipoReserva.Membresia.value,
-        Reserva.estado        == "confirmada",
+        Reserva.estado.in_(["confirmada", "pendiente_pago"]),
         Reserva.es_recurrente == True,
     ).all()
 
@@ -139,14 +139,18 @@ def obtener_membresias_renovables(
         if not clase:
             continue
 
-        # Última fecha reservada confirmada para esta clase
+        # última fecha considerando confirmada Y pendiente_pago
+        # Así si pagó julio anticipado (confirmada) y tiene agosto en pendiente_pago,
+        # la "ultima" apunta a agosto → propone renovar septiembre... pero agosto
+        # aún no existe como pendiente_pago de septiembre, así que no aparece.
+        # Si tiene junio confirmada y julio pendiente_pago → propone julio → lo muestra.
         ultima = (
             db.query(Reserva)
             .filter(
                 Reserva.socio_id      == socio.id,
                 Reserva.clase_id      == r.clase_id,
                 Reserva.tipo          == TipoReserva.Membresia.value,
-                Reserva.estado        == "confirmada",
+                Reserva.estado        == "confirmada",   
                 Reserva.es_recurrente == True,
             )
             .order_by(Reserva.fecha_clase.desc())
@@ -166,8 +170,8 @@ def obtener_membresias_renovables(
 
         fechas_mes_sig = _calcular_fechas_mes(anio_sig, mes_sig, weekday)
 
-        # ── Solo ocultar si ya tiene confirmada en el mes destino (ya pagó) ──
-        # pendiente_pago NO oculta el botón — el socio todavía tiene que pagar
+        # Solo ocultar si el mes destino ya tiene reservas CONFIRMADAS (ya pagó).
+        # pendiente_pago en el mes destino → todavía no pagó, mostrar botón.
         ya_confirmado = db.query(Reserva).filter(
             Reserva.socio_id      == socio.id,
             Reserva.clase_id      == r.clase_id,
@@ -178,6 +182,20 @@ def obtener_membresias_renovables(
         ).first()
 
         if ya_confirmado:
+            continue
+
+        # Verificar que exista al menos un pendiente_pago en el mes destino
+        # (límite natural: solo se puede pagar el mes que ya tiene cupo pre-reservado)
+        tiene_pendiente = db.query(Reserva).filter(
+            Reserva.socio_id      == socio.id,
+            Reserva.clase_id      == r.clase_id,
+            Reserva.tipo          == TipoReserva.Membresia.value,
+            Reserva.estado        == "pendiente_pago",
+            Reserva.es_recurrente == True,
+            Reserva.fecha_clase.in_(fechas_mes_sig),
+        ).first()
+
+        if not tiene_pendiente:
             continue
 
         resultado.append({
@@ -217,14 +235,15 @@ def cotizar_renovacion(
         if not clase:
             raise HTTPException(status_code=404, detail=f"Clase {clase_id} no encontrada")
 
-        # Buscar la última reserva confirmada para determinar el mes a renovar
+        # FIX: buscar última reserva considerando confirmada Y pendiente_pago
+        # para determinar correctamente el mes a renovar.
         ultima = (
             db.query(Reserva)
             .filter(
                 Reserva.socio_id      == socio.id,
                 Reserva.clase_id      == clase_id,
                 Reserva.tipo          == TipoReserva.Membresia.value,
-                Reserva.estado        == "confirmada",
+                Reserva.estado        == "confirmada",   # ← solo confirmada
                 Reserva.es_recurrente == True,
             )
             .order_by(Reserva.fecha_clase.desc())
@@ -245,23 +264,40 @@ def cotizar_renovacion(
         if weekday == -1:
             raise HTTPException(status_code=400, detail=f"Dia invalido para la clase {clase.actividad}")
 
-        # Verificar que no tenga ya reservas para el mes destino
         fechas_mes = _calcular_fechas_mes(anio_sig, mes_sig, weekday)
-        ya_renovado = db.query(Reserva).filter(
+
+        # FIX: solo bloquear si el mes destino ya está CONFIRMADO (ya pagó).
+        # Si está en pendiente_pago → es el mes a pagar, continuar normalmente.
+        ya_confirmado = db.query(Reserva).filter(
             Reserva.socio_id      == socio.id,
             Reserva.clase_id      == clase_id,
             Reserva.tipo          == TipoReserva.Membresia.value,
-            Reserva.estado.in_(["confirmada", "pendiente_pago"]),
+            Reserva.estado        == "confirmada",
             Reserva.es_recurrente == True,
             Reserva.fecha_clase.in_(fechas_mes),
         ).first()
-        if ya_renovado:
+
+        if ya_confirmado:
             raise HTTPException(
                 status_code=400,
-                detail=f"Ya tenés el cupo reservado para {mes_sig:02d}/{anio_sig}. Podrás pagarlo a partir del 1/{mes_sig:02d}/{anio_sig}."
+                detail=f"Ya tenés la membresía confirmada para {mes_sig:02d}/{anio_sig}."
             )
 
-        fechas_mes = _calcular_fechas_mes(anio_sig, mes_sig, weekday)
+        # Verificar que exista pendiente_pago en el mes destino (límite de 1 mes)
+        tiene_pendiente = db.query(Reserva).filter(
+            Reserva.socio_id      == socio.id,
+            Reserva.clase_id      == clase_id,
+            Reserva.tipo          == TipoReserva.Membresia.value,
+            Reserva.estado        == "pendiente_pago",
+            Reserva.es_recurrente == True,
+            Reserva.fecha_clase.in_(fechas_mes),
+        ).first()
+
+        if not tiene_pendiente:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No hay cupo pre-reservado para {mes_sig:02d}/{anio_sig}. Solo podés pagar 1 mes de anticipación."
+            )
 
         if not fechas_mes:
             raise HTTPException(
@@ -329,6 +365,6 @@ def procesar_vencimientos(db: Session = Depends(get_db)):
     db.commit()
 
     return {
-        "reservas_vencidas":   len(reservas_confirmadas),
+        "reservas_vencidas":     len(reservas_confirmadas),
         "pendientes_canceladas": len(reservas_pendientes),
     }

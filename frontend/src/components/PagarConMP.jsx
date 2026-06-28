@@ -1,16 +1,6 @@
 import { useState } from 'react'
 import api from '../api/api.js'
 
-/**
- * Botón que crea la preferencia en el backend y redirige al checkout de MP.
- *
- * Props:
- *   tipo     → 'individual' | 'membresia'
- *   payload  → objeto con los datos según el tipo:
- *              individual: { reserva_id }
- *              membresia:  { clase_id, fechas_con_cupo, monto_total, creditos_a_usar }
- *   onError  → función(mensaje) llamada si algo falla antes de redirigir
- */
 export default function PagarConMP({ tipo, payload, onError }) {
     const [cargando, setCargando] = useState(false)
 

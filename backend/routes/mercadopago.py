@@ -12,6 +12,7 @@ from services.mercadopago_service import (
     procesar_pago_aprobado,
 )
 
+from models.enums import TipoReserva
 from fastapi.responses import RedirectResponse
 from typing import Optional
 
@@ -105,19 +106,29 @@ async def webhook_mp(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/resultado-redirect")
 def resultado_redirect(
-    status:      str,
-    tipo:        str,
-    payment_id:  Optional[str] = None,
-    clase_id:    Optional[int] = None,
-    reserva_id:  Optional[int] = None,
-    db:          Session = Depends(get_db),
+    status:     str,
+    tipo:       str,
+    payment_id: Optional[str] = None,
+    clase_id:   Optional[int] = None,
+    reserva_id: Optional[int] = None,
+    db:         Session = Depends(get_db),
 ):
-    # Si el pago fue aprobado, procesamos la reserva acá directamente
     if status == "approved" and payment_id:
         try:
             procesar_pago_aprobado(payment_id, db)
         except Exception as e:
-            print(f"Error procesando pago en redirect: {e}")
+            print(f"Error procesando pago: {e}")
+
+    # ── Si el usuario volvió sin pagar, cancelamos la reserva ──
+    elif status in ("failure", "pending") and reserva_id:
+        reserva = db.query(Reserva).filter(
+            Reserva.id     == reserva_id,
+            Reserva.estado == "pendiente_pago",
+            Reserva.tipo   == TipoReserva.Individual.value,
+        ).first()
+        if reserva:
+            reserva.estado = "cancelada"
+            db.commit()
 
     url = f"http://localhost:5173/pago/resultado?status={status}&tipo={tipo}"
     if clase_id:
