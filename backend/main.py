@@ -32,10 +32,7 @@ from routes.membresia import router as membresia_router
 
 from fastapi.staticfiles import StaticFiles
 
-from models.membresia import Membresia
-
 from routes.mercadopago import router as mp_router
-from models.cuenta_simulada import CuentaSimulada
 
 # Crear las tablas en la base de datos
 Base.metadata.create_all(bind=engine)
