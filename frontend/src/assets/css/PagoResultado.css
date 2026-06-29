@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+.pago-resultado-page {
+    min-height: 100vh;
+    background: linear-gradient(180deg, rgba(0,0,0,1) 40%, rgba(92,184,77,0.15) 100%);
+    font-family: 'Lora', serif;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+}
+
+.pago-resultado-card {
+    background: #0c0c0c;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px;
+    padding: 48px 40px;
+    max-width: 420px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.pago-resultado-card--ok {
+    border-color: rgba(92,184,77,0.2);
+}
+
+.pago-resultado-card--error {
+    border-color: rgba(255,80,80,0.2);
+}
+
+.pago-resultado-card--pending {
+    border-color: rgba(255,152,0,0.2);
+}
+
+/* ── ICONO ── */
+.pago-resultado-icono {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.pago-resultado-icono--ok {
+    background: rgba(92,184,77,0.1);
+    border: 1px solid rgba(92,184,77,0.3);
+    color: #5CB84D;
+}
+
+.pago-resultado-icono--error {
+    background: rgba(255,80,80,0.08);
+    border: 1px solid rgba(255,80,80,0.25);
+    color: #ff5555;
+}
+
+.pago-resultado-icono--pending {
+    background: rgba(255,152,0,0.08);
+    border: 1px solid rgba(255,152,0,0.25);
+    color: #ff9800;
+}
+
+/* ── TEXTOS ── */
+.pago-resultado-titulo {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.pago-resultado-msg {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    line-height: 1.6;
+    margin: 0;
+    max-width: 300px;
+}
+
+/* ── BOTONES ── */
+.pago-resultado-botones {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.pago-resultado-btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: #5CB84D;
+    color: #000;
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.pago-resultado-btn-primary:hover {
+    background: #6dd15d;
+    transform: translateY(-1px);
+}
+
+.pago-resultado-btn-mp {
+    width: 100%;
+    padding: 14px;
+    background: #009ee3;
+    color: #fff;
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.pago-resultado-btn-mp:hover {
+    background: #0080c0;
+    transform: translateY(-1px);
+}
+
+.pago-resultado-btn-ghost {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    color: rgba(255,255,255,0.35);
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pago-resultado-btn-ghost:hover {
+    border-color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.6);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+    .pago-resultado-card {
+        padding: 36px 24px;
+    }
+}

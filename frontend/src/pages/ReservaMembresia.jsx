@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
+import PagarConMP from '../components/PagarConMP';
 
 const formatearHora = (hora) => hora?.slice(0, 5);
 
@@ -16,6 +17,8 @@ const ReservaMembresia = () => {
     const [cargando, setCargando]         = useState(false);
     const [datosReserva, setDatosReserva] = useState(null);
     const [creditos, setCreditos]         = useState(0);
+
+    const [metodoPago, setMetodoPago] = useState('tarjeta'); // 'tarjeta' | 'mp'
 
     const [nroTarjeta, setNroTarjeta]   = useState('');
     const [titular, setTitular]         = useState('');
@@ -41,7 +44,6 @@ const ReservaMembresia = () => {
                 setCreditos(creditosActuales);
                 setDatosReserva(cotizarRes.data);
 
-                // Nuevo flujo: lista de espera va primero y NO continúa al pago
                 if (cotizarRes.data.hay_lista_espera) {
                     setPaso('lista_espera');
                 } else if (creditosActuales > 0) {
@@ -80,7 +82,6 @@ const ReservaMembresia = () => {
         yoga: '🧘', pilates: '🤸', funcional: '⚡'
     }[clase.actividad?.toLowerCase()] || '🏋️';
 
-    // NUEVO: lista de espera sin pago — solo agrega y termina
     const handleAceptarEspera = async () => {
         setCargando(true);
         setMensaje('');
@@ -215,7 +216,6 @@ const ReservaMembresia = () => {
                                 <span>-${Number(datosReserva.descuento_creditos || 0).toFixed(2)}</span>
                             </div>
                         )}
-                        {/* Solo mostramos total si no estamos en flujo de espera */}
                         {paso !== 'lista_espera' && paso !== 'exito_espera' && (
                             <div className="reserva-desglose-total">
                                 <span>Total</span>
@@ -229,12 +229,11 @@ const ReservaMembresia = () => {
                 <div className="reserva-accion-col">
 
                     {paso === 'cargando' && (
-                        <div className="reserva-accion-card" style={{ textAlign: 'center' }}>
+                        <div className="reserva-accion-card reserva-accion-card--cargando">
                             <span className="reserva-spinner" />
                         </div>
                     )}
 
-                    {/* PASO: lista de espera — sin pago */}
                     {paso === 'lista_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
@@ -242,7 +241,7 @@ const ReservaMembresia = () => {
                             <p className="reserva-accion-desc">
                                 Las siguientes fechas no tienen lugares disponibles. Si aceptás, te anotamos en lista de espera sin cargo — te avisaremos si se libera un cupo.
                             </p>
-                            <div className="reserva-fechas-lista" style={{ margin: '12px 0' }}>
+                            <div className="reserva-fechas-lista reserva-fechas-lista--margen">
                                 {datosReserva?.fechas_sin_cupo?.map((f, i) => (
                                     <span key={i} className="reserva-fecha-chip reserva-fecha-chip--vacio">
                                         {new Date(f + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
@@ -260,7 +259,6 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: créditos disponibles */}
                     {paso === 'creditos' && (
                         <div className="reserva-accion-card">
                             <div className="pago-credito-icon">🎟️</div>
@@ -280,58 +278,96 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: pago con tarjeta */}
                     {paso === 'pago' && (
                         <div className="pago-form-card">
-                            <h2 className="pago-form-titulo">Datos de pago</h2>
-                            <div className="pago-field">
-                                <label className="pago-label">Número de tarjeta</label>
-                                <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
-                                    placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
-                                    onChange={(e) => {
-                                        const n = e.target.value.replace(/\D/g, '');
-                                        const parts = [];
-                                        for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
-                                        setNroTarjeta(parts.join(' '));
-                                    }}
-                                />
+                            <h2 className="pago-form-titulo">Elegí cómo pagar</h2>
+
+                            <div className="metodo-pago-selector">
+                                <button
+                                    type="button"
+                                    className={`metodo-pago-btn metodo-pago-btn--tarjeta ${metodoPago === 'tarjeta' ? 'activo' : ''}`}
+                                    onClick={() => setMetodoPago('tarjeta')}
+                                >
+                                    Tarjeta
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`metodo-pago-btn metodo-pago-btn--mp ${metodoPago === 'mp' ? 'activo' : ''}`}
+                                    onClick={() => setMetodoPago('mp')}
+                                >
+                                    Mercado Pago
+                                </button>
                             </div>
-                            <div className="pago-field">
-                                <label className="pago-label">Nombre del titular</label>
-                                <input className="pago-input pago-input--wide" type="text"
-                                    placeholder="Tal como aparece en la tarjeta" value={titular}
-                                    onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: '15px' }}>
-                                <div className="pago-field" style={{ flex: 1 }}>
-                                    <label className="pago-label">CVV</label>
-                                    <input className="pago-input" type="text" inputMode="numeric"
-                                        style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
-                                        value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                                    />
-                                </div>
-                                <div className="pago-field" style={{ flex: 1 }}>
-                                    <label className="pago-label">Vencimiento</label>
-                                    <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
-                                        value={vencimiento}
+
+                            {metodoPago === 'tarjeta' && (<>
+                                <div className="pago-field">
+                                    <label className="pago-label">Número de tarjeta</label>
+                                    <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
+                                        placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
                                         onChange={(e) => {
-                                            let v = e.target.value.replace(/\D/g, '');
-                                            if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
-                                            setVencimiento(v);
+                                            const n = e.target.value.replace(/\D/g, '');
+                                            const parts = [];
+                                            for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
+                                            setNroTarjeta(parts.join(' '));
                                         }}
                                     />
                                 </div>
-                            </div>
-                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
-                            <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
-                                {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${montoFinal.toFixed(2)}`}
-                            </button>
-                            <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                                <div className="pago-field">
+                                    <label className="pago-label">Nombre del titular</label>
+                                    <input className="pago-input pago-input--wide" type="text"
+                                        placeholder="Tal como aparece en la tarjeta" value={titular}
+                                        onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+                                    />
+                                </div>
+                                <div className="pago-row-cvv">
+                                    <div className="pago-field">
+                                        <label className="pago-label">CVV</label>
+                                        <input className="pago-input" type="text" inputMode="numeric"
+                                            style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
+                                            value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                                        />
+                                    </div>
+                                    <div className="pago-field">
+                                        <label className="pago-label">Vencimiento</label>
+                                        <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
+                                            value={vencimiento}
+                                            onChange={(e) => {
+                                                let v = e.target.value.replace(/\D/g, '');
+                                                if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                                setVencimiento(v);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                                <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
+                                    {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${montoFinal.toFixed(2)}`}
+                                </button>
+                                <p className="pago-seguro-txt">Pago simulado — tus datos no se almacenan</p>
+                            </>)}
+
+                            {metodoPago === 'mp' && (
+                                <div className="mp-bloque">
+                                    <p className="mp-descripcion">
+                                        Serás redirigido al sitio de Mercado Pago para completar el pago de forma segura.
+                                    </p>
+                                    {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                                    <PagarConMP
+                                        tipo="membresia"
+                                        payload={{
+                                            clase_id:        clase.id,
+                                            fechas_con_cupo: datosReserva.fechas_con_cupo || [],
+                                            monto_total:     montoFinal,
+                                            creditos_a_usar: datosReserva.creditos_a_usar || 0,
+                                        }}
+                                        onError={setMensaje}
+                                    />
+                                    <p className="pago-seguro-txt">Ambiente de pruebas (sandbox)</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* PASO: éxito reserva con pago o crédito */}
                     {paso === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">✓</div>
@@ -343,10 +379,9 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: éxito lista de espera */}
                     {paso === 'exito_espera' && (
                         <div className="pago-resultado pago-resultado--ok">
-                            <div className="pago-resultado-icon">🕐</div>
+                            <div className="pago-resultado-icon"></div>
                             <h3>¡Estás en lista de espera!</h3>
                             <p>
                                 Te avisaremos si se libera un cupo para las fechas solicitadas.
@@ -358,7 +393,6 @@ const ReservaMembresia = () => {
                         </div>
                     )}
 
-                    {/* PASO: error */}
                     {paso === 'error' && (
                         <div className="pago-resultado pago-resultado--error">
                             <div className="pago-resultado-icon pago-resultado-icon--error">✕</div>

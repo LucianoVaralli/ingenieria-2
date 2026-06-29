@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pathlib import Path
 
+
 BASE_DIR = Path(__file__).resolve().parent
 
 URL_DATABASE = f"sqlite:///{BASE_DIR / 'sportify.db'}"
