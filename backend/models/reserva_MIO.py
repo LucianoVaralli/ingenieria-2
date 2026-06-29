@@ -40,7 +40,7 @@ class Reserva(Base):
     tipo_cancelacion = Column(String, nullable=True)
     tipo_pago = Column(String, nullable=True)
     es_recurrente = Column(Boolean, default=False)
-
+    mp_preference_id = Column(String, nullable=True)
     # Relaciones para acceder fácil a los datos en la lógica del backend
     socio = relationship("Socio")
     clase = relationship("Clase")

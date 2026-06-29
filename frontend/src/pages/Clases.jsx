@@ -252,8 +252,7 @@ const Clases = ({ token }) => {
             const esSelec    = d === diaSelec;
             const fechaCelda = new Date(anio, mes, d);
             const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
-            const esPasado   = fechaCelda < hoy && !esHoyExacto;
-
+            const esPasado    = fechaCelda < hoy || esHoyExacto;
             const MAP_NUM_A_DB = {
                 0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles',
                 4: 'jueves',  5: 'viernes', 6: 'sabado'
@@ -284,7 +283,13 @@ const Clases = ({ token }) => {
                     key={d}
                     className={`cal-celda ${esHoy ? 'hoy' : ''} ${esSelec ? 'seleccionado' : ''} ${esPasado ? 'pasado' : ''} ${tieneClases && !esPasado ? 'con-clases' : ''}`}
                     onClick={() => {
-                        if (esPasado) { setMensajeError('Esta fecha ya pasó.'); return; }
+                        const fechaCelda  = new Date(anio, mes, d);
+                        const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
+                        const esPasado    = fechaCelda < hoy || esHoyExacto;
+                        if (esPasado) {
+                            setMensajeError(esHoyExacto ? 'No podés reservar para hoy.' : 'Esta fecha ya pasó.');
+                            return;
+                        }
                         setMensajeError('');
                         handleClickDia(d);
                     }}

@@ -105,7 +105,7 @@ const Perfil = ({ token, setToken }) => {
                     api.get('/socios/me'),
                     api.get('/reservas/mis-reservas'),
                 ]);
-
+                console.log("RESERVAS:", resReservas.data);
                 setUser(resUser.data);
                 setRol(resUser.data.rol);
                 setMembresiaActiva(resUser.data.membresia_activa);
@@ -122,7 +122,7 @@ const Perfil = ({ token, setToken }) => {
                 }
 
                 const activas = resReservas.data.filter(r =>
-                    (r.estado === 'confirmada' || r.estado === 'en_espera' || r.estado === 'notificado') &&
+                    (r.estado === 'confirmada' || r.estado === 'en_espera' || r.estado === 'notificado' || r.estado === 'pendiente_pago') &&
                     new Date(r.fecha_clase) >= hoy
                 );
 
@@ -167,29 +167,63 @@ const Perfil = ({ token, setToken }) => {
 
             setModalAbierto(false);
 
+            // Para renovación, las fechas ya existen como pendiente_pago en la BD.
+            // Vamos directo a /pago sin pasar por /reservar/membresia,
+            // así evitamos que ese endpoint descarte las fechas por ya estar reservadas.
+            // El endpoint /reservas/membresia/confirmar-pago se encarga de actualizar
+            // los pendiente_pago existentes a confirmada.
+
             if (res.data.length === 1) {
                 const item = res.data[0];
-                navigate('/reservar/membresia', {
+                const monto = item.clase.precio_individual * item.fechas_mes.length;
+
+                navigate('/pago', {
                     state: {
-                        clase:        item.clase,
-                        fechasDelMes: item.fechas_mes,
-                        esRenovacion: true,
-                        mesLabel:     item.mes_label,
+                        claseId:            item.clase.id,
+                        claseInfo:          item.clase,
+                        fechasConCupo:      item.fechas_mes,
+                        fechasSinCupo:      [],
+                        monto:              monto,
+                        creditosUsados:     0,
+                        esRenovacion:       true,
+                        esPrimeraMembresia: false,
+                        mesLabel:           item.mes_label,
                     }
                 });
                 return;
             }
 
+            // Múltiples clases: procesar la primera, guardar el resto
             const [primera, ...resto] = res.data;
             if (resto.length > 0) {
                 sessionStorage.setItem('renovaciones_pendientes', JSON.stringify(resto));
             }
-            navigate('/reservar/membresia', {
+
+            const monto = primera.clase.precio_individual * primera.fechas_mes.length;
+
+            // Armar resumen completo de todas las clases para mostrar en /pago
+            const todasLasClases = res.data.map(item => ({
+                actividad:   item.clase.actividad,
+                dia:         item.clase.dia,
+                horario:     item.clase.horario,
+                clases:      item.fechas_mes.length,
+                subtotal:    item.clase.precio_individual * item.fechas_mes.length,
+            }));
+            const montoTotal = todasLasClases.reduce((acc, c) => acc + c.subtotal, 0);
+
+            navigate('/pago', {
                 state: {
-                    clase:        primera.clase,
-                    fechasDelMes: primera.fechas_mes,
-                    esRenovacion: true,
-                    mesLabel:     primera.mes_label,
+                    claseId:            primera.clase.id,
+                    claseInfo:          primera.clase,
+                    fechasConCupo:      primera.fechas_mes,
+                    fechasSinCupo:      [],
+                    monto:              monto,
+                    creditosUsados:     0,
+                    esRenovacion:       true,
+                    esPrimeraMembresia: false,
+                    mesLabel:           primera.mes_label,
+                    todasLasClases,
+                    montoTotal,
                 }
             });
 
@@ -635,9 +669,13 @@ const Perfil = ({ token, setToken }) => {
                                                 <span className="modal-renovar-mes">
                                                     📅 Para {m.mes_renovacion}
                                                 </span>
-                                                {m.ultima_fecha_reservada && (
+                                                {m.mes_renovacion && (
                                                     <span className="modal-renovar-vence">
-                                                        ⚠️ Venció el {formatearFecha(m.ultima_fecha_reservada)}
+                                                        ⚠️ Venció en {(() => {
+                                                            const [mes, anio] = m.mes_renovacion.split('/').map(Number);
+                                                            const fechaMesAnterior = new Date(anio, mes - 2); // mes anterior al de renovación
+                                                            return fechaMesAnterior.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+                                                        })()}
                                                     </span>
                                                 )}
                                             </div>
