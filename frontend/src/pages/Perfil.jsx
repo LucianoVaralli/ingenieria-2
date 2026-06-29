@@ -389,7 +389,7 @@ const Perfil = ({ token, setToken }) => {
                 cvv: usaCreditoCupo ? '000' : cvv,
                 fecha_vencimiento: usaCreditoCupo ? '12/99' : vencimiento,
                 tipo_pago: tipoPagoCupo,
-                usa_credito: usaCreditoCupo
+                usa_credito: creditos > 0
             });
 
             // Cerrar modal
@@ -464,252 +464,240 @@ const Perfil = ({ token, setToken }) => {
                         <button className="modal-close" onClick={() => setMostrarPagoCupo(false)}>×</button>
 
                         <h2 className="modal-titulo">Confirmar Aceptación de Cupo</h2>
-                        <div className="reserva-layout"> </div> 
+                        <div className="reserva-layout"> 
 
-                        <div className="reserva-info-col">
+                            <div className="reserva-info-col">
 
-                            {/* RESUMEN - IGUAL A ReservaIndividual */}
-                            <div className="reserva-desglose">
-                                <div className="reserva-desglose-titulo">Detalle de la sesión</div>
-                                
-                                <div className="reserva-desglose-fila" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                                    <span style={{ fontWeight: '500' }}>Fecha elegida:</span>
-                                    <span style={{ textTransform: 'capitalize', color: '#555', marginTop: '2px' }}>
-                                        {new Date(reservaAPagar.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
-                                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-                                        })}
-                                    </span>
-                                </div>
-
-                                <div className="reserva-desglose-fila">
-                                    <span>Precio base</span>
-                                    <span>${Number(reservaAPagar.monto_100).toFixed(2)}</span>
-                                </div>
-
-                                {reservaAPagar.tipo === 'individual' && (
-                                    <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
-                                        <span>Concepto</span>
-                                        <span>{tipoPagoCupo === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
+                                {/* RESUMEN - IGUAL A ReservaIndividual */}
+                                <div className="reserva-desglose">
+                                    <div className="reserva-desglose-titulo">Detalle de la sesión</div>
+                                    
+                                    <div className="reserva-desglose-fila" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                                        <span style={{ fontWeight: '500' }}>Fecha elegida:</span>
+                                        <span style={{ textTransform: 'capitalize', color: '#555', marginTop: '2px' }}>
+                                            {new Date(reservaAPagar.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                                            })}
+                                        </span>
                                     </div>
-                                )}
 
-                                {reservaAPagar.tipo === 'membresia' && (
-                                    <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
-                                        <span>Concepto</span>
-                                        <span>Totalidad (100%)</span>
+                                    <div className="reserva-desglose-fila">
+                                        <span>Precio base</span>
+                                        <span>${Number(reservaAPagar.monto_100).toFixed(2)}</span>
                                     </div>
-                                )}
 
-                                {usaCreditoCupo && (
-                                    <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
-                                        <span>🎟️ Crédito aplicado</span>
-                                        <span>-${Number(
-                                            reservaAPagar.tipo === 'membresia' 
-                                                ? reservaAPagar.monto_100 
-                                                : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
+                                    {reservaAPagar.tipo === 'individual' && (
+                                        <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
+                                            <span>Concepto</span>
+                                            <span>{tipoPagoCupo === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
+                                        </div>
+                                    )}
+
+                                    {reservaAPagar.tipo === 'membresia' && (
+                                        <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
+                                            <span>Concepto</span>
+                                            <span>Totalidad (100%)</span>
+                                        </div>
+                                    )}
+
+                                    {creditos > 0 && (
+                                        <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
+                                            <span>🎟️ Crédito aplicado</span>
+                                            <span>-${Number(
+                                                reservaAPagar.tipo === 'membresia' 
+                                                    ? reservaAPagar.monto_100 
+                                                    : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
+                                            ).toFixed(2)}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="reserva-desglose-total">
+                                        <span>Total a abonar</span>
+                                        <span>${Number(
+                                            usaCreditoCupo ? 0 : (
+                                                reservaAPagar.tipo === 'membresia' 
+                                                    ? reservaAPagar.monto_100 
+                                                    : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
+                                            )
                                         ).toFixed(2)}</span>
                                     </div>
+                                </div>
+
+                                {/* TARJETA VISUAL */}
+                                {creditos === 0 && (
+                                    <div className="pago-card-visual" style={{ marginTop: '20px' }}>
+                                        <div className="pago-card-chip">▬</div>
+
+                                        <div className="pago-card-numero">
+                                            {nroTarjeta || '···· ···· ···· ····'}
+                                        </div>
+
+                                        <div className="pago-card-bottom">
+
+                                            <div>
+                                                <div className="pago-card-sublabel">
+                                                    Titular
+                                                </div>
+
+                                                <div
+                                                    className="pago-card-valor"
+                                                    style={{ textTransform: 'uppercase' }}
+                                                >
+                                                    {titular || 'NOMBRE APELLIDO'}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <div className="pago-card-sublabel">
+                                                    CVV
+                                                </div>
+
+                                                <div className="pago-card-valor">
+                                                    {cvv ? '•'.repeat(cvv.length) : '•••'}
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
                                 )}
 
-                                <div className="reserva-desglose-total">
-                                    <span>Total a abonar</span>
-                                    <span>${Number(
-                                        usaCreditoCupo ? 0 : (
-                                            reservaAPagar.tipo === 'membresia' 
-                                                ? reservaAPagar.monto_100 
-                                                : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
-                                        )
-                                    ).toFixed(2)}</span>
-                                </div>
                             </div>
 
-                            {/* TARJETA VISUAL */}
-                            {!usaCreditoCupo && (
-                                <div className="pago-card-visual" style={{ marginTop: '20px' }}>
-                                    <div className="pago-card-chip">▬</div>
-
-                                    <div className="pago-card-numero">
-                                        {nroTarjeta || '···· ···· ···· ····'}
-                                    </div>
-
-                                    <div className="pago-card-bottom">
-
-                                        <div>
-                                            <div className="pago-card-sublabel">
-                                                Titular
-                                            </div>
-
-                                            <div
-                                                className="pago-card-valor"
-                                                style={{ textTransform: 'uppercase' }}
-                                            >
-                                                {titular || 'NOMBRE APELLIDO'}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div className="pago-card-sublabel">
-                                                CVV
-                                            </div>
-
-                                            <div className="pago-card-valor">
-                                                {cvv ? '•'.repeat(cvv.length) : '•••'}
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            )}
-
-                        </div>
-
-                        <div className="reserva-accion-col"></div>
-                        {/* OPCIONES DE PAGO - SOLO SI ES INDIVIDUAL */}
-                        {reservaAPagar.tipo === 'individual' && (
-                            <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
-                                <button
-                                    type="button"
-                                    style={{
-                                        flex: 1,
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        border: tipoPagoCupo === 'sena' ? '2px solid #4caf50' : '1px solid #ccc',
-                                        backgroundColor: tipoPagoCupo === 'sena' ? 'rgba(76,175,80,0.1)' : 'transparent',
-                                        color: tipoPagoCupo === 'sena' ? '#4caf50' : '#aaa',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => setTipoPagoCupo('sena')}
-                                >
-                                    Abonar Seña (50%)
-                                </button>
-                                <button
-                                    type="button"
-                                    style={{
-                                        flex: 1,
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        border: tipoPagoCupo === 'total' ? '2px solid #4caf50' : '1px solid #ccc',
-                                        backgroundColor: tipoPagoCupo === 'total' ? 'rgba(76,175,80,0.1)' : 'transparent',
-                                        color: tipoPagoCupo === 'total' ? '#4caf50' : '#aaa',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => setTipoPagoCupo('total')}
-                                >
-                                    Abonar Total (100%)
-                                </button>
-                            </div>
-                        )}
-
-                        {/* OPCIÓN CRÉDITO */}
-                        {creditos > 0 && (
-                            <div style={{ backgroundColor: '#f5f5f5', padding: '12px', borderRadius: '6px', marginBottom: '15px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={usaCreditoCupo}
-                                        onChange={(e) => setUsaCreditoCupo(e.target.checked)}
-                                    />
-                                    <span>🎟️ Usar crédito ({creditos} disponible{creditos > 1 ? 's' : ''})</span>
-                                </label>
-                            </div>
-                        )}
-
-                        {/* FORMULARIO DE PAGO - IGUAL A ReservaIndividual */}
-                        {!usaCreditoCupo && (
-                            <div className="pago-form-card">
-                                <h2 className="pago-form-titulo">Datos de pago</h2>
-                                
-                                <div className="pago-field">
-                                    <label className="pago-label">Número de tarjeta</label>
-                                    <input 
-                                        className="pago-input pago-input--wide" 
-                                        type="text" 
-                                        inputMode="numeric"
-                                        placeholder="1111 2222 3333 4444" 
-                                        value={nroTarjeta} 
-                                        maxLength={19}
-                                        onChange={(e) => {
-                                            const n = e.target.value.replace(/\D/g, '');
-                                            const parts = [];
-                                            for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
-                                            setNroTarjeta(parts.join(' '));
-                                        }}
-                                    />
-                                </div>
-
-                                <div className="pago-field">
-                                    <label className="pago-label">Nombre del titular</label>
-                                    <input 
-                                        className="pago-input pago-input--wide" 
-                                        type="text"
-                                        placeholder="Tal como aparece en la tarjeta" 
-                                        value={titular}
-                                        onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '15px' }}>
-                                    <div className="pago-field" style={{ flex: 1 }}>
-                                        <label className="pago-label">CVV</label>
-                                        <input 
-                                            className="pago-input" 
-                                            type="text" 
-                                            inputMode="numeric"
-                                            style={{ WebkitTextSecurity: 'disc' }} 
-                                            placeholder="•••" 
-                                            maxLength={3}
-                                            value={cvv} 
-                                            onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                                        />
-                                    </div>
-                                    <div className="pago-field" style={{ flex: 1 }}>
-                                        <label className="pago-label">Vencimiento</label>
-                                        <input 
-                                            className="pago-input" 
-                                            type="text" 
-                                            placeholder="MM/AA" 
-                                            maxLength={5}
-                                            value={vencimiento}
-                                            onChange={(e) => {
-                                                let v = e.target.value.replace(/\D/g, '');
-                                                if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
-                                                setVencimiento(v);
+                            <div className="reserva-accion-col">
+                                {/* OPCIONES DE PAGO - SOLO SI ES INDIVIDUAL */}
+                                {reservaAPagar.tipo === 'individual' && (
+                                    <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
+                                        <button
+                                            type="button"
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: tipoPagoCupo === 'sena' ? '2px solid #4caf50' : '1px solid #ccc',
+                                                backgroundColor: tipoPagoCupo === 'sena' ? 'rgba(76,175,80,0.1)' : 'transparent',
+                                                color: tipoPagoCupo === 'sena' ? '#4caf50' : '#aaa',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
                                             }}
-                                        />
+                                            onClick={() => setTipoPagoCupo('sena')}
+                                        >
+                                            Abonar Seña (50%)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: tipoPagoCupo === 'total' ? '2px solid #4caf50' : '1px solid #ccc',
+                                                backgroundColor: tipoPagoCupo === 'total' ? 'rgba(76,175,80,0.1)' : 'transparent',
+                                                color: tipoPagoCupo === 'total' ? '#4caf50' : '#aaa',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onClick={() => setTipoPagoCupo('total')}
+                                        >
+                                            Abonar Total (100%)
+                                        </button>
                                     </div>
-                                </div>
+                                )}
 
-                                <button 
-                                    className="pago-btn-primary" 
-                                    onClick={procesarPagoCupo}
-                                    disabled={procesandoPago}
-                                >
-                                    {procesandoPago ? "Procesando..." :`Pagar $${Number(
-                                        reservaAPagar.tipo === 'membresia' 
-                                            ? reservaAPagar.monto_100 
-                                            : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
-                                    ).toFixed(2)}`}
-                                </button>
+                                {/* FORMULARIO DE PAGO - IGUAL A ReservaIndividual */}
+                                {creditos === 0 && (
+                                    <div className="pago-form-card">
+                                        <h2 className="pago-form-titulo">Datos de pago</h2>
+                                        
+                                        <div className="pago-field">
+                                            <label className="pago-label">Número de tarjeta</label>
+                                            <input 
+                                                className="pago-input pago-input--wide" 
+                                                type="text" 
+                                                inputMode="numeric"
+                                                placeholder="1111 2222 3333 4444" 
+                                                value={nroTarjeta} 
+                                                maxLength={19}
+                                                onChange={(e) => {
+                                                    const n = e.target.value.replace(/\D/g, '');
+                                                    const parts = [];
+                                                    for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
+                                                    setNroTarjeta(parts.join(' '));
+                                                }}
+                                            />
+                                        </div>
 
-                                <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                                        <div className="pago-field">
+                                            <label className="pago-label">Nombre del titular</label>
+                                            <input 
+                                                className="pago-input pago-input--wide" 
+                                                type="text"
+                                                placeholder="Tal como aparece en la tarjeta" 
+                                                value={titular}
+                                                onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+                                            />
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '15px' }}>
+                                            <div className="pago-field" style={{ flex: 1 }}>
+                                                <label className="pago-label">CVV</label>
+                                                <input 
+                                                    className="pago-input" 
+                                                    type="text" 
+                                                    inputMode="numeric"
+                                                    style={{ WebkitTextSecurity: 'disc' }} 
+                                                    placeholder="•••" 
+                                                    maxLength={3}
+                                                    value={cvv} 
+                                                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                                                />
+                                            </div>
+                                            <div className="pago-field" style={{ flex: 1 }}>
+                                                <label className="pago-label">Vencimiento</label>
+                                                <input 
+                                                    className="pago-input" 
+                                                    type="text" 
+                                                    placeholder="MM/AA" 
+                                                    maxLength={5}
+                                                    value={vencimiento}
+                                                    onChange={(e) => {
+                                                        let v = e.target.value.replace(/\D/g, '');
+                                                        if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                                        setVencimiento(v);
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            className="pago-btn-primary" 
+                                            onClick={procesarPagoCupo}
+                                            disabled={procesandoPago}
+                                        >
+                                            {procesandoPago ? "Procesando..." :`Pagar $${Number(
+                                                reservaAPagar.tipo === 'membresia' 
+                                                    ? reservaAPagar.monto_100 
+                                                    : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
+                                            ).toFixed(2)}`}
+                                        </button>
+
+                                        <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                                    </div>
+                                )}
+
+                                {/* BOTONES */}
+                                {creditos > 0 && (
+                                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                        <button className="boton-cancelar" onClick={() => setMostrarPagoCupo(false)}>
+                                            Cancelar
+                                        </button>
+                                        <button className="pago-btn-primary" onClick={procesarPagoCupo} disabled={procesandoPago}>
+                                            {procesandoPago ? "Procesando..." : "Confirmar con crédito"}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        )}
-
-                        {/* BOTONES */}
-                        {usaCreditoCupo && (
-                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                                <button className="boton-cancelar" onClick={() => setMostrarPagoCupo(false)}>
-                                    Cancelar
-                                </button>
-                                <button className="pago-btn-primary" onClick={procesarPagoCupo} disabled={procesandoPago}>
-                                    {procesandoPago ? "Procesando..." : "Confirmar con crédito"}
-                                </button>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             )}

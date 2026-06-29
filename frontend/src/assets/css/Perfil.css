@@ -1122,3 +1122,10 @@ body,
 }
 
 .modal-pago-cupo { width: 1200px; max-width: 95vw; max-height: 92vh; overflow-y: auto; }
+
+.modal-content.modal-pago-cupo{
+    width: 1300px;
+    max-width: 95vw;
+    max-height: 92vh;
+    overflow-y: auto;
+}
