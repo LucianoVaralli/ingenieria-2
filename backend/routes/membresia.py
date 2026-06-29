@@ -101,14 +101,14 @@ def activar_membresia(
 # RENOVABLES
 #
 # Regla de anticipación:
-#   - Se busca la última reserva (confirmada O pendiente_pago) para determinar
-#     hasta qué mes llegó el socio.
-#   - El mes destino es siempre el mes siguiente a esa última reserva.
+#   - Se busca la última reserva confirmada para determinar hasta qué mes llegó el socio.
+#   - El mes destino es siempre el mes siguiente a esa última reserva confirmada.
 #   - Si ese mes destino ya tiene reservas CONFIRMADAS → ya pagó, no mostrar.
 #   - Si tiene pendiente_pago → todavía no pagó ese mes, mostrar botón para pagar.
-#   - Límite natural de 1 mes adelanto: el pendiente_pago del mes siguiente
-#     se crea automáticamente al confirmar el pago del mes actual. No se puede
-#     pagar 2 meses adelante porque el pendiente_pago de ese mes aún no existe.
+#   - Límite EXPLÍCITO de 1 mes de anticipación respecto a hoy:
+#     Si el mes destino es posterior al mes siguiente al actual, se bloquea.
+#     Esto evita que al renovar anticipadamente se habilite el siguiente mes
+#     indefinidamente (ya que pagar crea pendiente_pago del mes subsiguiente).
 # ─────────────────────────────────────────────
 
 @router.get("/renovables")
@@ -169,6 +169,16 @@ def obtener_membresias_renovables(
             continue
 
         fechas_mes_sig = _calcular_fechas_mes(anio_sig, mes_sig, weekday)
+
+        # ── LÍMITE EXPLÍCITO: máximo 1 mes de anticipación desde hoy ──
+        # Aunque existan pendiente_pago para meses futuros (creados al pagar
+        # el mes anterior con anticipo), no se permite renovar más de 1 mes adelante.
+        anio_limite, mes_limite = _mes_siguiente(hoy.year, hoy.month)
+        mes_destino_inicio = date(anio_sig, mes_sig, 1)
+        mes_limite_inicio  = date(anio_limite, mes_limite, 1)
+
+        if mes_destino_inicio > mes_limite_inicio:
+            continue
 
         # Solo ocultar si el mes destino ya tiene reservas CONFIRMADAS (ya pagó).
         # pendiente_pago en el mes destino → todavía no pagó, mostrar botón.
@@ -235,8 +245,7 @@ def cotizar_renovacion(
         if not clase:
             raise HTTPException(status_code=404, detail=f"Clase {clase_id} no encontrada")
 
-        # FIX: buscar última reserva considerando confirmada Y pendiente_pago
-        # para determinar correctamente el mes a renovar.
+        # Buscar última reserva confirmada para determinar el mes a renovar.
         ultima = (
             db.query(Reserva)
             .filter(
@@ -266,7 +275,19 @@ def cotizar_renovacion(
 
         fechas_mes = _calcular_fechas_mes(anio_sig, mes_sig, weekday)
 
-        # FIX: solo bloquear si el mes destino ya está CONFIRMADO (ya pagó).
+        # ── LÍMITE EXPLÍCITO: máximo 1 mes de anticipación desde hoy ──
+        anio_limite, mes_limite = _mes_siguiente(hoy.year, hoy.month)
+        mes_destino_inicio = date(anio_sig, mes_sig, 1)
+        mes_limite_inicio  = date(anio_limite, mes_limite, 1)
+
+        if mes_destino_inicio > mes_limite_inicio:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Solo podés renovar hasta 1 mes de anticipación. "
+                       f"El mes {mes_sig:02d}/{anio_sig} todavía no está disponible para renovar."
+            )
+
+        # Solo bloquear si el mes destino ya está CONFIRMADO (ya pagó).
         # Si está en pendiente_pago → es el mes a pagar, continuar normalmente.
         ya_confirmado = db.query(Reserva).filter(
             Reserva.socio_id      == socio.id,

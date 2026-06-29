@@ -201,6 +201,16 @@ const Perfil = ({ token, setToken }) => {
 
             const monto = primera.clase.precio_individual * primera.fechas_mes.length;
 
+            // Armar resumen completo de todas las clases para mostrar en /pago
+            const todasLasClases = res.data.map(item => ({
+                actividad:   item.clase.actividad,
+                dia:         item.clase.dia,
+                horario:     item.clase.horario,
+                clases:      item.fechas_mes.length,
+                subtotal:    item.clase.precio_individual * item.fechas_mes.length,
+            }));
+            const montoTotal = todasLasClases.reduce((acc, c) => acc + c.subtotal, 0);
+
             navigate('/pago', {
                 state: {
                     claseId:            primera.clase.id,
@@ -212,6 +222,8 @@ const Perfil = ({ token, setToken }) => {
                     esRenovacion:       true,
                     esPrimeraMembresia: false,
                     mesLabel:           primera.mes_label,
+                    todasLasClases,
+                    montoTotal,
                 }
             });
 
@@ -657,9 +669,13 @@ const Perfil = ({ token, setToken }) => {
                                                 <span className="modal-renovar-mes">
                                                     📅 Para {m.mes_renovacion}
                                                 </span>
-                                                {m.ultima_fecha_reservada && (
+                                                {m.mes_renovacion && (
                                                     <span className="modal-renovar-vence">
-                                                        ⚠️ Venció el {formatearFecha(m.ultima_fecha_reservada)}
+                                                        ⚠️ Venció en {(() => {
+                                                            const [mes, anio] = m.mes_renovacion.split('/').map(Number);
+                                                            const fechaMesAnterior = new Date(anio, mes - 2); // mes anterior al de renovación
+                                                            return fechaMesAnterior.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+                                                        })()}
                                                     </span>
                                                 )}
                                             </div>
