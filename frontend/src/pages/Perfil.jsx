@@ -600,7 +600,7 @@ const Perfil = ({ token, setToken }) => {
                                 )}
 
                                 {/* OPCIONES DE PAGO - SOLO SI ES INDIVIDUAL */}
-                                {reservaAPagar.tipo === 'individual' && (
+                                {reservaAPagar.tipo === 'individual' && !usaCreditoCupo && (
                                     <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
                                         <button
                                             type="button"
