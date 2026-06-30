@@ -249,10 +249,7 @@ const ReservaIndividual = () => {
 
                 reservaId = resReserva.data.reserva_id;
             }
-
-            await api.post('/reservas/individual/pagar', {
-                reserva_id: reservaId,
-                numero_tarjeta: nroTarjeta.replace(/\s/g, ''),
+  
             const rid = reservaId || await handleCrearReserva();
 
             await api.post('/reservas/individual/pagar', {
