@@ -27,8 +27,10 @@ def login(
     token_real = crear_token_acceso(data={"sub": usuario.email, "rol": usuario.rol})
 
     return {
-        "access_token": token_real, 
-        "token_type": "bearer"
+        "access_token": token_real,
+        "token_type": "bearer",
+        "primer_login": usuario.primer_login,
+        "rol": usuario.rol
     }
     
 @router.post("/logout")
@@ -46,6 +48,13 @@ async def forgot_password(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="El correo electrónico no se encuentra registrado"
+        )
+    
+    # Validamos que el usuario no esté en su primer login, ya que debe usar la contraseña temporal para recuperar su contraseña
+    if usuario_existe.primer_login:
+        raise HTTPException(
+            status_code=400,
+            detail="Debes ingresar con la contraseña temporal antes de recuperar tu contraseña"
         )
 
     result = await send_recovery_code(

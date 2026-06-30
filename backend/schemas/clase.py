@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import date, time
 
 from pydantic import BaseModel, EmailStr
 from models.enums import DiaSemana, TipoActividad
@@ -22,6 +22,7 @@ class ClaseResponse(BaseModel):
     cupo: int
     precio_individual: float 
     duracion: int
+    alumnos_inscriptos: int = 0
     
     class Config:
         from_attributes = True
@@ -33,4 +34,20 @@ class CancelarClaseDia(BaseModel):
 class EliminarClase(BaseModel):
     motivo: str    
 
+class CambioProfesorTemporal(BaseModel):
+    profesor_id: int
+    fecha: date
+    motivo: str
 
+class CambioProfesorPermanente(BaseModel):
+    profesor_id: int
+    motivo: str
+
+class GenerarQRResponse(BaseModel):
+    clase_id: int
+    codigo_qr: str
+    mensaje: str
+
+class EscanearQRRequest(BaseModel):
+    codigo_qr: str
+    fecha_clase: str

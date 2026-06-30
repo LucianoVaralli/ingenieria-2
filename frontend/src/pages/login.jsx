@@ -32,6 +32,11 @@ const Login = ({ setToken }) => {
             localStorage.setItem("rol", res.data.rol);
             setToken(res.data.access_token);
 
+            if (res.data.primer_login) {
+                navigate('/cambiar-password-inicial');
+                return;
+            }
+
             const tokenRecibido = res.data.access_token;
             const decoded = jwtDecode(tokenRecibido);
 

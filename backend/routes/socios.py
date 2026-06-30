@@ -1,16 +1,22 @@
 import os
 import re
-import shutil  # Para guardar el archivo en el disco
+import shutil
+import token  # Para guardar el archivo en el disco
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Form, status
 from sqlalchemy.orm import Session
 from typing import Optional
 from dependencies.database import get_db
 from models.enums import Rol
 from models.socio import Socio
-from schemas.socio import SocioCreate, CambiarPasswordRequest
+from schemas.socio import ProfesorUpdate, ProfesorCreate, CambiarPasswordRequest, CambiarPasswordInicialRequest
 from services.auth import get_password_hash, oauth2_scheme, obtener_usuario_actual, verificar_password
+import secrets
 
 router = APIRouter(prefix="/socios", tags=["Socios"])
+
+from services.mail_service import (
+    enviar_mail_profesor,
+)
 
 
 @router.post("/registrar")
@@ -116,6 +122,10 @@ def obtener_mi_perfil(
         "telefono": usuario.telefono,
         "dni": usuario.dni,
         "creditos_disponibles": usuario.creditos_disponibles,
+
+        "membresia_activa":  bool(usuario.cuota_al_dia),
+        "membresia_vencimiento": usuario.membresia_activa_hasta
+        ,"primer_login": usuario.primer_login
     }
 
 
@@ -131,17 +141,8 @@ def obtener_profesores(db: Session = Depends(get_db)):
             "nombre": p.nombre,
             "apellido": p.apellido,
             "email": p.email,
-        }
-        for p in profesores
-    ]
-
-
-    return [
-        {
-            "id": p.id,
-            "nombre": p.nombre,
-            "apellido": p.apellido,
-            "email": p.email
+            "telefono": str(p.telefono),
+            "dni": str(p.dni),
         }
         for p in profesores
     ]
@@ -182,7 +183,247 @@ def cambiar_contrasena_perfil(
         )
         
     usuario.hashed_password = get_password_hash(datos.password_nueva)
+
+    if usuario.primer_login:
+        usuario.primer_login = False
+
     db.commit()
     db.refresh(usuario)
     
     return {"mensaje": "Contraseña actualizada con éxito"}
+
+@router.post("/crear_profesores")
+async def crear_profesor(
+    datos: ProfesorCreate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    usuario = obtener_usuario_actual(token, db)
+
+    if usuario.rol != Rol.Admin.value:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un administrador puede crear profesores"
+        )
+
+    errores = {}
+
+    if not datos.nombre.strip():
+        errores["nombre"] = "El nombre es obligatorio"
+
+    if not datos.apellido.strip():
+        errores["apellido"] = "El apellido es obligatorio"
+
+    if not datos.dni.isdigit() or len(datos.dni) not in [7, 8]:
+        errores["dni"] = "El DNI debe tener 7 u 8 dígitos"
+
+    if not datos.telefono.isdigit() or len(datos.telefono) != 10:
+        errores["telefono"] = "El teléfono debe tener 10 dígitos"
+
+    if db.query(Socio).filter(Socio.dni == datos.dni).first():
+        errores["dni"] = "Ya existe un usuario con ese DNI"
+    
+    if not datos.email.strip():
+        errores["email"] = "El correo electrónico es obligatorio."
+    
+    email_regex = r"^[^@]+@[^@]+\.[^@]+$"
+
+    if not re.match(email_regex, datos.email):
+        errores["email"] = "Ingresá un correo válido."
+
+    if db.query(Socio).filter(Socio.email == datos.email).first():
+        errores["email"] = "Ya existe un usuario con ese email"
+
+    if errores:
+        raise HTTPException(
+            status_code=400,
+            detail=errores
+        )
+
+    password_temporal = "Temp@" + secrets.token_hex(3)
+
+    nuevo_profesor = Socio(
+        nombre=datos.nombre,
+        apellido=datos.apellido,
+        dni=datos.dni,
+        email=datos.email,
+        telefono=datos.telefono,
+        hashed_password=get_password_hash(password_temporal),
+        rol=Rol.Profesor.value,
+        primer_login=True  # El profesor deberá cambiar esta contraseña temporal en su primer login
+    )
+
+    db.add(nuevo_profesor)
+    db.commit()
+    db.refresh(nuevo_profesor)
+
+    try:
+        await enviar_mail_profesor(
+            profesor=nuevo_profesor,
+            password_temporal=password_temporal
+        )
+    except Exception as e:
+        print(f"⚠️ Mail profesor no enviado: {e}")
+
+    return {
+        "mensaje": "Profesor creado correctamente",
+        "password_temporal": password_temporal,
+        "profesor_id": nuevo_profesor.id
+    }
+
+@router.post("/cambiar-password-inicial")
+def cambiar_password_inicial(
+    datos: CambiarPasswordInicialRequest,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    usuario = obtener_usuario_actual(token, db)
+
+    if not usuario.primer_login:
+        raise HTTPException(
+            status_code=400,
+            detail="El cambio inicial ya fue realizado"
+        )
+
+    usuario.hashed_password = get_password_hash(
+        datos.password_nueva
+    )
+
+    usuario.primer_login = False
+
+    db.commit()
+    db.refresh(usuario)
+
+    return {
+        "mensaje": "Contraseña actualizada correctamente"
+    }
+
+@router.put("/profesores/{profesor_id}")
+def editar_profesor(
+    profesor_id: int,
+    datos: ProfesorUpdate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    usuario = obtener_usuario_actual(token, db)
+
+    if usuario.rol != Rol.Admin.value:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un administrador puede editar profesores"
+        )
+    
+    profesor = (
+        db.query(Socio)
+        .filter(Socio.id == profesor_id, Socio.rol == Rol.Profesor.value)
+        .first()
+    )
+
+    if not profesor:
+        raise HTTPException(
+            status_code=404,
+            detail="Profesor no encontrado"
+        )    
+    
+    errores = {}
+
+    dni_existente = (
+        db.query(Socio)
+        .filter(
+            Socio.dni == datos.dni,
+            Socio.id != profesor_id,
+            Socio.rol == Rol.Profesor.value
+        )
+        .first()
+    )
+
+    if dni_existente:
+        errores["dni"] = "Ya existe un profesor con ese DNI"
+    
+    if not datos.dni.isdigit() or len(datos.dni) not in [7, 8]:
+        errores["dni"] = "El DNI debe tener 7 u 8 dígitos"
+    
+    email_regex = r"^[^@]+@[^@]+\.[^@]+$"
+
+    email_existente = (
+        db.query(Socio)
+        .filter(
+            Socio.email == datos.email,
+            Socio.id != profesor_id,
+            Socio.rol == Rol.Profesor.value
+        )
+        .first()
+    )
+
+    if email_existente:
+        errores["email"] = "Ya existe un profesor con ese email"
+    
+    if not re.match(email_regex, datos.email):
+        errores["email"] = "Ingresá un correo válido."
+    
+    if not datos.nombre.strip():
+        errores["nombre"] = "El nombre es obligatorio"
+
+    if not datos.apellido.strip():
+        errores["apellido"] = "El apellido es obligatorio"
+
+    if not datos.telefono.isdigit() or len(datos.telefono) != 10:
+        errores["telefono"] = "El teléfono debe tener 10 dígitos"
+
+    if errores:
+        raise HTTPException(
+            status_code=400,
+            detail=errores
+        )
+    
+    profesor.nombre = datos.nombre
+    profesor.apellido = datos.apellido
+    profesor.dni = datos.dni
+    profesor.email = datos.email
+    profesor.telefono = datos.telefono
+
+    db.commit()
+    db.refresh(profesor)
+
+    return {
+        "mensaje": "Profesor actualizado correctamente"
+    }    
+
+@router.delete("/profesores/{profesor_id}")
+async def eliminar_profesor(
+    profesor_id: int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    from models.clase import Clase
+
+    usuario = obtener_usuario_actual(token, db)
+
+    if usuario.rol != Rol.Admin.value:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un administrador puede eliminar profesores"
+        )
+    
+    clase = db.query(Clase).filter(
+        Clase.profesor_id == profesor_id
+    ).first()
+
+    if not clase:
+        db.query(Socio).filter(Socio.id == profesor_id).delete()
+        db.commit()
+        return {"mensaje": "Profesor eliminado correctamente"}
+
+    clases = db.query(Clase).filter(
+        Clase.profesor_id == profesor_id
+    ).all()
+
+    nombres_clases = [c.nombre for c in clases]
+
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "mensaje": "El profesor está asignado a clases",
+            "clases": nombres_clases
+        }
+    )

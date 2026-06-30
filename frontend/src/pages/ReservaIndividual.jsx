@@ -1,42 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
 import '../assets/css/Pago.css';
+import PagarConMP from '../components/PagarConMP';
 
 const formatearHora = (hora) => hora?.slice(0, 5);
 
 const formatearFecha = (fechaStr) => {
     const fecha = new Date(fechaStr + 'T00:00:00');
     return fecha.toLocaleDateString('es-AR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
 };
 
 const ReservaIndividual = () => {
     const location = useLocation();
+    const desdeListaEspera =
+        location.state?.desdeListaEspera || false;
+    const reservaIdExistente =
+        location.state?.reservaId || null;
     const navigate = useNavigate();
-
     const { clase, fechaSeleccionada } = location.state || {};
 
-    // pasos: confirmacion | lista_espera | tipo_pago | pago | exito | error
-    const [paso, setPaso]         = useState('confirmacion');
+    const montoListaEspera =
+        location.state?.monto || 0;
+
+    const tipoReservaListaEspera =
+        location.state?.tipoReserva || null;
+
+    console.log("STATE COMPLETO:", location.state);
+    console.log("DESDE LISTA:", location.state?.desdeListaEspera);
+    console.log("RESERVA ID:", location.state?.reservaId);
+    console.log("CLASE:", clase);
+    console.log("FECHA:", fechaSeleccionada);
+
+    // pasos: cargando | lista_espera | creditos | tipo_pago | pago | exito | exito_espera | error
+    const [paso, setPaso]         = useState('cargando');
     const [mensaje, setMensaje]   = useState('');
     const [cargando, setCargando] = useState(false);
 
-    const [tipoPago, setTipoPago]               = useState('sena');
-    const [reservaId, setReservaId]             = useState(null);
-    const [monto, setMonto]                     = useState(clase ? Number(clase.precio_individual) * 0.5 : 0);
-    const [debeListaEspera, setDebeListaEspera] = useState(false);
+    const [monto, setMonto] =
+        useState(
+            desdeListaEspera
+                ? montoListaEspera
+                : (clase ? Number(clase.precio_individual) * 0.5 : 0)
+        );
+
+    const [tipoPago, setTipoPago]                       = useState('sena');
+
+    const [creditosDisponibles, setCreditosDisponibles] = useState(0);
+    const [usaCredito, setUsaCredito]                   = useState(false);
+
+    const [metodoPago, setMetodoPago] = useState('tarjeta'); // 'tarjeta' | 'mp'
+    const [reservaId, setReservaId]   = useState(null);
 
     // Datos de tarjeta
     const [nroTarjeta, setNroTarjeta]   = useState('');
     const [titular, setTitular]         = useState('');
     const [cvv, setCvv]                 = useState('');
     const [vencimiento, setVencimiento] = useState('');
+
+    useEffect(() => {
+        const verificar = async () => {
+            setCargando(true);
+            try {
+                const res = await api.post('/reservas/individual/verificar-cupo', {
+                    clase_id:    clase.id,
+                    fecha_clase: fechaSeleccionada,
+                    tipo_pago:   'sena'
+                });
+
+                setCreditosDisponibles(res.data.creditos_disponibles || 0);
+
+                if (res.data.puede_usar_credito) {
+                    setUsaCredito(true);
+                    setMonto(0);
+                }
+
+                if (res.data.debe_lista_espera) {
+                    setPaso('lista_espera');
+                } else if (res.data.creditos_disponibles > 0) {
+                    setPaso('creditos');
+                } else {
+                    setPaso('tipo_pago');
+                }
+            } catch (err) {
+                setMensaje(err.response?.data?.detail || 'Error al verificar disponibilidad.');
+                setPaso('error');
+            } finally {
+                setCargando(false);
+            }
+        };
+
+        if (desdeListaEspera) {
+
+            setPaso('pago');
+
+        } else if (clase && fechaSeleccionada) {
+
+            verificar();
+
+        }
+    }, []);
 
     if (!clase || !fechaSeleccionada) {
         return (
@@ -53,122 +119,175 @@ const ReservaIndividual = () => {
     }[clase.actividad?.toLowerCase()] || '🏋️';
 
     const handleCambioModalidad = (tipo) => {
+
         setTipoPago(tipo);
-        setMonto(tipo === 'sena'
-            ? Number(clase.precio_individual) * 0.5
-            : Number(clase.precio_individual)
+
+        if (desdeListaEspera) {
+
+            // Si viene de lista de espera de membresía,
+            // siempre paga el 100%.
+            if (tipoReservaListaEspera === "Membresia") {
+
+                setMonto(montoListaEspera);
+                return;
+            }
+
+            // Si viene de lista de espera individual
+            setMonto(
+                tipo === "sena"
+                    ? montoListaEspera * 0.5
+                    : montoListaEspera
+            );
+
+            return;
+        }
+
+        // Reserva nueva normal
+
+        setMonto(
+            tipo === "sena"
+                ? Number(clase.precio_individual) * 0.5
+                : Number(clase.precio_individual)
         );
     };
 
-    // ─────────────────────────────────────────────
-    // PASO 1 → verificar cupo
-    // ─────────────────────────────────────────────
-    const handleVerificarCupo = async () => {
+    const handleAceptarEspera = async () => {
         setCargando(true);
         setMensaje('');
         try {
-            const res = await api.post('/reservas/individual/verificar-cupo', {
-                clase_id: clase.id,
+            await api.post('/reservas/individual/lista-espera', {
+                clase_id:    clase.id,
                 fecha_clase: fechaSeleccionada,
-                tipo_pago: tipoPago
             });
-
-            setDebeListaEspera(res.data.debe_lista_espera);
-
-            if (res.data.debe_lista_espera) {
-                setPaso('lista_espera');
-            } else {
-                setPaso('tipo_pago');
-            }
+            setPaso('exito_espera');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'Error al verificar la disponibilidad.');
+            setMensaje(err.response?.data?.detail || 'Error al agregar a lista de espera.');
             setPaso('error');
         } finally {
             setCargando(false);
         }
     };
 
-    // ─────────────────────────────────────────────
-    // PASO 2 → crear reserva (solo clase_id, fecha, tipo_pago)
-    // ─────────────────────────────────────────────
+    const handleContinuarDesdeCreditos = () => {
+        if (usaCredito) {
+            handlePagarConCredito();
+        } else {
+            setPaso('tipo_pago');
+        }
+    };
+
+    const handlePagarConCredito = async () => {
+        setCargando(true);
+        setMensaje('');
+        try {
+            const resReserva = await api.post('/reservas/individual/crear', {
+                clase_id:    clase.id,
+                fecha_clase: fechaSeleccionada,
+                tipo_pago:   tipoPago
+            });
+
+            await api.post('/reservas/individual/pagar', {
+                reserva_id:          resReserva.data.reserva_id,
+                numero_tarjeta:      '0000000000000000',
+                titular:             'credito',
+                cvv:                 '000',
+                fecha_vencimiento:   '12/99',
+                acepta_lista_espera: false,
+                usa_credito:         true
+            });
+
+            setPaso('exito');
+        } catch (err) {
+            setMensaje(err.response?.data?.detail || 'No se pudo confirmar con créditos.');
+            setPaso('error');
+        } finally {
+            setCargando(false);
+        }
+    };
+
     const handleCrearReserva = async () => {
-        setCargando(true);
-        setMensaje('');
-        try {
-            const res = await api.post('/reservas/individual/crear', {
-                clase_id: clase.id,
-                fecha_clase: fechaSeleccionada,
-                tipo_pago: tipoPago
-            });
-
-            setReservaId(res.data.reserva_id);
-            setMonto(res.data.monto_a_pagar);
-            setPaso('pago');
-        } catch (err) {
-            setMensaje(err.response?.data?.detail || 'Error al crear la reserva.');
-            setPaso('error');
-        } finally {
-            setCargando(false);
-        }
+        const res = await api.post('/reservas/individual/crear', {
+            clase_id:    clase.id,
+            fecha_clase: fechaSeleccionada,
+            tipo_pago:   tipoPago
+        });
+        setReservaId(res.data.reserva_id);
+        return res.data.reserva_id;
     };
 
-    // ─────────────────────────────────────────────
-    // PASO 3 → pagar
-    // ─────────────────────────────────────────────
     const handlePagar = async () => {
+
         if (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim()) {
+
             setMensaje('Por favor, completá todos los datos de la tarjeta.');
             return;
         }
 
         setCargando(true);
         setMensaje('');
+
         try {
+
+            let reservaId;
+
+            if (desdeListaEspera) {
+
+                reservaId = reservaIdExistente;
+
+            } else {
+
+                const resReserva = await api.post(
+                    '/reservas/individual/crear',
+                    {
+                        clase_id: clase.id,
+                        fecha_clase: fechaSeleccionada,
+                        tipo_pago: tipoPago
+                    }
+                );
+
+                reservaId = resReserva.data.reserva_id;
+            }
+  
+            const rid = reservaId || await handleCrearReserva();
+
             await api.post('/reservas/individual/pagar', {
-                reserva_id:          reservaId,
-                numero_tarjeta:      nroTarjeta,
+                reserva_id:          rid,
+                numero_tarjeta:      nroTarjeta.replace(/\s/g, ''),
                 titular,
                 cvv,
-                fecha_vencimiento:   vencimiento,
-                acepta_lista_espera: debeListaEspera
+                fecha_vencimiento: vencimiento,
+                acepta_lista_espera: false,
+                usa_credito: false
             });
 
             setPaso('exito');
+
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'No se pudo procesar el pago.');
+
+            setMensaje(
+                err.response?.data?.detail ||
+                'No se pudo procesar la reserva.'
+            );
+
             setPaso('error');
+
         } finally {
+
             setCargando(false);
         }
     };
 
-    // ─────────────────────────────────────────────
-    // LISTA DE ESPERA: acepta sin pago
-    // ─────────────────────────────────────────────
-    const handleAceptarEspera = async () => {
-        setCargando(true);
-        setMensaje('');
-        try {
-            const res = await api.post('/reservas/individual/crear', {
-                clase_id: clase.id,
-                fecha_clase: fechaSeleccionada,
-                tipo_pago: tipoPago
-            });
-            setReservaId(res.data.reserva_id);
-            setMonto(res.data.monto_a_pagar);
-            setPaso('pago'); // igual paga, pero con acepta_lista_espera=true
-        } catch (err) {
-            setMensaje(err.response?.data?.detail || 'Error al unirse a la lista de espera.');
-            setPaso('error');
-        } finally {
-            setCargando(false);
-        }
+    const handleVolver = () => {
+        if (paso === 'creditos')  return setPaso('lista_espera');
+        if (paso === 'tipo_pago') return setPaso(creditosDisponibles > 0 ? 'creditos' : 'lista_espera');
+        if (paso === 'pago')      return setPaso('tipo_pago');
+        navigate(-1);
     };
 
     return (
         <div className="reserva-page">
             <div className="reserva-page-header">
-                <button className="reserva-back" onClick={() => navigate(-1)}>← Volver</button>
+                <button className="reserva-back" onClick={handleVolver}>← Volver</button>
                 <span className="reserva-page-label">Reserva Individual</span>
             </div>
 
@@ -178,7 +297,7 @@ const ReservaIndividual = () => {
                     <div className="reserva-clase-hero">
                         <div className="reserva-clase-emoji">{emojiDisciplina}</div>
                         <div>
-                            <h2 className="reserva-clase-nombre" style={{ textTransform: 'capitalize' }}>
+                            <h2 className="reserva-clase-nombre">
                                 {clase.actividad}
                             </h2>
                             <p className="reserva-clase-sub">
@@ -189,35 +308,55 @@ const ReservaIndividual = () => {
 
                     <div className="reserva-desglose">
                         <div className="reserva-desglose-titulo">Detalle de la sesión</div>
-                        <div className="reserva-desglose-fila" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                            <span style={{ fontWeight: '500' }}>Fecha elegida:</span>
-                            <span style={{ textTransform: 'capitalize', color: '#555', marginTop: '2px' }}>
+
+                        <div className="reserva-desglose-fila reserva-desglose-fila--fecha">
+                            <span className="reserva-fecha-label">Fecha elegida:</span>
+                            <span className="reserva-fecha-valor">
                                 {formatearFecha(fechaSeleccionada)}
                             </span>
                         </div>
+
                         <div className="reserva-desglose-fila">
                             <span>Precio base</span>
-                            <span>${Number(clase.precio_individual).toFixed(2)}</span>
+                            <span>
+                            {
+                                desdeListaEspera
+                                    ? `$${Number(montoListaEspera).toFixed(2)}`
+                                    : `$${Number(clase.precio_individual).toFixed(2)}`
+                            }
+                            </span>
                         </div>
-                        <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
-                            <span>Concepto</span>
-                            <span>{tipoPago === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
-                        </div>
-                        <div className="reserva-desglose-total">
-                            <span>Total a abonar</span>
-                            <span>${Number(monto).toFixed(2)}</span>
-                        </div>
+
+                        {paso !== 'lista_espera' && paso !== 'exito_espera' && (
+                            <div className="reserva-desglose-fila reserva-desglose-fila--concepto">
+                                <span>Concepto</span>
+                                <span>{tipoPago === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
+                            </div>
+                        )}
+
+                        {usaCredito && (
+                            <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
+                                <span>🎟️ Crédito aplicado</span>
+                                <span>-${Number(clase.precio_individual).toFixed(2)}</span>
+                            </div>
+                        )}
+
+                        {paso !== 'lista_espera' && paso !== 'exito_espera' && (
+                            <div className="reserva-desglose-total">
+                                <span>Total a abonar</span>
+                                <span>${Number(monto).toFixed(2)}</span>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Tarjeta visual — solo en el paso de pago */}
-                    {paso === 'pago' && (
-                        <div className="pago-card-visual" style={{ marginTop: '20px' }}>
+                    {paso === 'pago' && metodoPago === 'tarjeta' && monto > 0 && (
+                        <div className="pago-card-visual pago-card-visual--con-margen">
                             <div className="pago-card-chip">▬</div>
                             <div className="pago-card-numero">{nroTarjeta || '···· ···· ···· ····'}</div>
                             <div className="pago-card-bottom">
                                 <div>
                                     <div className="pago-card-sublabel">Titular</div>
-                                    <div className="pago-card-valor" style={{ textTransform: 'uppercase' }}>
+                                    <div className="pago-card-valor pago-card-valor--uppercase">
                                         {titular || 'NOMBRE APELLIDO'}
                                     </div>
                                 </div>
@@ -233,59 +372,23 @@ const ReservaIndividual = () => {
                 {/* COLUMNA DERECHA */}
                 <div className="reserva-accion-col">
 
-                    {/* PASO 1: selección de modalidad */}
-                    {paso === 'confirmacion' && (
-                        <div className="reserva-accion-card">
-                            <h3 className="reserva-accion-titulo">Configurá tu reserva</h3>
-                            <p className="reserva-accion-desc">
-                                Seleccioná cómo querés abonar la clase:
-                            </p>
-                            <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
-                                <button
-                                    type="button"
-                                    style={{
-                                        flex: 1, padding: '12px', borderRadius: '8px',
-                                        border: tipoPago === 'sena' ? '2px solid #4caf50' : '1px solid #ccc',
-                                        backgroundColor: tipoPago === 'sena' ? 'rgba(76,175,80,0.1)' : 'transparent',
-                                        color: tipoPago === 'sena' ? '#4caf50' : '#aaa',
-                                        fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => handleCambioModalidad('sena')}
-                                >
-                                    Abonar Seña (50%)
-                                </button>
-                                <button
-                                    type="button"
-                                    style={{
-                                        flex: 1, padding: '12px', borderRadius: '8px',
-                                        border: tipoPago === 'total' ? '2px solid #4caf50' : '1px solid #ccc',
-                                        backgroundColor: tipoPago === 'total' ? 'rgba(76,175,80,0.1)' : 'transparent',
-                                        color: tipoPago === 'total' ? '#4caf50' : '#aaa',
-                                        fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s ease'
-                                    }}
-                                    onClick={() => handleCambioModalidad('total')}
-                                >
-                                    Abonar Total (100%)
-                                </button>
-                            </div>
-                            <button className="boton-accion" onClick={handleVerificarCupo} disabled={cargando}>
-                                {cargando ? <span className="reserva-spinner" /> : 'Siguiente →'}
-                            </button>
+                    {paso === 'cargando' && (
+                        <div className="reserva-accion-card reserva-accion-card--cargando">
+                            <span className="reserva-spinner" />
                         </div>
                     )}
 
-                    {/* PASO 2: lista de espera */}
                     {paso === 'lista_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
                             <h3 className="reserva-accion-titulo">Clase sin cupos disponibles</h3>
                             <p className="reserva-accion-desc">
                                 No hay vacantes para el {formatearFecha(fechaSeleccionada)}.
-                                Si se libera un lugar, te notificaremos.
+                                Podés anotarte en lista de espera sin costo — si se libera un lugar, te notificamos.
                             </p>
                             <div className="reserva-espera-botones">
                                 <button className="boton-accion" onClick={handleAceptarEspera} disabled={cargando}>
-                                    {cargando ? <span className="reserva-spinner" /> : 'Acepto entrar en espera'}
+                                    {cargando ? <span className="reserva-spinner" /> : 'Anotarme en lista de espera'}
                                 </button>
                                 <button className="boton-cancelar" onClick={() => navigate('/')} disabled={cargando}>
                                     No, volver al inicio
@@ -294,139 +397,250 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO 2b: confirmar tipo de pago (con cupo disponible) */}
+                    {paso === 'creditos' && (
+                        <div className="reserva-accion-card">
+                            <div className="pago-credito-icon">🎟️</div>
+                            <h3 className="reserva-accion-titulo">Tenés créditos disponibles</h3>
+                            <p className="reserva-accion-desc">
+                                Tenés <strong>{creditosDisponibles} crédito{creditosDisponibles > 1 ? 's' : ''}</strong> disponible{creditosDisponibles > 1 ? 's' : ''}.{' '}
+                                {usaCredito
+                                    ? 'Esta clase quedará completamente cubierta con tus créditos, sin cargo adicional.'
+                                    : 'No alcanza para cubrir esta clase. Continuá para abonar el saldo.'}
+                            </p>
+                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                            <button className="boton-accion" onClick={handleContinuarDesdeCreditos} disabled={cargando}>
+                                {cargando
+                                    ? <span className="reserva-spinner" />
+                                    : usaCredito ? 'Confirmar con crédito →' : 'Continuar →'}
+                            </button>
+                        </div>
+                    )}
+
                     {paso === 'tipo_pago' && (
                         <div className="reserva-accion-card">
-                            <h3 className="reserva-accion-titulo">Confirmá tu reserva</h3>
-                            <p className="reserva-accion-desc">
-                                Vas a reservar <strong>{clase.actividad}</strong> el {formatearFecha(fechaSeleccionada)}.
-                                Abonás <strong>{tipoPago === 'sena' ? 'una seña del 50%' : 'el total (100%)'}</strong>.
-                            </p>
-                            <button className="boton-accion" onClick={handleCrearReserva} disabled={cargando}>
+                            <h3 className="reserva-accion-titulo">Configurá tu pago</h3>
+                            <p className="reserva-accion-desc">Seleccioná cómo querés abonar la clase:</p>
+
+                            {
+                                !(desdeListaEspera && tipoReservaListaEspera === "Membresia") && (
+
+                                    <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
+
+                                        <button
+                                            type="button"
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: tipoPago === 'sena'
+                                                    ? '2px solid #4caf50'
+                                                    : '1px solid #ccc',
+                                                backgroundColor:
+                                                    tipoPago === 'sena'
+                                                        ? 'rgba(76,175,80,0.1)'
+                                                        : 'transparent',
+                                                color:
+                                                    tipoPago === 'sena'
+                                                        ? '#4caf50'
+                                                        : '#aaa',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onClick={() => handleCambioModalidad('sena')}
+                                        >
+                                            Abonar Seña (50%)
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: tipoPago === 'total'
+                                                    ? '2px solid #4caf50'
+                                                    : '1px solid #ccc',
+                                                backgroundColor:
+                                                    tipoPago === 'total'
+                                                        ? 'rgba(76,175,80,0.1)'
+                                                        : 'transparent',
+                                                color:
+                                                    tipoPago === 'total'
+                                                        ? '#4caf50'
+                                                        : '#aaa',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onClick={() => handleCambioModalidad('total')}
+                                        >
+                                            Abonar Total (100%)
+                                        </button>
+
+                                    </div>
+
+                                )
+                            }
+
+                            {
+                                desdeListaEspera &&
+                                tipoReservaListaEspera === "Membresia" && (
+
+                                    <div
+                                        style={{
+                                            margin: '25px 0',
+                                            textAlign: 'center',
+                                            color: '#4caf50',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        Las membresías se abonan siempre al 100%.
+                                    </div>
+
+                                )
+                            }
+
+                            <div className="modalidad-selector">
+                                <button
+                                    type="button"
+                                    className={`modalidad-btn ${tipoPago === 'sena' ? 'modalidad-btn--activo' : 'modalidad-btn--inactivo'}`}
+                                    onClick={() => handleCambioModalidad('sena')}
+                                >
+                                    Abonar Seña (50%)
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`modalidad-btn ${tipoPago === 'total' ? 'modalidad-btn--activo' : 'modalidad-btn--inactivo'}`}
+                                    onClick={() => handleCambioModalidad('total')}
+                                >
+                                    Abonar Total (100%)
+                                </button>
+                            </div>
+                            <button className="boton-accion" onClick={async () => {
+                                setCargando(true);
+                                try { await handleCrearReserva(); } catch(e) { setMensaje(e.response?.data?.detail || 'Error al crear reserva.'); setCargando(false); return; }
+                                setCargando(false);
+                                setPaso('pago');
+                            }} disabled={cargando}>
                                 {cargando ? <span className="reserva-spinner" /> : 'Confirmar y pagar →'}
                             </button>
                         </div>
                     )}
 
-                    {/* PASO 3: formulario de pago */}
                     {paso === 'pago' && (
                         <div className="pago-form-card">
-                            <h2 className="pago-form-titulo">Datos de pago</h2>
+                            <h2 className="pago-form-titulo">Elegí cómo pagar</h2>
 
-                            <div className="pago-field">
-                                <label className="pago-label">Número de tarjeta</label>
-                                <input
-                                    className="pago-input pago-input--wide"
-                                    type="text"
-                                    inputMode="numeric"
-                                    placeholder="1111 2222 3333 4444"
-                                    value={nroTarjeta}
-                                    maxLength={19}
-                                    onChange={(e) => {
-                                        const numeros = e.target.value.replace(/\D/g, '');
-                                        const parts = [];
-                                        for (let i = 0; i < numeros.length; i += 4) {
-                                            parts.push(numeros.substring(i, i + 4));
-                                        }
-                                        setNroTarjeta(parts.join(' '));
-                                    }}
-                                />
+                            <div className="metodo-pago-selector">
+                                <button
+                                    type="button"
+                                    className={`metodo-pago-btn metodo-pago-btn--tarjeta ${metodoPago === 'tarjeta' ? 'activo' : ''}`}
+                                    onClick={() => setMetodoPago('tarjeta')}
+                                >
+                                    Tarjeta
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`metodo-pago-btn metodo-pago-btn--mp ${metodoPago === 'mp' ? 'activo' : ''}`}
+                                    onClick={() => setMetodoPago('mp')}
+                                >
+                                    Mercado Pago
+                                </button>
                             </div>
 
-                            <div className="pago-field">
-                                <label className="pago-label">Nombre del titular</label>
-                                <input
-                                    className="pago-input pago-input--wide"
-                                    type="text"
-                                    placeholder="Tal como aparece en la tarjeta"
-                                    value={titular}
-                                    onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '15px' }}>
-                                <div className="pago-field" style={{ flex: 1 }}>
-                                    <label className="pago-label">CVV</label>
-                                    <input
-                                        className="pago-input"
-                                        type="text"
-                                        inputMode="numeric"
-                                        style={{ WebkitTextSecurity: 'disc' }}
-                                        placeholder="•••"
-                                        maxLength={3}
-                                        value={cvv}
-                                        onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                                    />
-                                </div>
-                                <div className="pago-field" style={{ flex: 1 }}>
-                                    <label className="pago-label">Vencimiento</label>
-                                    <input
-                                        className="pago-input"
-                                        type="text"
-                                        placeholder="MM/AA"
-                                        maxLength={5}
-                                        value={vencimiento}
+                            {metodoPago === 'tarjeta' && (<>
+                                <div className="pago-field">
+                                    <label className="pago-label">Número de tarjeta</label>
+                                    <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
+                                        placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
                                         onChange={(e) => {
-                                            let valor = e.target.value.replace(/\D/g, '');
-                                            if (valor.length > 2) {
-                                                valor = valor.slice(0, 2) + '/' + valor.slice(2, 4);
-                                            }
-                                            setVencimiento(valor);
+                                            const n = e.target.value.replace(/\D/g, '');
+                                            const parts = [];
+                                            for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
+                                            setNroTarjeta(parts.join(' '));
                                         }}
                                     />
                                 </div>
-                            </div>
+                                <div className="pago-field">
+                                    <label className="pago-label">Nombre del titular</label>
+                                    <input className="pago-input pago-input--wide" type="text"
+                                        placeholder="Tal como aparece en la tarjeta" value={titular}
+                                        onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+                                    />
+                                </div>
+                                <div className="pago-row-cvv">
+                                    <div className="pago-field">
+                                        <label className="pago-label">CVV</label>
+                                        <input className="pago-input" type="text" inputMode="numeric"
+                                            style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
+                                            value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                                        />
+                                    </div>
+                                    <div className="pago-field">
+                                        <label className="pago-label">Vencimiento</label>
+                                        <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
+                                            value={vencimiento}
+                                            onChange={(e) => {
+                                                let v = e.target.value.replace(/\D/g, '');
+                                                if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                                setVencimiento(v);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                                <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
+                                    {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${Number(monto).toFixed(2)}`}
+                                </button>
+                                <p className="pago-seguro-txt">Pago simulado — tus datos no se almacenan</p>
+                            </>)}
 
-                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
-
-                            <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
-                                {cargando
-                                    ? <><span className="pago-spinner" /> Procesando...</>
-                                    : `Pagar $${Number(monto).toFixed(2)}`
-                                }
-                            </button>
-
-                            <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                            {metodoPago === 'mp' && (
+                                <div className="mp-bloque">
+                                    <p className="mp-descripcion">
+                                        Serás redirigido al sitio de Mercado Pago para completar el pago de forma segura.
+                                    </p>
+                                    {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                                    <PagarConMP
+                                        tipo="individual"
+                                        payload={{ reserva_id: reservaId }}
+                                        onError={setMensaje}
+                                    />
+                                    <p className="pago-seguro-txt">Ambiente de pruebas (sandbox)</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* PASO 4: éxito */}
                     {paso === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">✓</div>
-                            <h3>¡Reserva procesada!</h3>
-                            <p>Tu solicitud fue registrada correctamente.</p>
-                            <button className="pago-btn-primary" onClick={() => navigate('/perfil')}>
-                                Ver mis reservas
+                            <h3>¡Reserva confirmada!</h3>
+                            <p>Tu clase fue reservada correctamente.</p>
+                            <button className="pago-btn-primary" onClick={() => navigate('/')}>
+                                Volver al inicio
                             </button>
                         </div>
                     )}
 
-                    {/* PASO 5: error */}
+                    {paso === 'exito_espera' && (
+                        <div className="pago-resultado pago-resultado--ok">
+                            <div className="pago-resultado-icon"></div>
+                            <h3>¡Estás en lista de espera!</h3>
+                            <p>Te avisaremos si se libera un cupo para el {formatearFecha(fechaSeleccionada)}.</p>
+                            <button className="pago-btn-primary" onClick={() => navigate('/')}>
+                                Volver al inicio
+                            </button>
+                        </div>
+                    )}
+
                     {paso === 'error' && (
                         <div className="pago-resultado pago-resultado--error">
-
-                            <div className="pago-resultado-icon pago-resultado-icon--error">
-                                ✕
-                            </div>
-
+                            <div className="pago-resultado-icon pago-resultado-icon--error">✕</div>
                             <h3>{mensaje}</h3>
-
-                            <button
-                                className="pago-btn-ghost"
-                                onClick={() => {
-                                    setPaso('confirmacion');
-                                    setMensaje('');
-                                }}
-                            >
-                                Intentar de nuevo
-                            </button>
-
-                            <button
-                                className="pago-btn-ghost"
-                                onClick={() => navigate('/home')}
-                            >
-                                Volver al home
+                            <button className="pago-btn-ghost" onClick={() => navigate('/')}>
+                                Volver al inicio
                             </button>
                         </div>
                     )}
