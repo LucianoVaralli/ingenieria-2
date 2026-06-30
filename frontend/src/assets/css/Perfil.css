@@ -1129,3 +1129,16 @@ body,
     max-height: 92vh;
     overflow-y: auto;
 }
+.mis-clase-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.qr-mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+}

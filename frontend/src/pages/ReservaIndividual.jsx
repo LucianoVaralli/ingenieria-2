@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Reserva.css';
 import '../assets/css/Pago.css';
+import PagarConMP from '../components/PagarConMP';
 
 const formatearHora = (hora) => hora?.slice(0, 5);
 
@@ -46,8 +47,15 @@ const ReservaIndividual = () => {
                 ? montoListaEspera
                 : (clase ? Number(clase.precio_individual) * 0.5 : 0)
         );
+
+    const [tipoPago, setTipoPago]                       = useState('sena');
+    const [monto, setMonto]                             = useState(clase ? Number(clase.precio_individual) * 0.5 : 0);
+
     const [creditosDisponibles, setCreditosDisponibles] = useState(0);
-    const [usaCredito, setUsaCredito]             = useState(false);
+    const [usaCredito, setUsaCredito]                   = useState(false);
+
+    const [metodoPago, setMetodoPago] = useState('tarjeta'); // 'tarjeta' | 'mp'
+    const [reservaId, setReservaId]   = useState(null);
 
     // Datos de tarjeta
     const [nroTarjeta, setNroTarjeta]   = useState('');
@@ -145,7 +153,6 @@ const ReservaIndividual = () => {
         );
     };
 
-    // NUEVO: lista de espera sin pago — solo agrega y vuelve al inicio
     const handleAceptarEspera = async () => {
         setCargando(true);
         setMensaje('');
@@ -165,7 +172,6 @@ const ReservaIndividual = () => {
 
     const handleContinuarDesdeCreditos = () => {
         if (usaCredito) {
-            // Crédito cubre todo → confirmar sin pasar por pago
             handlePagarConCredito();
         } else {
             setPaso('tipo_pago');
@@ -199,6 +205,16 @@ const ReservaIndividual = () => {
         } finally {
             setCargando(false);
         }
+    };
+
+    const handleCrearReserva = async () => {
+        const res = await api.post('/reservas/individual/crear', {
+            clase_id:    clase.id,
+            fecha_clase: fechaSeleccionada,
+            tipo_pago:   tipoPago
+        });
+        setReservaId(res.data.reserva_id);
+        return res.data.reserva_id;
     };
 
     const handlePagar = async () => {
@@ -237,6 +253,11 @@ const ReservaIndividual = () => {
             await api.post('/reservas/individual/pagar', {
                 reserva_id: reservaId,
                 numero_tarjeta: nroTarjeta.replace(/\s/g, ''),
+            const rid = reservaId || await handleCrearReserva();
+
+            await api.post('/reservas/individual/pagar', {
+                reserva_id:          rid,
+                numero_tarjeta:      nroTarjeta.replace(/\s/g, ''),
                 titular,
                 cvv,
                 fecha_vencimiento: vencimiento,
@@ -281,7 +302,7 @@ const ReservaIndividual = () => {
                     <div className="reserva-clase-hero">
                         <div className="reserva-clase-emoji">{emojiDisciplina}</div>
                         <div>
-                            <h2 className="reserva-clase-nombre" style={{ textTransform: 'capitalize' }}>
+                            <h2 className="reserva-clase-nombre">
                                 {clase.actividad}
                             </h2>
                             <p className="reserva-clase-sub">
@@ -292,12 +313,14 @@ const ReservaIndividual = () => {
 
                     <div className="reserva-desglose">
                         <div className="reserva-desglose-titulo">Detalle de la sesión</div>
-                        <div className="reserva-desglose-fila" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                            <span style={{ fontWeight: '500' }}>Fecha elegida:</span>
-                            <span style={{ textTransform: 'capitalize', color: '#555', marginTop: '2px' }}>
+
+                        <div className="reserva-desglose-fila reserva-desglose-fila--fecha">
+                            <span className="reserva-fecha-label">Fecha elegida:</span>
+                            <span className="reserva-fecha-valor">
                                 {formatearFecha(fechaSeleccionada)}
                             </span>
                         </div>
+
                         <div className="reserva-desglose-fila">
                             <span>Precio base</span>
                             <span>
@@ -308,18 +331,21 @@ const ReservaIndividual = () => {
                             }
                             </span>
                         </div>
+
                         {paso !== 'lista_espera' && paso !== 'exito_espera' && (
-                            <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
+                            <div className="reserva-desglose-fila reserva-desglose-fila--concepto">
                                 <span>Concepto</span>
                                 <span>{tipoPago === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
                             </div>
                         )}
+
                         {usaCredito && (
                             <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
                                 <span>🎟️ Crédito aplicado</span>
                                 <span>-${Number(clase.precio_individual).toFixed(2)}</span>
                             </div>
                         )}
+
                         {paso !== 'lista_espera' && paso !== 'exito_espera' && (
                             <div className="reserva-desglose-total">
                                 <span>Total a abonar</span>
@@ -328,14 +354,14 @@ const ReservaIndividual = () => {
                         )}
                     </div>
 
-                    {paso === 'pago' && monto > 0 && (
-                        <div className="pago-card-visual" style={{ marginTop: '20px' }}>
+                    {paso === 'pago' && metodoPago === 'tarjeta' && monto > 0 && (
+                        <div className="pago-card-visual pago-card-visual--con-margen">
                             <div className="pago-card-chip">▬</div>
                             <div className="pago-card-numero">{nroTarjeta || '···· ···· ···· ····'}</div>
                             <div className="pago-card-bottom">
                                 <div>
                                     <div className="pago-card-sublabel">Titular</div>
-                                    <div className="pago-card-valor" style={{ textTransform: 'uppercase' }}>
+                                    <div className="pago-card-valor pago-card-valor--uppercase">
                                         {titular || 'NOMBRE APELLIDO'}
                                     </div>
                                 </div>
@@ -352,12 +378,11 @@ const ReservaIndividual = () => {
                 <div className="reserva-accion-col">
 
                     {paso === 'cargando' && (
-                        <div className="reserva-accion-card" style={{ textAlign: 'center' }}>
+                        <div className="reserva-accion-card reserva-accion-card--cargando">
                             <span className="reserva-spinner" />
                         </div>
                     )}
 
-                    {/* PASO: lista de espera — sin pago */}
                     {paso === 'lista_espera' && (
                         <div className="reserva-accion-card">
                             <div className="reserva-espera-icon">⚠️</div>
@@ -377,7 +402,6 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO: créditos disponibles */}
                     {paso === 'creditos' && (
                         <div className="reserva-accion-card">
                             <div className="pago-credito-icon">🎟️</div>
@@ -397,7 +421,6 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO: elegir modalidad de pago */}
                     {paso === 'tipo_pago' && (
                         <div className="reserva-accion-card">
                             <h3 className="reserva-accion-titulo">Configurá tu pago</h3>
@@ -485,62 +508,118 @@ const ReservaIndividual = () => {
 
                             <button className="boton-accion" onClick={() => setPaso('pago')} disabled={cargando}>
                                 Confirmar y pagar →
+                            <div className="modalidad-selector">
+                                <button
+                                    type="button"
+                                    className={`modalidad-btn ${tipoPago === 'sena' ? 'modalidad-btn--activo' : 'modalidad-btn--inactivo'}`}
+                                    onClick={() => handleCambioModalidad('sena')}
+                                >
+                                    Abonar Seña (50%)
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`modalidad-btn ${tipoPago === 'total' ? 'modalidad-btn--activo' : 'modalidad-btn--inactivo'}`}
+                                    onClick={() => handleCambioModalidad('total')}
+                                >
+                                    Abonar Total (100%)
+                                </button>
+                            </div>
+                            <button className="boton-accion" onClick={async () => {
+                                setCargando(true);
+                                try { await handleCrearReserva(); } catch(e) { setMensaje(e.response?.data?.detail || 'Error al crear reserva.'); setCargando(false); return; }
+                                setCargando(false);
+                                setPaso('pago');
+                            }} disabled={cargando}>
+                                {cargando ? <span className="reserva-spinner" /> : 'Confirmar y pagar →'}
                             </button>
                         </div>
                     )}
 
-                    {/* PASO: formulario de pago */}
                     {paso === 'pago' && (
                         <div className="pago-form-card">
-                            <h2 className="pago-form-titulo">Datos de pago</h2>
-                            <div className="pago-field">
-                                <label className="pago-label">Número de tarjeta</label>
-                                <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
-                                    placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
-                                    onChange={(e) => {
-                                        const n = e.target.value.replace(/\D/g, '');
-                                        const parts = [];
-                                        for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
-                                        setNroTarjeta(parts.join(' '));
-                                    }}
-                                />
+                            <h2 className="pago-form-titulo">Elegí cómo pagar</h2>
+
+                            <div className="metodo-pago-selector">
+                                <button
+                                    type="button"
+                                    className={`metodo-pago-btn metodo-pago-btn--tarjeta ${metodoPago === 'tarjeta' ? 'activo' : ''}`}
+                                    onClick={() => setMetodoPago('tarjeta')}
+                                >
+                                    Tarjeta
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`metodo-pago-btn metodo-pago-btn--mp ${metodoPago === 'mp' ? 'activo' : ''}`}
+                                    onClick={() => setMetodoPago('mp')}
+                                >
+                                    Mercado Pago
+                                </button>
                             </div>
-                            <div className="pago-field">
-                                <label className="pago-label">Nombre del titular</label>
-                                <input className="pago-input pago-input--wide" type="text"
-                                    placeholder="Tal como aparece en la tarjeta" value={titular}
-                                    onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: '15px' }}>
-                                <div className="pago-field" style={{ flex: 1 }}>
-                                    <label className="pago-label">CVV</label>
-                                    <input className="pago-input" type="text" inputMode="numeric"
-                                        style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
-                                        value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                                    />
-                                </div>
-                                <div className="pago-field" style={{ flex: 1 }}>
-                                    <label className="pago-label">Vencimiento</label>
-                                    <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
-                                        value={vencimiento}
+
+                            {metodoPago === 'tarjeta' && (<>
+                                <div className="pago-field">
+                                    <label className="pago-label">Número de tarjeta</label>
+                                    <input className="pago-input pago-input--wide" type="text" inputMode="numeric"
+                                        placeholder="1111 2222 3333 4444" value={nroTarjeta} maxLength={19}
                                         onChange={(e) => {
-                                            let v = e.target.value.replace(/\D/g, '');
-                                            if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
-                                            setVencimiento(v);
+                                            const n = e.target.value.replace(/\D/g, '');
+                                            const parts = [];
+                                            for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
+                                            setNroTarjeta(parts.join(' '));
                                         }}
                                     />
                                 </div>
-                            </div>
-                            {mensaje && <p className="pago-error-msg">{mensaje}</p>}
-                            <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
-                                {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${Number(monto).toFixed(2)}`}
-                            </button>
-                            <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                                <div className="pago-field">
+                                    <label className="pago-label">Nombre del titular</label>
+                                    <input className="pago-input pago-input--wide" type="text"
+                                        placeholder="Tal como aparece en la tarjeta" value={titular}
+                                        onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+                                    />
+                                </div>
+                                <div className="pago-row-cvv">
+                                    <div className="pago-field">
+                                        <label className="pago-label">CVV</label>
+                                        <input className="pago-input" type="text" inputMode="numeric"
+                                            style={{ WebkitTextSecurity: 'disc' }} placeholder="•••" maxLength={3}
+                                            value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                                        />
+                                    </div>
+                                    <div className="pago-field">
+                                        <label className="pago-label">Vencimiento</label>
+                                        <input className="pago-input" type="text" placeholder="MM/AA" maxLength={5}
+                                            value={vencimiento}
+                                            onChange={(e) => {
+                                                let v = e.target.value.replace(/\D/g, '');
+                                                if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                                setVencimiento(v);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                                <button className="pago-btn-primary" onClick={handlePagar} disabled={cargando}>
+                                    {cargando ? <><span className="pago-spinner" /> Procesando...</> : `Pagar $${Number(monto).toFixed(2)}`}
+                                </button>
+                                <p className="pago-seguro-txt">Pago simulado — tus datos no se almacenan</p>
+                            </>)}
+
+                            {metodoPago === 'mp' && (
+                                <div className="mp-bloque">
+                                    <p className="mp-descripcion">
+                                        Serás redirigido al sitio de Mercado Pago para completar el pago de forma segura.
+                                    </p>
+                                    {mensaje && <p className="pago-error-msg">{mensaje}</p>}
+                                    <PagarConMP
+                                        tipo="individual"
+                                        payload={{ reserva_id: reservaId }}
+                                        onError={setMensaje}
+                                    />
+                                    <p className="pago-seguro-txt">Ambiente de pruebas (sandbox)</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* PASO: éxito reserva con pago o crédito */}
                     {paso === 'exito' && (
                         <div className="pago-resultado pago-resultado--ok">
                             <div className="pago-resultado-icon">✓</div>
@@ -552,10 +631,9 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO: éxito lista de espera */}
                     {paso === 'exito_espera' && (
                         <div className="pago-resultado pago-resultado--ok">
-                            <div className="pago-resultado-icon">🕐</div>
+                            <div className="pago-resultado-icon"></div>
                             <h3>¡Estás en lista de espera!</h3>
                             <p>Te avisaremos si se libera un cupo para el {formatearFecha(fechaSeleccionada)}.</p>
                             <button className="pago-btn-primary" onClick={() => navigate('/')}>
@@ -564,7 +642,6 @@ const ReservaIndividual = () => {
                         </div>
                     )}
 
-                    {/* PASO: error */}
                     {paso === 'error' && (
                         <div className="pago-resultado pago-resultado--error">
                             <div className="pago-resultado-icon pago-resultado-icon--error">✕</div>

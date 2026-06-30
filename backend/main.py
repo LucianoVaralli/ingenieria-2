@@ -32,7 +32,7 @@ from routes.membresia import router as membresia_router
 
 from fastapi.staticfiles import StaticFiles
 
-from models.membresia import Membresia
+from routes.mercadopago import router as mp_router
 
 # Crear las tablas en la base de datos
 Base.metadata.create_all(bind=engine)
@@ -121,6 +121,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # =========================================
 # ROUTERS
 # =========================================
@@ -133,6 +134,7 @@ app.include_router(reserva_router)
 app.include_router(notificaciones_router)
 app.include_router(pregunta_frecuente_router)
 app.include_router(membresia_router)
+app.include_router(mp_router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

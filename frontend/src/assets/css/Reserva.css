@@ -368,6 +368,151 @@ html, body, #root {
     color: #5CB84D; /* El color verde de tu marca */
 }
 
+/* ── CARD DE CARGANDO ── */
+.reserva-accion-card--cargando {
+    text-align: center;
+}
+
+/* ── FILA DE FECHA (columna) ── */
+.reserva-desglose-fila--fecha {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.reserva-desglose-fila--fecha .reserva-fecha-label {
+    font-weight: 500;
+}
+
+.reserva-desglose-fila--fecha .reserva-fecha-valor {
+    text-transform: capitalize;
+    color: rgba(255,255,255,0.35);
+    margin-top: 2px;
+    font-style: italic;
+}
+
+/* ── FILA DE CONCEPTO (seña/total) ── */
+.reserva-desglose-fila--concepto {
+    color: rgba(255,255,255,0.3);
+    font-size: 0.95em;
+}
+
+/* ── CARD VISUAL CON MARGEN ── */
+.pago-card-visual--con-margen {
+    margin-top: 20px;
+}
+
+.pago-card-valor--uppercase {
+    text-transform: uppercase;
+}
+
+/* ── FILA CVV / VENCIMIENTO ── */
+.pago-row-cvv {
+    display: flex;
+    gap: 15px;
+}
+
+.pago-row-cvv .pago-field {
+    flex: 1;
+}
+
+/* ── SELECTOR DE MÉTODO DE PAGO ── */
+.metodo-pago-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.metodo-pago-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.metodo-pago-btn--tarjeta {
+    border: 1px solid #555;
+    color: #aaa;
+}
+
+.metodo-pago-btn--tarjeta.activo {
+    border: 2px solid #4caf50;
+    background-color: rgba(76,175,80,0.1);
+    color: #4caf50;
+}
+
+.metodo-pago-btn--mp {
+    border: 1px solid #555;
+    color: #aaa;
+}
+
+.metodo-pago-btn--mp.activo {
+    border: 2px solid #009ee3;
+    background-color: rgba(0,158,227,0.1);
+    color: #009ee3;
+}
+
+/* ── BLOQUE MERCADO PAGO ── */
+.mp-bloque {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mp-descripcion {
+    color: rgba(255,255,255,0.4);
+    font-size: 14px;
+    font-style: italic;
+    margin: 0;
+}
+
+/* ── SELECTOR MODALIDAD SEÑA/TOTAL ── */
+.modalidad-selector {
+    display: flex;
+    gap: 12px;
+    margin: 25px 0;
+}
+
+.modalidad-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.modalidad-btn--inactivo {
+    border: 1px solid #ccc;
+    color: #aaa;
+}
+
+.modalidad-btn--activo {
+    border: 2px solid #4caf50;
+    background-color: rgba(76,175,80,0.1);
+    color: #4caf50;
+}
+
+/* ── LISTA DE FECHAS CON MARGEN ── */
+.reserva-fechas-lista--margen {
+    margin: 12px 0;
+}
+
+/* ── CREDITO ICON ── */
+.pago-credito-icon {
+    font-size: 32px;
+    text-align: center;
+}
+
+
 @keyframes spin { to { transform: rotate(360deg); } }
  
 /* ── RESPONSIVE ── */

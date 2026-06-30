@@ -5,6 +5,9 @@ import '../assets/css/Perfil.css';
 import ModalConfirmacion from '../components/ModalConfirmacion.jsx';
 import ModalResultado from '../components/ModalResultado.jsx';
 import { useRef } from "react";
+import EscanearQR from "./EscanearQR";
+import QRCode from "qrcode";
+
 
 const Perfil = ({ token, setToken }) => {
     const [user, setUser]           = useState(null);
@@ -53,6 +56,122 @@ const Perfil = ({ token, setToken }) => {
         user?.membresia_vencimiento &&
         dia >= 1 &&
         dia <= 10;
+
+    // PROFESOR
+    const [clasesProfesor, setClasesProfesor] = useState([]);
+    const [clases, setClases] = useState([]);
+    const [error, setError] = useState("");
+
+    //ESCANER 
+    const [abrirScanner, setAbrirScanner] = useState(false);
+    const [qrGenerado, setQrGenerado] = useState({});
+    const [qrUrls, setQrUrls] = useState({});
+    const [mostrarQR, setMostrarQR] = useState(false);
+    const [qrSeleccionado, setQrSeleccionado] = useState(null);
+
+    useEffect(() => {
+            cargarClases();
+        }, []);
+    
+    const cargarClases = async () => {
+        try {
+            const res = await api.get("/clases/mis-clases");
+            setClases(res.data);
+        } catch (error) {
+            setError(
+                error.response?.data?.detail ||
+                "Error cargando las clases"
+            );
+        }
+    };
+    
+    const generarQR = async (claseId) => {
+        // Buscar la clase
+        const clase = clasesProfesor.find(c => c.id === claseId);
+
+        if (!clase) return;
+
+        const estado = estadoClase(clase);
+
+        if (estado === "pendiente") {
+            alert("El QR sólo puede generarse cuando comienza la clase.");
+            return;
+        }
+
+        if (estado === "caducado") {
+            alert("La clase ya finalizó.");
+            return;
+        }
+
+        // Ya fue generado
+        if (qrGenerado[claseId]) {
+            alert("El QR ya fue generado.");
+            return;
+        }
+
+        try {
+            const res = await api.post(`/clases/${claseId}/generar-qr`);
+            const codigo = res.data.codigo_qr;
+
+            const url = await QRCode.toDataURL(codigo, { width: 120 });
+
+            setQrGenerado(prev => ({
+                ...prev,
+                [claseId]: url
+            }));
+
+            alert("QR generado");
+
+        } catch (err) {
+            console.error(err);
+            alert("Error generando QR");
+        }
+    };
+
+    const abrirQR = (clase) => {
+        const estado = estadoClase(clase);
+
+        if (estado === "pendiente") {
+            alert("La clase todavía no comenzó.");
+            return;
+        }
+
+        if (estado === "caducado") {
+            alert("El QR ya caducó.");
+            return;
+        }
+
+        if (!qrGenerado[clase.id]) {
+            alert("Primero generá el QR.");
+            return;
+        }
+
+        setQrSeleccionado(qrGenerado[clase.id]);
+        setMostrarQR(true);
+    };
+
+    const obtenerQRClase = async (claseId) => {
+        if (qrUrls[claseId]) return;
+
+        try {
+            const res = await api.post(`/clases/${claseId}/generar-qr`);
+            const codigo = res.data.codigo_qr;
+
+            const url = await QRCode.toDataURL(codigo, { width: 100 });
+
+            setQrUrls(prev => ({ ...prev, [claseId]: url }));
+
+            localStorage.setItem(`qr_clase_${claseId}`, url);
+
+        } catch (err) {
+            console.error("Error obteniendo QR", err);
+        }
+    };
+
+    const capitalize = (texto) =>
+        texto
+            ? texto.charAt(0).toUpperCase() + texto.slice(1)
+            : "";
 
     useEffect(() => {
         const cargarPerfil = async () => {
@@ -118,55 +237,104 @@ const Perfil = ({ token, setToken }) => {
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
 
+    const ahora = new Date();
+
+    // 1. Obtenemos el nombre del día de hoy en minúsculas (ej: "martes")
+    const opciones = { weekday: 'long' };
+    const diaHoyTexto = mapeoDias[ahora.getDay()].toLowerCase();
+
+    // 2. Clases de hoy
+    const clasesHoy = (clasesProfesor || []).filter(c => {
+        if (!c?.dia || !c?.horario) return false;
+        
+        // Normalizamos a minúsculas por si acaso
+        const diaClase = c.dia.toLowerCase(); 
+        if (diaClase !== diaHoyTexto) return false;
+
+        // Validar si la hora ya pasó
+        const [hora, minuto] = c.horario.split(':');
+        const fechaClase = new Date();
+        fechaClase.setHours(Number(hora), Number(minuto), 0, 0);
+
+        return fechaClase > ahora;
+    });
+
+    // 3. Clases futuras (días distintos a hoy)
+    const clasesFuturas = (clasesProfesor || []).filter(c => {
+        if (!c?.dia) return false;
+        return c.dia.toLowerCase() !== diaHoyTexto;
+    });
+
     useEffect(() => {
-        if (!token) { navigate('/login'); return; }
+        if (!token) {
+            navigate("/login");
+            return;
+        }
 
         const fetchData = async () => {
             try {
-                const [resUser, resReservas] = await Promise.all([
-                    api.get('/socios/me'),
-                    api.get('/reservas/mis-reservas'),
-                ]);
+                const resUser = await api.get("/socios/me");
 
                 setUser(resUser.data);
                 setRol(resUser.data.rol);
                 setMembresiaActiva(resUser.data.membresia_activa);
                 setFechaVencimiento(resUser.data.membresia_vencimiento);
-                setReservas(resReservas.data);
 
-                if (resUser.data.rol === 'miembro') {
+                // ===========================
+                // PROFESOR
+                // ===========================
+                if (resUser.data.rol === "profesor") {
+
+                    const resClases = await api.get("/clases/mis-clases");
+                    setClasesProfesor(resClases.data);
+                }
+
+                // ===========================
+                // SOCIO NORMAL
+                // ===========================
+                else {
+
+                    const resReservas = await api.get("/reservas/mis-reservas");
+
+                    const activas = resReservas.data.filter(r =>
+                        (
+                            r.estado === "confirmada" ||
+                            r.estado === "en_espera" ||
+                            r.estado === "notificado" ||
+                            r.estado === "pendiente_pago"
+                        ) &&
+                        new Date(r.fecha_clase) >= hoy
+                    );
+
+                    setReservas(activas);
+
+                    if (resUser.data.rol === "miembro") {
+                        try {
+                            const resRen = await api.get("/membresia/renovables");
+                            setMembresíasRenovables(resRen.data);
+                        } catch {
+                            setMembresíasRenovables([]);
+                        }
+                    }
+
                     try {
-                        const resRen = await api.get('/membresia/renovables');
-                        setMembresíasRenovables(resRen.data);
-                    } catch (e) {
-                        setMembresíasRenovables([]);
+                        const resAlertas = await api.get("/reservas/alertas-individuales");
+                        setAlertaIndividual(resAlertas.data);
+                    } catch {
+                        setAlertaIndividual([]);
                     }
                 }
 
-                const activas = resReservas.data.filter(r =>
-                    (r.estado === 'confirmada' || r.estado === 'en_espera' || r.estado === 'notificado') &&
-                    new Date(r.fecha_clase) >= hoy
-                );
-
-                setReservas(activas);
-
-                // ALERTAS EN OTRO TRY (IMPORTANTE)
-                try {
-                    const resAlertas = await api.get('/reservas/alertas-individuales');
-                    setAlertaIndividual(resAlertas.data);
-                } catch (e) {
-                    setAlertaIndividual([]);
-                }
-
             } catch (err) {
-                console.error('Error cargando perfil', err);
-                localStorage.removeItem('token');
+                console.error("Error cargando perfil", err);
+                localStorage.removeItem("token");
                 setToken(null);
-                navigate('/login');
+                navigate("/login");
             }
         };
 
         fetchData();
+
     }, [token, navigate, setToken]);
 
     const toggleSeleccion = (claseId) => {
@@ -189,29 +357,63 @@ const Perfil = ({ token, setToken }) => {
 
             setModalAbierto(false);
 
+            // Para renovación, las fechas ya existen como pendiente_pago en la BD.
+            // Vamos directo a /pago sin pasar por /reservar/membresia,
+            // así evitamos que ese endpoint descarte las fechas por ya estar reservadas.
+            // El endpoint /reservas/membresia/confirmar-pago se encarga de actualizar
+            // los pendiente_pago existentes a confirmada.
+
             if (res.data.length === 1) {
                 const item = res.data[0];
-                navigate('/reservar/membresia', {
+                const monto = item.clase.precio_individual * item.fechas_mes.length;
+
+                navigate('/pago', {
                     state: {
-                        clase:        item.clase,
-                        fechasDelMes: item.fechas_mes,
-                        esRenovacion: true,
-                        mesLabel:     item.mes_label,
+                        claseId:            item.clase.id,
+                        claseInfo:          item.clase,
+                        fechasConCupo:      item.fechas_mes,
+                        fechasSinCupo:      [],
+                        monto:              monto,
+                        creditosUsados:     0,
+                        esRenovacion:       true,
+                        esPrimeraMembresia: false,
+                        mesLabel:           item.mes_label,
                     }
                 });
                 return;
             }
 
+            // Múltiples clases: procesar la primera, guardar el resto
             const [primera, ...resto] = res.data;
             if (resto.length > 0) {
                 sessionStorage.setItem('renovaciones_pendientes', JSON.stringify(resto));
             }
-            navigate('/reservar/membresia', {
+
+            const monto = primera.clase.precio_individual * primera.fechas_mes.length;
+
+            // Armar resumen completo de todas las clases para mostrar en /pago
+            const todasLasClases = res.data.map(item => ({
+                actividad:   item.clase.actividad,
+                dia:         item.clase.dia,
+                horario:     item.clase.horario,
+                clases:      item.fechas_mes.length,
+                subtotal:    item.clase.precio_individual * item.fechas_mes.length,
+            }));
+            const montoTotal = todasLasClases.reduce((acc, c) => acc + c.subtotal, 0);
+
+            navigate('/pago', {
                 state: {
-                    clase:        primera.clase,
-                    fechasDelMes: primera.fechas_mes,
-                    esRenovacion: true,
-                    mesLabel:     primera.mes_label,
+                    claseId:            primera.clase.id,
+                    claseInfo:          primera.clase,
+                    fechasConCupo:      primera.fechas_mes,
+                    fechasSinCupo:      [],
+                    monto:              monto,
+                    creditosUsados:     0,
+                    esRenovacion:       true,
+                    esPrimeraMembresia: false,
+                    mesLabel:           primera.mes_label,
+                    todasLasClases,
+                    montoTotal,
                 }
             });
 
@@ -475,6 +677,45 @@ const Perfil = ({ token, setToken }) => {
             alert("Error: " + (error.response?.data?.detail || "No se pudo rechazar el cupo"));
         }
     };
+    
+    const estadoClase = (clase) => {
+        const dias = {
+            domingo: 0,
+            lunes: 1,
+            martes: 2,
+            miercoles: 3,
+            jueves: 4,
+            viernes: 5,
+            sabado: 6
+        };
+
+        const ahora = new Date();
+
+        const inicio = new Date();
+
+        const diferencia =
+            dias[clase.dia.toLowerCase()] -
+            ahora.getDay();
+
+        inicio.setDate(ahora.getDate() + diferencia);
+
+        const [h, m] = clase.horario.split(":");
+
+        inicio.setHours(Number(h), Number(m), 0, 0);
+
+        const fin = new Date(inicio);
+
+        fin.setHours(fin.getHours() + 1);
+
+        if (ahora < inicio)
+            return "pendiente";
+
+        if (ahora > fin)
+            return "caducado";
+
+        return "activa";
+    };
+
 
     return (
         <div className="perfil-container">
@@ -846,6 +1087,30 @@ const Perfil = ({ token, setToken }) => {
                                 )}
                             </div>
                         )}
+                        {user?.rol !== "profesor" && (
+                            <div className="perfil-qr-boton">
+                                <button
+                                    className="btn-escanear-qr"
+                                    onClick={() => setAbrirScanner(true)}
+                                >
+                                    📷 Escanear asistencia
+                                </button>
+
+                                {abrirScanner && (
+                                    <div className="scanner-modal">
+                                        <div className="scanner-content">
+                                            <button
+                                                onClick={() => setAbrirScanner(false)}
+                                            >
+                                                ✕
+                                            </button>
+
+                                            <EscanearQR />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {mensajeExito && <div className="mensaje-exito">{mensajeExito}</div>}
@@ -1003,6 +1268,135 @@ const Perfil = ({ token, setToken }) => {
                         </Link>
                     )}
 
+                    {user?.rol === "profesor" && (
+
+                        <div className="perfil-calendar-block">
+
+                            <div className="perfil-reservas-section">
+
+                                <div className="perfil-section-header">
+
+                                    <span className="perfil-section-icon">
+                                        🏋️
+                                    </span>
+
+                                    <h3 className="perfil-section-title">
+                                        Mis clases
+                                    </h3>
+
+                                    <span className="perfil-reservas-count">
+                                        {clasesProfesor.length}
+                                    </span>
+
+                                </div>
+                                {error && (
+                                    <p className="mis-clases-error">
+                                        {error}
+                                    </p>
+                                )}
+
+                                {clasesProfesor.length === 0 ? (
+
+                                    <div className="reserva-empty">
+
+                                        <span className="reserva-empty-icon">
+                                            📭
+                                        </span>
+
+                                        <p>No tenés clases asignadas.</p>
+
+                                    </div>
+
+                                ) : (
+
+                                <div className="mis-clases-grid">
+
+                                    {/* 🔵 HOY */}
+                                    {clasesHoy.length > 0 && (
+                                        <>
+                                            <h2 className="dia-titulo">📅 Hoy</h2>
+
+                                            {clasesHoy.map(clase => (
+                                                <div key={clase.id} className="mis-clase-card">
+
+                                                    <h3>{capitalize(clase.actividad)}</h3>
+
+                                                    <p>📅 {capitalize(clase.dia)}</p>
+
+                                                    <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
+
+                                                    <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
+                                                    <div className="mis-clase-footer">
+                                                        <div className="mis-clase-botones">
+                                                            <button className="btn-ver-alumnos">
+                                                                Ver alumnos
+                                                            </button>
+
+                                                            <button
+                                                                className="btn-generar-qr"
+                                                                disabled={
+                                                                    estadoClase(clase) !== "activa" ||
+                                                                    qrGenerado[clase.id]
+                                                                }
+                                                                onClick={() => generarQR(clase.id)}
+                                                            >
+                                                                {qrGenerado[clase.id]
+                                                                    ? "QR generado"
+                                                                    : "Generar QR"}
+                                                            </button>
+
+                                                            <button
+                                                                className="btn-ver-qr"
+                                                                onClick={() => abrirQR(clase)}
+                                                            >
+                                                                Mostrar QR
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
+
+                                    {/* 🟡 FUTURO */}
+                                    {clasesFuturas.length > 0 && (
+                                        <>
+                                            <h2 className="dia-titulo">📆 Próximas clases</h2>
+
+                                            {clasesFuturas.map(clase => (
+                                                <div key={clase.id} className="mis-clase-card">
+
+                                                    <h3>{capitalize(clase.actividad)}</h3>
+
+                                                    <p>📅 {capitalize(clase.dia)}</p>
+
+                                                    <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
+
+                                                    <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
+                                                    <div className="mis-clase-footer">
+
+                                                        <div className="mis-clase-botones">
+                                                            <button className="btn-ver-alumnos">
+                                                                Ver alumnos
+                                                            </button>
+                                                
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
+
+                                </div>
+
+                                )}
+
+                            </div>
+
+                        </div>
+
+                        )}
+
                     {/* ── MODAL RENOVACIÓN ── */}
                     {modalAbierto && (
                         <div className="modal-overlay" onClick={() => setModalAbierto(false)}>
@@ -1034,9 +1428,13 @@ const Perfil = ({ token, setToken }) => {
                                                 <span className="modal-renovar-mes">
                                                     📅 Para {m.mes_renovacion}
                                                 </span>
-                                                {m.ultima_fecha_reservada && (
+                                                {m.mes_renovacion && (
                                                     <span className="modal-renovar-vence">
-                                                        ⚠️ Venció el {formatearFecha(m.ultima_fecha_reservada)}
+                                                        ⚠️ Venció en {(() => {
+                                                            const [mes, anio] = m.mes_renovacion.split('/').map(Number);
+                                                            const fechaMesAnterior = new Date(anio, mes - 2); // mes anterior al de renovación
+                                                            return fechaMesAnterior.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+                                                        })()}
                                                     </span>
                                                 )}
                                             </div>
@@ -1071,6 +1469,34 @@ const Perfil = ({ token, setToken }) => {
                     <p>Cargando panel de socio...</p>
                 </div>
             )}
+            {mostrarQR && (
+                <div
+                    className="scanner-modal"
+                    onClick={() => setMostrarQR(false)}
+                >
+                    <div
+                        className="scanner-content"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setMostrarQR(false)}
+                        >
+                            ✕
+                        </button>
+
+                        <img
+                            src={qrSeleccionado}
+                            width={320}
+                            alt="QR"
+                        />
+
+                        <p>
+                            Mostrale este QR al alumno
+                        </p>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };

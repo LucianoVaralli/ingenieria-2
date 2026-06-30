@@ -42,3 +42,12 @@ class CambioProfesorTemporal(BaseModel):
 class CambioProfesorPermanente(BaseModel):
     profesor_id: int
     motivo: str
+
+class GenerarQRResponse(BaseModel):
+    clase_id: int
+    codigo_qr: str
+    mensaje: str
+
+class EscanearQRRequest(BaseModel):
+    codigo_qr: str
+    fecha_clase: str

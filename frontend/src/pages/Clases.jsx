@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo  } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Clases.css';
@@ -37,18 +37,20 @@ const Clases = ({ token }) => {
     const [user, setUser] = useState(null);
     const [userCargado, setUserCargado] = useState(false);
 
-    // Mientras no cargó, bloqueamos (asumimos profesor para evitar gap de timing)
+    // ── QR URLs por clase ── ← DENTRO del componente
+    const [qrUrls, setQrUrls] = useState({});
+
     const esProfesor = !userCargado || user?.rol?.toLowerCase() === 'profesor';
+    const esAdmin = userCargado && user?.rol?.toLowerCase() === 'admin';
+    const esSoloProfesor = userCargado && user?.rol?.toLowerCase() === 'profesor';
 
     useEffect(() => {
-        // No depende del prop token — api.js manda el token del localStorage automáticamente
         api.get('/socios/me')
             .then(res => {
                 setUser(res.data);
                 setUserCargado(true);
             })
             .catch(() => {
-                // Sin sesión activa: userCargado=true, user=null → esProfesor=false
                 setUserCargado(true);
             });
     }, []);
@@ -63,13 +65,12 @@ const Clases = ({ token }) => {
     const [mensajeError, setMensajeError] = useState('');
 
     // ── Filtros ──
-    const [filtrosAbiertos, setFiltrosAbiertos]   = useState(false);
-    const [filtroDisc, setFiltroDisc]             = useState([]);   
-    const [filtroProfesor, setFiltroProfesor]     = useState('');
-    const [filtroHorario, setFiltroHorario]       = useState([]);   
-    const [profesores, setProfesores]             = useState([]);
+    const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+    const [filtroDisc, setFiltroDisc]           = useState([]);
+    const [filtroProfesor, setFiltroProfesor]   = useState('');
+    const [filtroHorario, setFiltroHorario]     = useState([]);
+    const [profesores, setProfesores]           = useState([]);
 
-    // Cargar clases y profesores públicos
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -88,7 +89,6 @@ const Clases = ({ token }) => {
         fetchData();
     }, []);
 
-    // ── Helpers de filtro ──
     const toggleChip = (valor, lista, setLista) => {
         setLista(prev =>
             prev.includes(valor) ? prev.filter(v => v !== valor) : [...prev, valor]
@@ -107,10 +107,8 @@ const Clases = ({ token }) => {
         return clases.filter(c => {
             if (filtroDisc.length > 0 && !filtroDisc.map(d => d.toLowerCase()).includes(c.actividad?.toLowerCase()))
                 return false;
-
             if (filtroProfesor && String(c.profesor_id) !== String(filtroProfesor))
                 return false;
-
             if (filtroHorario.length > 0) {
                 const hora = parseInt(c.horario?.split(':')[0] ?? 0, 10);
                 const enRango = filtroHorario.some(label => {
@@ -123,7 +121,6 @@ const Clases = ({ token }) => {
         });
     };
 
-    // ── Calendario ──
     const primerDiaSemana = new Date(anio, mes, 1).getDay();
     const diasEnMes       = new Date(anio, mes + 1, 0).getDate();
 
@@ -147,7 +144,6 @@ const Clases = ({ token }) => {
         setModoReserva(null);
     };
 
-    // CÁLCULO EN TIEMPO REAL
     const clasesDelDiaFiltradas = (() => {
         if (!diaSelec) return [];
         const nombreDia = DIAS_SEMANA[new Date(anio, mes, diaSelec).getDay()].toLowerCase();
@@ -156,16 +152,14 @@ const Clases = ({ token }) => {
             'mié': 'miercoles', 'jue': 'jueves', 'vie': 'viernes', 'sáb': 'sabado'
         };
         const diaDB = mapaNombre[nombreDia] ?? nombreDia;
-
-        const clasesDia = todasClases.filter(c => 
+        const clasesDia = todasClases.filter(c =>
             (c.dia || '').toLowerCase()
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, '') === diaDB
-        );  
+        );
         return aplicarFiltros(clasesDia);
     })();
 
-    // ── Cupos reales por fecha ──
     const [cuposReales, setCuposReales] = useState({});
 
     const handleElegirClase = (clase) => {
@@ -174,7 +168,6 @@ const Clases = ({ token }) => {
         setModoReserva(null);
     };
 
-    // Consulta cupos de todas las clases del día seleccionado
     useEffect(() => {
         if (!diaSelec || clasesDelDiaFiltradas.length === 0) return;
 
@@ -182,7 +175,7 @@ const Clases = ({ token }) => {
         const dd = String(diaSelec).padStart(2, '0');
         const fechaDia = `${anio}-${mm}-${dd}`;
 
-        setCuposReales({}); // limpiar cupos del día anterior
+        setCuposReales({});
 
         clasesDelDiaFiltradas.forEach(async (clase) => {
             try {
@@ -190,6 +183,12 @@ const Clases = ({ token }) => {
                 setCuposReales(prev => ({ ...prev, [clase.id]: res.data }));
             } catch (err) {
                 console.error('Error obteniendo cupos para clase', clase.id, err);
+            }
+            // Cargar QR automáticamente solo para miembros (no profesores)
+            // ✅ Si el profesor ya generó el QR antes, cargarlo para el miembro
+            const qrGuardado = localStorage.getItem(`qr_clase_${clase.id}`);
+            if (qrGuardado) {
+                setQrUrls(prev => ({ ...prev, [clase.id]: qrGuardado }));
             }
         });
     }, [diaSelec, anio, mes]);
@@ -205,8 +204,8 @@ const Clases = ({ token }) => {
         if (modoReserva === 'membresia') {
             navigate('/reservar/membresia', { state: { clase: claseElegida, fechasDelMes } });
         } else {
-            const mm      = String(mes + 1).padStart(2, '0');
-            const dd      = String(diaSelec).padStart(2, '0');
+            const mm       = String(mes + 1).padStart(2, '0');
+            const dd       = String(diaSelec).padStart(2, '0');
             const fechaDia = `${anio}-${mm}-${dd}`;
             navigate('/reservar/individual', { state: { clase: claseElegida, fechaSeleccionada: fechaDia } });
         }
@@ -226,33 +225,29 @@ const Clases = ({ token }) => {
         setDiaSelec(null);
     };
 
-    // ── Celdas del calendario ──
     const celdas = useMemo(() => {
         const result = [];
         for (let i = 0; i < primerDiaSemana; i++) {
             result.push(<td key={`v-${i}`} className="cal-celda vacio" />);
         }
         for (let d = 1; d <= diasEnMes; d++) {
-            const esHoy       = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
-            const esSelec     = d === diaSelec;
-            const fechaCelda  = new Date(anio, mes, d);
+            const esHoy      = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
+            const esSelec    = d === diaSelec;
+            const fechaCelda = new Date(anio, mes, d);
             const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
-            const esPasado    = fechaCelda < hoy && !esHoyExacto;
-        
+            const esPasado    = fechaCelda < hoy || esHoyExacto;
             const MAP_NUM_A_DB = {
                 0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles',
                 4: 'jueves',  5: 'viernes', 6: 'sabado'
             };
             const diaDB = MAP_NUM_A_DB[fechaCelda.getDay()];
-        
+
             const tieneClases = todasClases.some(c => {
                 const diaClaseNormalizado = (c.dia || '').toLowerCase()
                     .normalize("NFD")
                     .replace(/[\u0300-\u036f]/g, '')
                     .trim();
-
                 if (diaClaseNormalizado !== diaDB) return false;
-
                 if (filtroDisc.length > 0 && !filtroDisc.map(d => d.toLowerCase()).includes(c.actividad?.toLowerCase())) return false;
                 if (filtroHorario.length > 0) {
                     const hora = parseInt(c.horario?.split(':')[0] ?? 0, 10);
@@ -265,15 +260,18 @@ const Clases = ({ token }) => {
                 if (filtroProfesor && String(c.profesor_id) !== String(filtroProfesor)) return false;
                 return true;
             });
-        
+
             result.push(
                 <td
                     key={d}
                     className={`cal-celda ${esHoy ? 'hoy' : ''} ${esSelec ? 'seleccionado' : ''} ${esPasado ? 'pasado' : ''} ${tieneClases && !esPasado ? 'con-clases' : ''}`}
                     onClick={() => {
-                        if (esPasado) { 
-                            setMensajeError('Esta fecha ya pasó.'); 
-                            return; 
+                        const fechaCelda  = new Date(anio, mes, d);
+                        const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
+                        const esPasado    = fechaCelda < hoy || esHoyExacto;
+                        if (esPasado) {
+                            setMensajeError(esHoyExacto ? 'No podés reservar para hoy.' : 'Esta fecha ya pasó.');
+                            return;
                         }
                         setMensajeError('');
                         handleClickDia(d);
@@ -296,7 +294,7 @@ const Clases = ({ token }) => {
         ...filtroDisc.map(d => ({ label: d, quitar: () => toggleChip(d, filtroDisc, setFiltroDisc) })),
         ...filtroHorario.map(h => ({ label: h, quitar: () => toggleChip(h, filtroHorario, setFiltroHorario) })),
         ...(filtroProfesor ? [{
-            label: profesores.find(p => String(p.id) === String(filtroProfesor)) 
+            label: profesores.find(p => String(p.id) === String(filtroProfesor))
                 ? `${profesores.find(p => String(p.id) === String(filtroProfesor)).nombre} ${profesores.find(p => String(p.id) === String(filtroProfesor)).apellido}`
                 : 'Profesor',
             quitar: () => setFiltroProfesor('')
@@ -308,7 +306,7 @@ const Clases = ({ token }) => {
             <div className="calendario-leyenda">
                 <span className="punto-leyenda"></span> Clases disponibles
             </div>
-            
+
             {/* ── FILTROS ── */}
             <div className="filtros-container">
                 <button
@@ -328,15 +326,12 @@ const Clases = ({ token }) => {
                                 <button onClick={chip.quitar} className="filtro-chip-x">×</button>
                             </span>
                         ))}
-                        <button onClick={limpiarFiltros} className="filtros-limpiar">
-                            Limpiar todo
-                        </button>
+                        <button onClick={limpiarFiltros} className="filtros-limpiar">Limpiar todo</button>
                     </div>
                 )}
 
                 {filtrosAbiertos && (
                     <div className="filtros-panel">
-                        {/* Disciplina */}
                         <div className="filtros-grupo">
                             <span className="filtros-grupo-label">Disciplina</span>
                             <div className="filtros-chips">
@@ -345,14 +340,10 @@ const Clases = ({ token }) => {
                                         key={d}
                                         className={`filtro-chip ${filtroDisc.includes(d) ? 'filtro-chip--activo' : ''}`}
                                         onClick={() => toggleChip(d, filtroDisc, setFiltroDisc)}
-                                    >
-                                        {d}
-                                    </button>
+                                    >{d}</button>
                                 ))}
                             </div>
                         </div>
-
-                        {/* Horario */}
                         <div className="filtros-grupo">
                             <span className="filtros-grupo-label">Horario</span>
                             <div className="filtros-chips">
@@ -370,8 +361,6 @@ const Clases = ({ token }) => {
                                 ))}
                             </div>
                         </div>
-
-                        {/* Profesor */}
                         <div className="filtros-grupo">
                             <span className="filtros-grupo-label">Profesor</span>
                             <select
@@ -401,14 +390,12 @@ const Clases = ({ token }) => {
                     <h2>{MESES[mes]} {anio}</h2>
                     <button className="cal-nav" onClick={irMesSiguiente}>›</button>
                 </div>
-
                 <table className="cal-tabla">
                     <thead>
                         <tr>{DIAS_SEMANA.map(d => <th key={d} className="cal-th">{d}</th>)}</tr>
                     </thead>
                     <tbody>{filas}</tbody>
                 </table>
-
                 {mensajeError && <p className="cal-error">{mensajeError}</p>}
             </div>
 
@@ -436,11 +423,10 @@ const Clases = ({ token }) => {
                                 <p>Duración: <strong>{clase.duracion} min</strong></p>
                                 <p>Finaliza a las: <strong>{calcularHoraFin(clase.horario, clase.duracion)}</strong></p>
                                 <p>Precio: <strong>${clase.precio_individual}</strong></p>
+
                                 {(() => {
                                     const info = cuposReales[clase.id];
-                                    if (!info) {
-                                        return <p className="cupo-cargando">Consultando cupos...</p>;
-                                    }
+                                    if (!info) return <p className="cupo-cargando">Consultando cupos...</p>;
                                     return (
                                         <p className={info.hay_cupo ? 'cupo-ok' : 'cupo-lleno'}>
                                             {info.hay_cupo
@@ -453,7 +439,7 @@ const Clases = ({ token }) => {
                         ))
                     )}
 
-                    {/* CAMBIO CLAVE AQUÍ: Agregamos "&& user" para exigir inicio de sesión */}
+                    {/* Opciones de reserva para miembros */}
                     {claseElegida && !esProfesor && user && (
                         <div className="reserva-opciones">
                             <p className="reserva-titulo">
@@ -479,7 +465,7 @@ const Clases = ({ token }) => {
                         </div>
                     )}
 
-                    {/* Si querés, podés agregar opcionalmente un aviso para invitar a registrarse */}
+                    {/* Aviso para visitantes no registrados */}
                     {claseElegida && !esProfesor && !user && (
                         <div className="visitante-aviso-registro">
                             <p>Para reservar un lugar en esta clase, por favor iniciá sesión o registrate.</p>
@@ -489,12 +475,14 @@ const Clases = ({ token }) => {
                         </div>
                     )}
 
-                    {/* Mensaje informativo para el profesor */}
+                    {/* Aviso modo consulta para profesores */}
                     {esProfesor && (
                         <p className="profesor-aviso">
                             Estás viendo las clases en modo consulta.
                         </p>
                     )}
+
+                   
                 </div>
             )}
         </div>

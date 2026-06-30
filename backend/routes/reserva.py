@@ -114,14 +114,16 @@ def crear_reserva_membresia(
             Reserva.estado.in_(["confirmada", "pendiente_pago", "en_espera"])
         ).first()
         if ya_tiene:
-            # Si la reserva existente es de membresía para la misma clase → ok (ya cubierta)
-            # Si es de otra clase en el mismo horario → conflicto real
             if ya_tiene.clase_id != datos.clase_id:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Ya tiene una reserva en ese horario para el {fecha}."
                 )
-            # Mismo clase_id → fecha ya reservada, simplemente la ignoramos
+            # Mismo clase_id + confirmada → ya pagó, ignorar
+            # Mismo clase_id + pendiente_pago → es la renovación anticipada, incluir
+            if ya_tiene.estado == "pendiente_pago":
+                fechas_sin_reserva_previa.append(fecha)
+            # si es confirmada o en_espera → no agregar
         else:
             fechas_sin_reserva_previa.append(fecha)
 
@@ -297,22 +299,40 @@ async def confirmar_pago_membresia(
         ocupadas = db.query(Reserva).filter(
             Reserva.clase_id    == datos.clase_id,
             Reserva.fecha_clase == fecha,
-            Reserva.estado.in_(["confirmada", "pendiente_pago"])
+            Reserva.estado.in_(["confirmada", "pendiente_pago"]),
+            Reserva.socio_id    != socio.id,
         ).count()
 
         if ocupadas < clase.cupo:
-            r = Reserva(
-                socio_id      = socio.id,
-                clase_id      = datos.clase_id,
-                tipo          = TipoReserva.Membresia.value,
-                estado        = "confirmada",
-                fecha_clase   = fecha,
-                monto_total   = datos.monto_total,
-                monto_pagado  = datos.monto_total,
-                es_recurrente = True,
-            )
-            db.add(r)
-            reservas_creadas.append(r)
+            # ── FIX: buscar si ya existe un pendiente_pago propio para esta fecha ──
+            reserva_existente = db.query(Reserva).filter(
+                Reserva.socio_id    == socio.id,
+                Reserva.clase_id    == datos.clase_id,
+                Reserva.fecha_clase == fecha,
+                Reserva.estado      == "pendiente_pago",
+                Reserva.es_recurrente == True,
+            ).first()
+
+            if reserva_existente:
+                # Renovación anticipada: actualizar la pendiente_pago existente
+                reserva_existente.estado       = "confirmada"
+                reserva_existente.monto_total  = datos.monto_total
+                reserva_existente.monto_pagado = datos.monto_total
+                reservas_creadas.append(reserva_existente)
+            else:
+                # Primera vez: crear nueva reserva confirmada
+                r = Reserva(
+                    socio_id      = socio.id,
+                    clase_id      = datos.clase_id,
+                    tipo          = TipoReserva.Membresia.value,
+                    estado        = "confirmada",
+                    fecha_clase   = fecha,
+                    monto_total   = datos.monto_total,
+                    monto_pagado  = datos.monto_total,
+                    es_recurrente = True,
+                )
+                db.add(r)
+                reservas_creadas.append(r)
 
     # 4. Crear reservas "pendiente_pago" del mes siguiente (reserva el cupo anticipado)
     #    Solo se crean si no existen ya para ese mes
@@ -336,11 +356,12 @@ async def confirmar_pago_membresia(
             if ya_existe:
                 continue
 
-            # Verificar que haya cupo disponible
+            # Verificar que haya cupo disponible (excluir pendiente_pago propio)
             ocupadas_sig = db.query(Reserva).filter(
                 Reserva.clase_id    == datos.clase_id,
                 Reserva.fecha_clase == fecha,
-                Reserva.estado.in_(["confirmada", "pendiente_pago"])
+                Reserva.estado.in_(["confirmada", "pendiente_pago"]),
+                Reserva.socio_id    != socio.id,  # excluir pendiente_pago propio del conteo
             ).count()
 
             if ocupadas_sig < clase.cupo:
@@ -944,6 +965,7 @@ async def pagar_cupo(
 # Endpoint 4: mis reservas
 @router.get("/mis-reservas")
 def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    db.rollback()
     socio = obtener_usuario_actual(db=db, token=token)
     hoy   = date.today()
 

@@ -23,6 +23,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import GestionPreguntasFrecuentes from './pages/admin/GestionPreguntasFrecuentes';
 import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
 import GestionProfesores from './pages/admin/GestionProfesores';
+import PagoResultado from './pages/PagoResultado'
 
 // 🌟 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
@@ -73,6 +74,8 @@ function AppContent({ token, setToken }) {
         <Route path="/admin/gestion-profesores" element={<GestionProfesores />} />
         <Route path="/cambiar-password-inicial" element={<CambiarPasswordInicial />} />
 
+        {/* Rutas de Mercado Pago */}
+        <Route path="/pago/resultado" element={<PagoResultado />} />
         {/* Ruta 404 - Captura cualquier ruta inexistente */}
         <Route path="*" element={<h1>404 - Página no encontrada</h1>} />
       </Routes>
