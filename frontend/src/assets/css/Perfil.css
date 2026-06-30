@@ -153,6 +153,9 @@ body,
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 16px;
     padding: 20px 36px;
+
+    max-width: 2000px;
+    margin: 0 auto;
 }
 
 .dato-item {
@@ -1136,9 +1139,178 @@ body,
     margin-top: 10px;
 }
 
+.clases-row {
+    display: grid;
+    gap: 16px;
+    flex-wrap: wrap;   /* clave para que baje en pantallas chicas */
+    align-items: stretch;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+
+}
+
+.dia-titulo {
+    margin-bottom: 30px;
+}
+
+
 .qr-mini {
     display: flex;
     flex-direction: column;
     align-items: center;
+}
 
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal-box {
+    background: rgb(88, 86, 86);
+    width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.alumnos-lista {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.alumno-card {
+    padding: 8px;
+    border-bottom: 1px solid #4e4646e5;
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-cerrar {
+    margin-top: 15px;
+}
+
+.mis-clase-botones {
+    display: flex;
+    gap: 10px;
+    justify-content: center;   /* centra horizontalmente */
+    align-items: center;
+    flex-wrap: wrap;           /* si no entran, bajan */
+    width: 100%;
+}
+
+.mis-clase-botones button {
+    min-width: 120px;
+    text-align: center;
+}
+
+.btn-ver-alumnos {
+    background-color:rgb(3, 126, 226);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-ver-alumnos:hover {
+    transform: translateY(-3px);
+    background-color: #4399df;
+    color: white;
+}
+
+.btn-generar-qr {
+    background-color:rgb(59, 228, 26);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-generar-qr:hover {
+    transform: translateY(-3px);
+    background-color: #69fc64;
+    color: white;
+}
+
+.btn-ver-qr {
+    background-color:rgb(226, 185, 3);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-ver-qr:hover {
+    transform: translateY(-3px);
+    background-color: #fdd550;
+    color: white;
+}
+
+.btn-cerrar{
+    background-color:rgba(85, 84, 71, 0.87);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-cerrar :hover {
+    transform: translateY(-3px);
+    background-color: #706c5f;
+    color: white;
+}
+
+.btn-escanear-qr {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(92, 184, 77, 0.4);
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'Lora', serif;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease-in-out;
+    margin-left: auto;
+}
+
+.btn-escanear-qr:hover {
+    background: rgba(92, 184, 77, 0.1);
+    border-color: #5CB84D;
+    color: #5CB84D;
+    box-shadow: 0 0 12px rgba(92, 184, 77, 0.15);
+}
+
+.habilitar-camara {
+    background-color:rgb(64, 219, 3);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.habilitar-camara:hover {
+    transform: translateY(-3px);
+    background-color: #6ad63f;
+    color: white;
 }

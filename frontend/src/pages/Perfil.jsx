@@ -7,6 +7,7 @@ import ModalResultado from '../components/ModalResultado.jsx';
 import { useRef } from "react";
 import EscanearQR from "./EscanearQR";
 import QRCode from "qrcode";
+import { toast, Toaster } from "react-hot-toast";
 
 
 const Perfil = ({ token, setToken }) => {
@@ -69,6 +70,13 @@ const Perfil = ({ token, setToken }) => {
     const [mostrarQR, setMostrarQR] = useState(false);
     const [qrSeleccionado, setQrSeleccionado] = useState(null);
 
+    //ALUMNOS
+    const [alumnos, setAlumnos] = useState([]);
+    const [modalAlumnos, setModalAlumnos] = useState(false);
+    const [claseSeleccionada, setClaseSeleccionada] = useState(null);
+    const [asistencia, setAsistencia] = useState({ presentes: 0, ausentes: 0 });
+    const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
+
     useEffect(() => {
             cargarClases();
         }, []);
@@ -94,18 +102,18 @@ const Perfil = ({ token, setToken }) => {
         const estado = estadoClase(clase);
 
         if (estado === "pendiente") {
-            alert("El QR sólo puede generarse cuando comienza la clase.");
+            toast("El QR sólo puede generarse cuando comienza la clase.");
             return;
         }
 
         if (estado === "caducado") {
-            alert("La clase ya finalizó.");
+            toast.error("La clase ya finalizó.");
             return;
         }
 
         // Ya fue generado
         if (qrGenerado[claseId]) {
-            alert("El QR ya fue generado.");
+            toast("El QR ya fue generado.");
             return;
         }
 
@@ -120,11 +128,15 @@ const Perfil = ({ token, setToken }) => {
                 [claseId]: url
             }));
 
-            alert("QR generado");
+            setQrSeleccionado(url);
+            setMostrarQR(true);
+
+            toast.success("QR generado");
 
         } catch (err) {
-            console.error(err);
-            alert("Error generando QR");
+            toast.error(
+                err?.response?.data?.detail || "Error generando QR"
+            );
         }
     };
 
@@ -132,17 +144,17 @@ const Perfil = ({ token, setToken }) => {
         const estado = estadoClase(clase);
 
         if (estado === "pendiente") {
-            alert("La clase todavía no comenzó.");
+            toast("La clase todavía no comenzó.");
             return;
         }
 
         if (estado === "caducado") {
-            alert("El QR ya caducó.");
+            toast.error("El QR ya caducó.");
             return;
         }
 
         if (!qrGenerado[clase.id]) {
-            alert("Primero generá el QR.");
+            toast("Primero generá el QR.");
             return;
         }
 
@@ -164,7 +176,7 @@ const Perfil = ({ token, setToken }) => {
             localStorage.setItem(`qr_clase_${claseId}`, url);
 
         } catch (err) {
-            console.error("Error obteniendo QR", err);
+            toast.error(err?.response?.data?.detail || "Error obteniendo QR" );
         }
     };
 
@@ -208,10 +220,9 @@ const Perfil = ({ token, setToken }) => {
             setMostrarResultado(true);
 
         } catch (error) {
-
             console.error(error);
 
-            alert("No se pudo salir de la lista de espera");
+            toast.error(error?.response?.data?.detail || "No se pudo salir de la lista de espera" );
         }
     };
 
@@ -221,14 +232,15 @@ const Perfil = ({ token, setToken }) => {
 
             const res = await api.post("/membresia/renovar");
 
-            alert(res.data.mensaje || "Membresía renovada con éxito");
+            toast.success(res.data.mensaje || "Membresía renovada con éxito");
 
             const resUser = await api.get("/socios/me");
             setUser(resUser.data);
 
         } catch (err) {
             console.error(err);
-            alert(err?.response?.data?.detail || "Error al renovar membresía");
+
+            toast.error(err?.response?.data?.detail || "Error al renovar membresía");
         } finally {
             setCargandoRenovar(false);
         }
@@ -245,18 +257,7 @@ const Perfil = ({ token, setToken }) => {
 
     // 2. Clases de hoy
     const clasesHoy = (clasesProfesor || []).filter(c => {
-        if (!c?.dia || !c?.horario) return false;
-        
-        // Normalizamos a minúsculas por si acaso
-        const diaClase = c.dia.toLowerCase(); 
-        if (diaClase !== diaHoyTexto) return false;
-
-        // Validar si la hora ya pasó
-        const [hora, minuto] = c.horario.split(':');
-        const fechaClase = new Date();
-        fechaClase.setHours(Number(hora), Number(minuto), 0, 0);
-
-        return fechaClase > ahora;
+        return c?.dia?.toLowerCase() === diaHoyTexto;
     });
 
     // 3. Clases futuras (días distintos a hoy)
@@ -326,7 +327,7 @@ const Perfil = ({ token, setToken }) => {
                 }
 
             } catch (err) {
-                console.error("Error cargando perfil", err);
+                toast.error(err?.response?.data?.detail || "Error cargando perfil");
                 localStorage.removeItem("token");
                 setToken(null);
                 navigate("/login");
@@ -521,7 +522,7 @@ const Perfil = ({ token, setToken }) => {
         } catch (error) {
             console.error("Error cancelando reserva:", error);
             setMostrarConfirmacion(false);
-            alert("Error: " + (error.response?.data?.detail || "No se pudo cancelar"));
+            toast.error(error.response?.data?.detail || "No se pudo cancelar la reserva");
             setReservaAbordador(null);
         }
     };
@@ -601,7 +602,9 @@ const Perfil = ({ token, setToken }) => {
             setUsaCreditoCupo(creditos > 0)
 
         } catch (error) {
-            alert("Error: " + (error.response?.data?.detail || "No se pudo aceptar el cupo"));
+            console.error("Error aceptando cupo:", error);
+
+            toast.error(error.response?.data?.detail || "No se pudo aceptar el cupo");
         }
     };
 
@@ -674,10 +677,11 @@ const Perfil = ({ token, setToken }) => {
 
         } catch (error) {
             console.error("Error rechazando cupo:", error);
-            alert("Error: " + (error.response?.data?.detail || "No se pudo rechazar el cupo"));
+
+            toast.error(error.response?.data?.detail || "No se pudo rechazar el cupo");
         }
     };
-    
+        
     const estadoClase = (clase) => {
         const dias = {
             domingo: 0,
@@ -694,38 +698,69 @@ const Perfil = ({ token, setToken }) => {
         const inicio = new Date();
 
         const diferencia =
-            dias[clase.dia.toLowerCase()] -
-            ahora.getDay();
+            dias[clase.dia.toLowerCase()] - ahora.getDay();
 
         inicio.setDate(ahora.getDate() + diferencia);
 
         const [h, m] = clase.horario.split(":");
-
         inicio.setHours(Number(h), Number(m), 0, 0);
 
         const fin = new Date(inicio);
+        fin.setMinutes(fin.getMinutes() + (clase.duracion || 60));
 
-        fin.setHours(fin.getHours() + 1);
+        if (ahora >= inicio && ahora <= fin) return "en_curso";
+        if (ahora > fin) return "finalizada";
 
-        if (ahora < inicio)
-            return "pendiente";
+        return "proxima";
+    };
 
-        if (ahora > fin)
-            return "caducado";
+    const verAlumnos = async (clase) => {
+        try {
 
-        return "activa";
+            setAlumnos([]);
+            setAsistencia(null);
+            setEstadoSeleccionado(null);
+            setClaseSeleccionada(clase);
+
+            const res = await api.get(`/clases/${clase.id}/alumnos`);
+
+            const estado = estadoClase(clase);
+
+            setAlumnos(res.data.alumnos);
+            setEstadoSeleccionado(estado);
+
+            // SOLO si ya pasó la clase
+            if (estado === "en_curso" || estado === "finalizada") {
+                const presentes = res.data.alumnos.filter(a => a.asistio).length;
+                const total = res.data.alumnos.length;
+
+                setAsistencia({
+                    presentes,
+                    ausentes: total - presentes
+                });
+            } else {
+                setAsistencia(null);
+            }
+
+            setModalAlumnos(true);
+
+        } catch (err) {
+            toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
+        }
     };
 
 
     return (
-        <div className="perfil-container">
-            
-            <ModalConfirmacion
-                isOpen={mostrarConfirmacion}
-                titulo="¿Estás seguro?"
-                onConfirm={confirmarCancelacion}
-                onCancel={cancelarCancelacion}
-            />
+        <>
+        <Toaster />
+            <div className="perfil-container">
+                
+                <ModalConfirmacion
+                    isOpen={mostrarConfirmacion}
+                    titulo="¿Estás seguro?"
+                    onConfirm={confirmarCancelacion}
+                    onCancel={cancelarCancelacion}
+                />
 
             <ModalConfirmacion
                 isOpen={mostrarConfirmacionRechazo}
@@ -1019,485 +1054,570 @@ const Perfil = ({ token, setToken }) => {
                                     <h2 className="perfil-nombre">{user.nombre}</h2>
                                     <p className="perfil-id">ID Socio · #2026{user.id || '01'}</p>
                                 </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* ── DATOS PERSONALES ── */}
-                    <div className="perfil-datos-row">
-                        <div className="dato-item">
-                            <span className="dato-label">Email</span>
-                            <span className="dato-valor">{user.email || 'No registrado'}</span>
-                        </div>
-                        <div className="dato-item">
-                            <span className="dato-label">DNI</span>
-                            <span className="dato-valor">{user.dni || '—'}</span>
-                        </div>
-                        <div className="dato-item">
-                            <span className="dato-label">Teléfono</span>
-                            <span className="dato-valor">{user.telefono || '—'}</span>
-                        </div>
-
-                        {user.rol === 'miembro' && (
+                        {/* ── DATOS PERSONALES ── */}
+                        <div className="perfil-datos-row">
                             <div className="dato-item">
-                                <span className="dato-label">Créditos disponibles</span>
-                                <span className="dato-valor">
-                                    🎟️ {creditos}  {/* Antes estaba "{user.creditos_disponibles || 0}" pero lo cambie porque me dijo esto claude "Si dejás user.creditos_disponibles, el número en pantalla no cambia después de la cancelación, porque user no se actualiza. Solo creditos (el estado nuevo) se actualiza." */}
-                                </span>
+                                <span className="dato-label">Email</span>
+                                <span className="dato-valor">{user.email || 'No registrado'}</span>
+                            </div>
+                            <div className="dato-item">
+                                <span className="dato-label">DNI</span>
+                                <span className="dato-valor">{user.dni || '—'}</span>
+                            </div>
+                            <div className="dato-item">
+                                <span className="dato-label">Teléfono</span>
+                                <span className="dato-valor">{user.telefono || '—'}</span>
+                            </div>
+
+                            {user.rol === 'miembro' && (
+                                <div className="dato-item">
+                                    <span className="dato-label">Créditos disponibles</span>
+                                    <span className="dato-valor">
+                                        🎟️ {creditos}  {/* Antes estaba "{user.creditos_disponibles || 0}" pero lo cambie porque me dijo esto claude "Si dejás user.creditos_disponibles, el número en pantalla no cambia después de la cancelación, porque user no se actualiza. Solo creditos (el estado nuevo) se actualiza." */}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div className="dato-item btn-container">
+                                <button className="btn-cambiar-pass" onClick={() => navigate('/cambiar-password')}>
+                                    Cambiar Contraseña
+                                </button>
+                            </div>
+
+                            {user?.rol !== "profesor" && (
+                                <>
+                                    <div className="perfil-qr-boton">
+                                        <button
+                                            className="btn-escanear-qr"
+                                            onClick={() => setAbrirScanner(true)}
+                                        >
+                                            📷 Escanear asistencia
+                                        </button>
+                                    </div>
+
+                                    {abrirScanner && (
+                                        <div
+                                            className="modal-overlay"
+                                            onClick={() => setAbrirScanner(false)}
+                                        >
+                                            <div
+                                                className="modal-box"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <h2>📷 Escanear QR</h2>
+
+                                                <EscanearQR />
+
+                                                <button
+                                                    className="btn-cerrar"
+                                                    onClick={() => setAbrirScanner(false)}
+                                                    style={{ marginTop: "15px" }}
+                                                >
+                                                    Cerrar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {user.rol !== 'profesor' && (
+                                <div className="perfil-acta-section">
+                                    <div className="perfil-section-header">
+                                        <span className="perfil-section-icon">🩺</span>
+                                        <h3 className="perfil-section-title">Apto Físico</h3>
+                                    </div>
+                                    {user.apto_fisico ? (
+                                        <a href={`http://localhost:8000/${user.apto_fisico}`} target="_blank" rel="noreferrer" className="btn-ver-acta">
+                                            Ver PDF
+                                        </a>
+                                    ) : (
+                                        <p className="acta-faltante">No tenés un apto físico cargado.</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* MEMBRESÍA */}
+                            {rol === 'miembro' && (
+                                <div className="perfil-membresia">
+                                    {membresiaActiva && fechaVencimiento ? (
+                                        <p>🟢 Membresía activa hasta: <strong>{fechaVencimiento}</strong></p>
+                                    ) : (
+                                        <p>🔴 No tenés membresía activa</p>
+                                    )}
+                                    {membresíasRenovables.length > 0 && (
+                                        <button
+                                            className="boton-accion"
+                                            onClick={() => { setModalAbierto(true); setSeleccionadas([]); setErrorRenovar(''); }}
+                                        >
+                                            Renovar membresías
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {mensajeExito && <div className="mensaje-exito">{mensajeExito}</div>}
+
+                        {/* ── CALENDARIO ── */}
+                        {user.rol !== 'profesor' && (
+                            <div className="perfil-calendar-block">
+                                <div className="perfil-reservas-section">
+                                    <div className="perfil-section-header">
+                                        <span className="perfil-section-icon">📅</span>
+                                        <h3 className="perfil-section-title">Mis Reservas Activas</h3>
+                                        {reservas.length > 0 && (
+                                            <span className="perfil-reservas-count">{reservas.length}</span>
+                                        )}
+                                    </div>
+
+                                    {reservas.length === 0 ? (
+                                        <div className="reserva-empty">
+                                            <span className="reserva-empty-icon">🏋️</span>
+                                            <p>No tenés turnos reservados.</p>
+                                            <Link to="/" className="reserva-empty-link">
+                                                Andá al inicio para agendar una clase
+                                            </Link>
+                                        </div>
+                                    ) : (
+                                        Object.entries(reservasPorMes).map(([mesKey, { label, porDia }]) => (
+                                            <div key={mesKey} className="perfil-mes-block">
+                                                <h4 className="perfil-mes-titulo" style={{ textTransform: 'capitalize' }}>
+                                                    📆 {label}
+                                                </h4>
+                                                <div className="perfil-agenda-container">
+                                                    {diasSemana.map(dia => {
+                                                        const clasesDelDia = porDia[dia] || [];
+                                                        return (
+                                                            <div className="agenda-columna" key={dia}>
+                                                                <div className="agenda-columna-header">
+                                                                    <h4>{dia}</h4>
+                                                                    <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
+                                                                        {clasesDelDia.length}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="agenda-columna-body">
+                                                                    {clasesDelDia.length === 0 ? (
+                                                                        <p className="agenda-columna-vacio">Sin clases</p>
+                                                                    ) : (
+                                                                        clasesDelDia.map(r => {
+                                                                            const chip = chipMembresia(r);
+                                                                            // Las pendiente_pago de membresía tienen estilo diferente
+                                                                            const esPendiente = r.tipo === 'membresia' && r.estado === 'pendiente_pago';
+                                                                            return (
+                                                                                <div
+                                                                                    className={`reserva-card-mini ${esPendiente ? 'reserva-card-mini--pendiente' : ''}`}
+                                                                                    key={r.id}
+                                                                                >
+                                                                                    <div className="reserva-mini-fecha">
+                                                                                        {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                                                            day: 'numeric', month: 'short'
+                                                                                        })}
+                                                                                    </div>
+                                                                                    <div className="reserva-mini-detalles">
+                                                                                        <span className="reserva-mini-actividad">
+                                                                                            {r.clase?.actividad || `Clase #${r.clase_id}`}
+                                                                                        </span>
+                                                                                        <span className="reserva-mini-horario">
+                                                                                            {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
+                                                                                        </span>
+                                                                                        <span className="reserva-mini-tipo">
+                                                                                            {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
+                                                                                        </span>
+
+                                                                                        {/* Chip: pendiente de pago (mes siguiente pre-reservado) */}
+                                                                                        {chip?.tipo === 'pendiente' && (
+                                                                                            <span className="reserva-mini-pendiente">
+                                                                                                ⏳ Cupo reservado · Pendiente de pago
+                                                                                            </span>
+                                                                                        )}
+
+                                                                                        {/* Chip: última clase confirmada del mes */}
+                                                                                        {chip?.tipo === 'vence' && (
+                                                                                            <span className="reserva-mini-vencimiento">
+                                                                                                📅 Última del mes
+                                                                                            </span>
+                                                                                        )}
+
+                                                                                        {r.lista_espera && r.estado === 'en_espera' && (
+                                                                                            <>
+                                                                                                <span className="reserva-mini-espera">
+                                                                                                    En Espera
+                                                                                                </span>
+
+                                                                                                <button
+                                                                                                    className="btn-salir-espera"
+                                                                                                    onClick={() => salirListaEspera(r.id)}
+                                                                                                >
+                                                                                                    Salir de lista de espera
+                                                                                                </button>
+                                                                                            </>
+                                                                                        )}
+
+                                                                                        {r.notificado && (
+                                                                                            <span className="reserva-mini-notificado">
+                                                                                                ¡Cupo disponible!
+                                                                                            </span>
+                                                                                        )}
+
+                                                                                        {/* Cancelar reserva */}
+                                                                                        {r.estado === 'confirmada' && (
+                                                                                            <button
+                                                                                                className="btn-cancelar-reserva"
+                                                                                                onClick={() => iniciarCancelacion(r)}
+                                                                                            >
+                                                                                                Cancelar
+                                                                                            </button>
+                                                                                        )}
+
+                                                                                        {/* Aceptar cupo */}
+                                                                                        {r.notificado && (
+                                                                                            <button
+                                                                                                className="btn-aceptar-cupo"
+                                                                                                onClick={() => aceptarCupo(r.id)}
+                                                                                            >
+                                                                                                Aceptar cupo
+                                                                                            </button>
+                                                                                        )}
+
+                                                                                        {/* Rechazar cupo */}
+                                                                                        {r.notificado && (
+                                                                                            <button
+                                                                                                className="btn-rechazar-cupo"
+                                                                                                onClick={() => rechazarCupo(r.id)}
+                                                                                            >
+                                                                                                Rechazar cupo
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
                         )}
-
-                        <div className="dato-item btn-container">
-                            <button className="btn-cambiar-pass" onClick={() => navigate('/cambiar-password')}>
-                                Cambiar Contraseña
-                            </button>
-                        </div>
 
                         {user.rol !== 'profesor' && (
-                            <div className="perfil-acta-section">
-                                <div className="perfil-section-header">
-                                    <span className="perfil-section-icon">🩺</span>
-                                    <h3 className="perfil-section-title">Apto Físico</h3>
-                                </div>
-                                {user.apto_fisico ? (
-                                    <a href={`http://localhost:8000/${user.apto_fisico}`} target="_blank" rel="noreferrer" className="btn-ver-acta">
-                                        Ver PDF
-                                    </a>
-                                ) : (
-                                    <p className="acta-faltante">No tenés un apto físico cargado.</p>
-                                )}
-                            </div>
+                            <Link to="/historial-pagos" className="btn-historial">
+                                Ver historial de pagos
+                            </Link>
                         )}
 
-                        {/* MEMBRESÍA */}
-                        {rol === 'miembro' && (
-                            <div className="perfil-membresia">
-                                {membresiaActiva && fechaVencimiento ? (
-                                    <p>🟢 Membresía activa hasta: <strong>{fechaVencimiento}</strong></p>
-                                ) : (
-                                    <p>🔴 No tenés membresía activa</p>
-                                )}
-                                {membresíasRenovables.length > 0 && (
-                                    <button
-                                        className="boton-accion"
-                                        onClick={() => { setModalAbierto(true); setSeleccionadas([]); setErrorRenovar(''); }}
-                                    >
-                                        Renovar membresías
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                        {user?.rol !== "profesor" && (
-                            <div className="perfil-qr-boton">
-                                <button
-                                    className="btn-escanear-qr"
-                                    onClick={() => setAbrirScanner(true)}
-                                >
-                                    📷 Escanear asistencia
-                                </button>
+                        {user?.rol === "profesor" && (
 
-                                {abrirScanner && (
-                                    <div className="scanner-modal">
-                                        <div className="scanner-content">
-                                            <button
-                                                onClick={() => setAbrirScanner(false)}
-                                            >
-                                                ✕
-                                            </button>
+                            <div className="perfil-calendar-block">
 
-                                            <EscanearQR />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                <div className="perfil-reservas-section">
 
-                    {mensajeExito && <div className="mensaje-exito">{mensajeExito}</div>}
+                                    <div className="perfil-section-header">
 
-                    {/* ── CALENDARIO ── */}
-                    {user.rol !== 'profesor' && (
-                        <div className="perfil-calendar-block">
-                            <div className="perfil-reservas-section">
-                                <div className="perfil-section-header">
-                                    <span className="perfil-section-icon">📅</span>
-                                    <h3 className="perfil-section-title">Mis Reservas Activas</h3>
-                                    {reservas.length > 0 && (
-                                        <span className="perfil-reservas-count">{reservas.length}</span>
-                                    )}
-                                </div>
-
-                                {reservas.length === 0 ? (
-                                    <div className="reserva-empty">
-                                        <span className="reserva-empty-icon">🏋️</span>
-                                        <p>No tenés turnos reservados.</p>
-                                        <Link to="/" className="reserva-empty-link">
-                                            Andá al inicio para agendar una clase
-                                        </Link>
-                                    </div>
-                                ) : (
-                                    Object.entries(reservasPorMes).map(([mesKey, { label, porDia }]) => (
-                                        <div key={mesKey} className="perfil-mes-block">
-                                            <h4 className="perfil-mes-titulo" style={{ textTransform: 'capitalize' }}>
-                                                📆 {label}
-                                            </h4>
-                                            <div className="perfil-agenda-container">
-                                                {diasSemana.map(dia => {
-                                                    const clasesDelDia = porDia[dia] || [];
-                                                    return (
-                                                        <div className="agenda-columna" key={dia}>
-                                                            <div className="agenda-columna-header">
-                                                                <h4>{dia}</h4>
-                                                                <span className={`agenda-badge ${clasesDelDia.length > 0 ? 'active' : ''}`}>
-                                                                    {clasesDelDia.length}
-                                                                </span>
-                                                            </div>
-                                                            <div className="agenda-columna-body">
-                                                                {clasesDelDia.length === 0 ? (
-                                                                    <p className="agenda-columna-vacio">Sin clases</p>
-                                                                ) : (
-                                                                    clasesDelDia.map(r => {
-                                                                        const chip = chipMembresia(r);
-                                                                        // Las pendiente_pago de membresía tienen estilo diferente
-                                                                        const esPendiente = r.tipo === 'membresia' && r.estado === 'pendiente_pago';
-                                                                        return (
-                                                                            <div
-                                                                                className={`reserva-card-mini ${esPendiente ? 'reserva-card-mini--pendiente' : ''}`}
-                                                                                key={r.id}
-                                                                            >
-                                                                                <div className="reserva-mini-fecha">
-                                                                                    {new Date(r.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
-                                                                                        day: 'numeric', month: 'short'
-                                                                                    })}
-                                                                                </div>
-                                                                                <div className="reserva-mini-detalles">
-                                                                                    <span className="reserva-mini-actividad">
-                                                                                        {r.clase?.actividad || `Clase #${r.clase_id}`}
-                                                                                    </span>
-                                                                                    <span className="reserva-mini-horario">
-                                                                                        {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
-                                                                                    </span>
-                                                                                    <span className="reserva-mini-tipo">
-                                                                                        {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
-                                                                                    </span>
-
-                                                                                    {/* Chip: pendiente de pago (mes siguiente pre-reservado) */}
-                                                                                    {chip?.tipo === 'pendiente' && (
-                                                                                        <span className="reserva-mini-pendiente">
-                                                                                            ⏳ Cupo reservado · Pendiente de pago
-                                                                                        </span>
-                                                                                    )}
-
-                                                                                    {/* Chip: última clase confirmada del mes */}
-                                                                                    {chip?.tipo === 'vence' && (
-                                                                                        <span className="reserva-mini-vencimiento">
-                                                                                            📅 Última del mes
-                                                                                        </span>
-                                                                                    )}
-
-                                                                                    {r.lista_espera && r.estado === 'en_espera' && (
-                                                                                        <>
-                                                                                            <span className="reserva-mini-espera">
-                                                                                                En Espera
-                                                                                            </span>
-
-                                                                                            <button
-                                                                                                className="btn-salir-espera"
-                                                                                                onClick={() => salirListaEspera(r.id)}
-                                                                                            >
-                                                                                                Salir de lista de espera
-                                                                                            </button>
-                                                                                        </>
-                                                                                    )}
-
-                                                                                    {r.estado === 'notificado' && (
-                                                                                        <span className="reserva-mini-notificado">
-                                                                                            ¡Cupo disponible!
-                                                                                        </span>
-                                                                                    )}
-
-                                                                                    {/* Cancelar reserva */}
-                                                                                    {r.estado === 'confirmada' && (
-                                                                                        <button
-                                                                                            className="btn-cancelar-reserva"
-                                                                                            onClick={() => iniciarCancelacion(r)}
-                                                                                        >
-                                                                                            Cancelar
-                                                                                        </button>
-                                                                                    )}
-
-                                                                                    {/* Aceptar cupo */}
-                                                                                    {r.estado === 'notificado' && (
-                                                                                        <button
-                                                                                            className="btn-aceptar-cupo"
-                                                                                            onClick={() => aceptarCupo(r)}
-                                                                                        >
-                                                                                            Aceptar cupo
-                                                                                        </button>
-                                                                                    )}
-
-                                                                                    {/* Rechazar cupo */}
-                                                                                    {r.estado === 'notificado' && (
-                                                                                        <button
-                                                                                            className="btn-rechazar-cupo"
-                                                                                            onClick={() => iniciarRechazo(r)}
-                                                                                        >
-                                                                                            Rechazar cupo
-                                                                                        </button>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {user.rol !== 'profesor' && (
-                        <Link to="/historial-pagos" className="btn-historial">
-                            Ver historial de pagos
-                        </Link>
-                    )}
-
-                    {user?.rol === "profesor" && (
-
-                        <div className="perfil-calendar-block">
-
-                            <div className="perfil-reservas-section">
-
-                                <div className="perfil-section-header">
-
-                                    <span className="perfil-section-icon">
-                                        🏋️
-                                    </span>
-
-                                    <h3 className="perfil-section-title">
-                                        Mis clases
-                                    </h3>
-
-                                    <span className="perfil-reservas-count">
-                                        {clasesProfesor.length}
-                                    </span>
-
-                                </div>
-                                {error && (
-                                    <p className="mis-clases-error">
-                                        {error}
-                                    </p>
-                                )}
-
-                                {clasesProfesor.length === 0 ? (
-
-                                    <div className="reserva-empty">
-
-                                        <span className="reserva-empty-icon">
-                                            📭
+                                        <span className="perfil-section-icon">
+                                            🏋️
                                         </span>
 
-                                        <p>No tenés clases asignadas.</p>
+                                        <h3 className="perfil-section-title">
+                                            Mis clases
+                                        </h3>
+
+                                        <span className="perfil-reservas-count">
+                                            {clasesProfesor.length}
+                                        </span>
 
                                     </div>
-
-                                ) : (
-
-                                <div className="mis-clases-grid">
-
-                                    {/* 🔵 HOY */}
-                                    {clasesHoy.length > 0 && (
-                                        <>
-                                            <h2 className="dia-titulo">📅 Hoy</h2>
-
-                                            {clasesHoy.map(clase => (
-                                                <div key={clase.id} className="mis-clase-card">
-
-                                                    <h3>{capitalize(clase.actividad)}</h3>
-
-                                                    <p>📅 {capitalize(clase.dia)}</p>
-
-                                                    <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
-
-                                                    <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
-                                                    <div className="mis-clase-footer">
-                                                        <div className="mis-clase-botones">
-                                                            <button className="btn-ver-alumnos">
-                                                                Ver alumnos
-                                                            </button>
-
-                                                            <button
-                                                                className="btn-generar-qr"
-                                                                disabled={
-                                                                    estadoClase(clase) !== "activa" ||
-                                                                    qrGenerado[clase.id]
-                                                                }
-                                                                onClick={() => generarQR(clase.id)}
-                                                            >
-                                                                {qrGenerado[clase.id]
-                                                                    ? "QR generado"
-                                                                    : "Generar QR"}
-                                                            </button>
-
-                                                            <button
-                                                                className="btn-ver-qr"
-                                                                onClick={() => abrirQR(clase)}
-                                                            >
-                                                                Mostrar QR
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </>
+                                    {error && (
+                                        <p className="mis-clases-error">
+                                            {error}
+                                        </p>
                                     )}
 
-                                    {/* 🟡 FUTURO */}
-                                    {clasesFuturas.length > 0 && (
-                                        <>
-                                            <h2 className="dia-titulo">📆 Próximas clases</h2>
+                                    {clasesProfesor.length === 0 ? (
 
-                                            {clasesFuturas.map(clase => (
-                                                <div key={clase.id} className="mis-clase-card">
+                                        <div className="reserva-empty">
 
-                                                    <h3>{capitalize(clase.actividad)}</h3>
+                                            <span className="reserva-empty-icon">
+                                                📭
+                                            </span>
 
-                                                    <p>📅 {capitalize(clase.dia)}</p>
+                                            <p>No tenés clases asignadas.</p>
 
-                                                    <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
-
-                                                    <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
-                                                    <div className="mis-clase-footer">
-
-                                                        <div className="mis-clase-botones">
-                                                            <button className="btn-ver-alumnos">
-                                                                Ver alumnos
-                                                            </button>
-                                                
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </>
-                                    )}
-
-                                </div>
-
-                                )}
-
-                            </div>
-
-                        </div>
-
-                        )}
-
-                    {/* ── MODAL RENOVACIÓN ── */}
-                    {modalAbierto && (
-                        <div className="modal-overlay" onClick={() => setModalAbierto(false)}>
-                            <div className="modal-renovar" onClick={e => e.stopPropagation()}>
-                                <div className="modal-renovar-header">
-                                    <h3>Renovar membresías</h3>
-                                    <button className="modal-cerrar" onClick={() => setModalAbierto(false)}>✕</button>
-                                </div>
-                                <p className="modal-renovar-desc">
-                                    Seleccioná las clases que querés renovar para el mes que viene.
-                                </p>
-                                <div className="modal-renovar-lista">
-                                    {membresíasRenovables.map(m => (
-                                        <div
-                                            key={m.clase_id}
-                                            className={`modal-renovar-item ${seleccionadas.includes(m.clase_id) ? 'selected' : ''}`}
-                                            onClick={() => toggleSeleccion(m.clase_id)}
-                                        >
-                                            <div className="modal-renovar-item-check">
-                                                {seleccionadas.includes(m.clase_id) ? '✓' : ''}
-                                            </div>
-                                            <div className="modal-renovar-item-info">
-                                                <span className="modal-renovar-actividad" style={{ textTransform: 'capitalize' }}>
-                                                    {m.actividad}
-                                                </span>
-                                                <span className="modal-renovar-detalle">
-                                                    {m.dia} · {m.horario} hs · {m.total_clases} clase{m.total_clases !== 1 ? 's' : ''}
-                                                </span>
-                                                <span className="modal-renovar-mes">
-                                                    📅 Para {m.mes_renovacion}
-                                                </span>
-                                                {m.mes_renovacion && (
-                                                    <span className="modal-renovar-vence">
-                                                        ⚠️ Venció en {(() => {
-                                                            const [mes, anio] = m.mes_renovacion.split('/').map(Number);
-                                                            const fechaMesAnterior = new Date(anio, mes - 2); // mes anterior al de renovación
-                                                            return fechaMesAnterior.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-                                                        })()}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="modal-renovar-precio">
-                                                ${(m.precio_individual * m.total_clases).toFixed(2)}
-                                            </div>
                                         </div>
-                                    ))}
+
+                                    ) : (
+
+                                    <div className="mis-clases-grid">
+
+                                        {/* 🔵 HOY */}
+                                        {clasesHoy.length > 0 && (
+                                            <>
+                                                <h2 className="dia-titulo">📅 Hoy</h2>
+                                                <div className="clases-row">
+
+                                                    {clasesHoy.map(clase => {
+                                                        const estado = estadoClase(clase);
+                                                        return (
+                                                            <div key={clase.id} className="mis-clase-card">
+
+                                                                <h3>{capitalize(clase.actividad)}</h3>
+                                                                <span className={`estado-clase ${estado}`}>
+                                                                    {estado === "proxima" && "🟡 Próxima"}
+                                                                    {estado === "en_curso" && "🟢 En curso"}
+                                                                    {estado === "finalizada" && "⚫ Finalizada"}
+                                                                </span>
+
+                                                                <p>📅 {capitalize(clase.dia)}</p>
+
+                                                                <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
+
+                                                                <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
+
+                                                                <div className="mis-clase-footer">
+                                                                    <div className="mis-clase-botones">
+                                                                        <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase)}>
+                                                                            Ver alumnos
+                                                                        </button>
+
+                                                                        <button
+                                                                            className="btn-generar-qr"
+                                                                            disabled={
+                                                                                estadoClase(clase) !== "en_curso" ||
+                                                                                qrGenerado[clase.id]
+                                                                            }
+                                                                            onClick={() => generarQR(clase.id)}
+                                                                        >
+                                                                            {qrGenerado[clase.id]
+                                                                                ? "QR generado"
+                                                                                : "Generar QR"}
+                                                                        </button>
+
+                                                                        <button
+                                                                            className="btn-ver-qr"
+                                                                            onClick={() => abrirQR(clase)}
+                                                                        >
+                                                                            Mostrar QR
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                    )})}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* 🟡 FUTURO */}
+                                        {clasesFuturas.length > 0 && (
+                                            <>
+                                                <h2 className="dia-titulo" style={{ marginTop: "35px" }}>📆 Próximas clases</h2>
+
+                                                <div className="clases-row">
+                                                    {clasesFuturas.map(clase => (
+                                                        <div key={clase.id} className="mis-clase-card">
+
+                                                        <h3>{capitalize(clase.actividad)}</h3>
+
+                                                            <p>📅 {capitalize(clase.dia)}</p>
+
+                                                            <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
+
+                                                            <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
+                                                            <div className="mis-clase-footer">
+
+                                                                <div className="mis-clase-botones">
+                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase)}>
+                                                                        Ver alumnos
+                                                                    </button>
+                                                        
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+    
+                                    </div>
+
+                                    )}
+
                                 </div>
-                                {errorRenovar && (
-                                    <p className="pago-error-msg" style={{ margin: '0 22px' }}>{errorRenovar}</p>
-                                )}
-                                <div className="modal-renovar-footer">
-                                    <span className="modal-renovar-selec">
-                                        {seleccionadas.length} seleccionada{seleccionadas.length !== 1 ? 's' : ''}
-                                    </span>
-                                    <button
-                                        className="boton-accion"
-                                        onClick={handleConfirmarRenovacion}
-                                        disabled={seleccionadas.length === 0 || cargandoRenovar}
-                                    >
-                                        {cargandoRenovar ? 'Cargando...' : 'Continuar →'}
-                                    </button>
+
+                            </div>
+
+                            )}
+
+                        {/* ── MODAL RENOVACIÓN ── */}
+                        {modalAbierto && (
+                            <div className="modal-overlay" onClick={() => setModalAbierto(false)}>
+                                <div className="modal-renovar" onClick={e => e.stopPropagation()}>
+                                    <div className="modal-renovar-header">
+                                        <h3>Renovar membresías</h3>
+                                        <button className="modal-cerrar" onClick={() => setModalAbierto(false)}>✕</button>
+                                    </div>
+                                    <p className="modal-renovar-desc">
+                                        Seleccioná las clases que querés renovar para el mes que viene.
+                                    </p>
+                                    <div className="modal-renovar-lista">
+                                        {membresíasRenovables.map(m => (
+                                            <div
+                                                key={m.clase_id}
+                                                className={`modal-renovar-item ${seleccionadas.includes(m.clase_id) ? 'selected' : ''}`}
+                                                onClick={() => toggleSeleccion(m.clase_id)}
+                                            >
+                                                <div className="modal-renovar-item-check">
+                                                    {seleccionadas.includes(m.clase_id) ? '✓' : ''}
+                                                </div>
+                                                <div className="modal-renovar-item-info">
+                                                    <span className="modal-renovar-actividad" style={{ textTransform: 'capitalize' }}>
+                                                        {m.actividad}
+                                                    </span>
+                                                    <span className="modal-renovar-detalle">
+                                                        {m.dia} · {m.horario} hs · {m.total_clases} clase{m.total_clases !== 1 ? 's' : ''}
+                                                    </span>
+                                                    <span className="modal-renovar-mes">
+                                                        📅 Para {m.mes_renovacion}
+                                                    </span>
+                                                    {m.mes_renovacion && (
+                                                        <span className="modal-renovar-vence">
+                                                            ⚠️ Venció en {(() => {
+                                                                const [mes, anio] = m.mes_renovacion.split('/').map(Number);
+                                                                const fechaMesAnterior = new Date(anio, mes - 2); // mes anterior al de renovación
+                                                                return fechaMesAnterior.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+                                                            })()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="modal-renovar-precio">
+                                                    ${(m.precio_individual * m.total_clases).toFixed(2)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {errorRenovar && (
+                                        <p className="pago-error-msg" style={{ margin: '0 22px' }}>{errorRenovar}</p>
+                                    )}
+                                    <div className="modal-renovar-footer">
+                                        <span className="modal-renovar-selec">
+                                            {seleccionadas.length} seleccionada{seleccionadas.length !== 1 ? 's' : ''}
+                                        </span>
+                                        <button
+                                            className="boton-accion"
+                                            onClick={handleConfirmarRenovacion}
+                                            disabled={seleccionadas.length === 0 || cargandoRenovar}
+                                        >
+                                            {cargandoRenovar ? 'Cargando...' : 'Continuar →'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </>
+                        )}
+                    </>
             ) : (
-                <div className="perfil-loading">
-                    <div className="perfil-loading-spinner" />
-                    <p>Cargando panel de socio...</p>
-                </div>
-            )}
-            {mostrarQR && (
-                <div
-                    className="scanner-modal"
-                    onClick={() => setMostrarQR(false)}
-                >
-                    <div
-                        className="scanner-content"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <button
-                            onClick={() => setMostrarQR(false)}
-                        >
-                            ✕
-                        </button>
-
-                        <img
-                            src={qrSeleccionado}
-                            width={320}
-                            alt="QR"
-                        />
-
-                        <p>
-                            Mostrale este QR al alumno
-                        </p>
+                    <div className="perfil-loading">
+                        <div className="perfil-loading-spinner" />
+                        <p>Cargando panel de socio...</p>
                     </div>
-                </div>
-            )}
+                )}
 
-        </div>
+                {mostrarQR && (
+                    <div
+                        className="modal-overlay"
+                        onClick={() => setMostrarQR(false)}
+                    >
+                        <div
+                            className="modal-box"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h2>📱 Código QR</h2>
+
+                            <img
+                                src={qrSeleccionado}
+                                alt="QR"
+                                width={280}
+                                style={{ margin: "20px 0" }}
+                            />
+
+                            <p>
+                                Mostrale este QR al alumno para registrar la asistencia.
+                            </p>
+
+                            <button
+                                className="btn-cerrar"
+                                onClick={() => setMostrarQR(false)}
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {modalAlumnos && (
+                    <div
+                        className="modal-overlay"
+                        onClick={() => setModalAlumnos(false)}
+                    >
+                        <div
+                            className="modal-box"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+
+                            {/* TÍTULO */}
+                            <h2>📋 Lista de alumnos</h2>
+
+                            {/* RESUMEN */}
+                            {asistencia && (estadoSeleccionado === "en_curso" || estadoSeleccionado === "finalizada") &&(
+                                <p>
+                                    📊 Presentes: {asistencia.presentes} |{" "}
+                                    ❌ Ausentes: {asistencia.ausentes}
+                                </p>
+                            )}
+
+                            {/* CONTENIDO */}
+                            {alumnos.length === 0 ? (
+                                <p>No hay alumnos inscriptos</p>
+                            ) : (
+                                <>
+                                    <p>
+                                        👥 Alumnos inscriptos ({alumnos.length})
+                                    </p>
+
+                                    <div className="alumnos-lista">
+                                        {alumnos.map((a) => (
+                                            <div key={a.id} className="alumno-card">
+                                                <strong>
+                                                    {capitalize(a.nombre)} {capitalize(a.apellido)} - {a.email}
+                                                </strong>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* BOTÓN CERRAR */}
+                            <button
+                                className="btn-cerrar"
+                                onClick={() => setModalAlumnos(false)}
+                            >
+                                Cerrar
+                            </button>
+
+                        </div>
+                    </div>
+                )}
+
+            </div> 
+        </>
     );
 };
 
