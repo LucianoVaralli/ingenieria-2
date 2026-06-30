@@ -16,16 +16,39 @@ const formatearFecha = (fechaStr) => {
 
 const ReservaIndividual = () => {
     const location = useLocation();
+    const desdeListaEspera =
+        location.state?.desdeListaEspera || false;
+    const reservaIdExistente =
+        location.state?.reservaId || null;
     const navigate = useNavigate();
     const { clase, fechaSeleccionada } = location.state || {};
+
+    const montoListaEspera =
+        location.state?.monto || 0;
+
+    const tipoReservaListaEspera =
+        location.state?.tipoReserva || null;
+
+    console.log("STATE COMPLETO:", location.state);
+    console.log("DESDE LISTA:", location.state?.desdeListaEspera);
+    console.log("RESERVA ID:", location.state?.reservaId);
+    console.log("CLASE:", clase);
+    console.log("FECHA:", fechaSeleccionada);
 
     // pasos: cargando | lista_espera | creditos | tipo_pago | pago | exito | exito_espera | error
     const [paso, setPaso]         = useState('cargando');
     const [mensaje, setMensaje]   = useState('');
     const [cargando, setCargando] = useState(false);
 
+    const [monto, setMonto] =
+        useState(
+            desdeListaEspera
+                ? montoListaEspera
+                : (clase ? Number(clase.precio_individual) * 0.5 : 0)
+        );
+
     const [tipoPago, setTipoPago]                       = useState('sena');
-    const [monto, setMonto]                             = useState(clase ? Number(clase.precio_individual) * 0.5 : 0);
+
     const [creditosDisponibles, setCreditosDisponibles] = useState(0);
     const [usaCredito, setUsaCredito]                   = useState(false);
 
@@ -70,7 +93,15 @@ const ReservaIndividual = () => {
             }
         };
 
-        if (clase && fechaSeleccionada) verificar();
+        if (desdeListaEspera) {
+
+            setPaso('pago');
+
+        } else if (clase && fechaSeleccionada) {
+
+            verificar();
+
+        }
     }, []);
 
     if (!clase || !fechaSeleccionada) {
@@ -88,10 +119,35 @@ const ReservaIndividual = () => {
     }[clase.actividad?.toLowerCase()] || '🏋️';
 
     const handleCambioModalidad = (tipo) => {
+
         setTipoPago(tipo);
-        setMonto(tipo === 'sena'
-            ? Number(clase.precio_individual) * 0.5
-            : Number(clase.precio_individual)
+
+        if (desdeListaEspera) {
+
+            // Si viene de lista de espera de membresía,
+            // siempre paga el 100%.
+            if (tipoReservaListaEspera === "Membresia") {
+
+                setMonto(montoListaEspera);
+                return;
+            }
+
+            // Si viene de lista de espera individual
+            setMonto(
+                tipo === "sena"
+                    ? montoListaEspera * 0.5
+                    : montoListaEspera
+            );
+
+            return;
+        }
+
+        // Reserva nueva normal
+
+        setMonto(
+            tipo === "sena"
+                ? Number(clase.precio_individual) * 0.5
+                : Number(clase.precio_individual)
         );
     };
 
@@ -160,14 +216,38 @@ const ReservaIndividual = () => {
     };
 
     const handlePagar = async () => {
+
         if (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim()) {
+
             setMensaje('Por favor, completá todos los datos de la tarjeta.');
             return;
         }
 
         setCargando(true);
         setMensaje('');
+
         try {
+
+            let reservaId;
+
+            if (desdeListaEspera) {
+
+                reservaId = reservaIdExistente;
+
+            } else {
+
+                const resReserva = await api.post(
+                    '/reservas/individual/crear',
+                    {
+                        clase_id: clase.id,
+                        fecha_clase: fechaSeleccionada,
+                        tipo_pago: tipoPago
+                    }
+                );
+
+                reservaId = resReserva.data.reserva_id;
+            }
+  
             const rid = reservaId || await handleCrearReserva();
 
             await api.post('/reservas/individual/pagar', {
@@ -175,16 +255,24 @@ const ReservaIndividual = () => {
                 numero_tarjeta:      nroTarjeta.replace(/\s/g, ''),
                 titular,
                 cvv,
-                fecha_vencimiento:   vencimiento,
+                fecha_vencimiento: vencimiento,
                 acepta_lista_espera: false,
-                usa_credito:         false
+                usa_credito: false
             });
 
             setPaso('exito');
+
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'No se pudo procesar la reserva.');
+
+            setMensaje(
+                err.response?.data?.detail ||
+                'No se pudo procesar la reserva.'
+            );
+
             setPaso('error');
+
         } finally {
+
             setCargando(false);
         }
     };
@@ -230,7 +318,13 @@ const ReservaIndividual = () => {
 
                         <div className="reserva-desglose-fila">
                             <span>Precio base</span>
-                            <span>${Number(clase.precio_individual).toFixed(2)}</span>
+                            <span>
+                            {
+                                desdeListaEspera
+                                    ? `$${Number(montoListaEspera).toFixed(2)}`
+                                    : `$${Number(clase.precio_individual).toFixed(2)}`
+                            }
+                            </span>
                         </div>
 
                         {paso !== 'lista_espera' && paso !== 'exito_espera' && (
@@ -326,6 +420,87 @@ const ReservaIndividual = () => {
                         <div className="reserva-accion-card">
                             <h3 className="reserva-accion-titulo">Configurá tu pago</h3>
                             <p className="reserva-accion-desc">Seleccioná cómo querés abonar la clase:</p>
+
+                            {
+                                !(desdeListaEspera && tipoReservaListaEspera === "Membresia") && (
+
+                                    <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
+
+                                        <button
+                                            type="button"
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: tipoPago === 'sena'
+                                                    ? '2px solid #4caf50'
+                                                    : '1px solid #ccc',
+                                                backgroundColor:
+                                                    tipoPago === 'sena'
+                                                        ? 'rgba(76,175,80,0.1)'
+                                                        : 'transparent',
+                                                color:
+                                                    tipoPago === 'sena'
+                                                        ? '#4caf50'
+                                                        : '#aaa',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onClick={() => handleCambioModalidad('sena')}
+                                        >
+                                            Abonar Seña (50%)
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: tipoPago === 'total'
+                                                    ? '2px solid #4caf50'
+                                                    : '1px solid #ccc',
+                                                backgroundColor:
+                                                    tipoPago === 'total'
+                                                        ? 'rgba(76,175,80,0.1)'
+                                                        : 'transparent',
+                                                color:
+                                                    tipoPago === 'total'
+                                                        ? '#4caf50'
+                                                        : '#aaa',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onClick={() => handleCambioModalidad('total')}
+                                        >
+                                            Abonar Total (100%)
+                                        </button>
+
+                                    </div>
+
+                                )
+                            }
+
+                            {
+                                desdeListaEspera &&
+                                tipoReservaListaEspera === "Membresia" && (
+
+                                    <div
+                                        style={{
+                                            margin: '25px 0',
+                                            textAlign: 'center',
+                                            color: '#4caf50',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        Las membresías se abonan siempre al 100%.
+                                    </div>
+
+                                )
+                            }
+
                             <div className="modalidad-selector">
                                 <button
                                     type="button"
