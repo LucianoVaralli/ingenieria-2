@@ -23,6 +23,7 @@ from schemas.reserva import (
     ConfirmarPagoIndividual,
     ListaEsperaIndividualCreate,
 )
+from schemas.reserva import ConfirmarPagoCupo
 
 from models.membresia import Membresia
 
@@ -145,7 +146,14 @@ def crear_reserva_membresia(
             Reserva.estado.in_(["confirmada", "pendiente_pago"])
         ).count()
 
-        if ocupadas < clase.cupo:
+        personas_en_espera = db.query(ListaEspera).filter(
+            ListaEspera.clase_id == datos.clase_id,
+            ListaEspera.fecha_clase == fecha,
+            ListaEspera.estado == "esperando"
+        ).count()
+
+
+        if ocupadas < clase.cupo and personas_en_espera == 0:
             fechas_con_cupo.append(fecha)
         else:
             fechas_sin_cupo.append(fecha)
@@ -465,6 +473,7 @@ def _notificar_siguiente_en_espera(
 
         if reserva_espera:
             reserva_espera.estado = "notificado"
+        db.commit()
 
     return siguiente
 
@@ -653,24 +662,31 @@ def aceptar_cupo(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
+    """Solo cambia a pendiente_pago y devuelve datos. NO procesa pago."""
     socio = obtener_usuario_actual(db=db, token=token)
 
     reserva = db.query(Reserva).filter(
         Reserva.id       == reserva_id,
         Reserva.socio_id == socio.id,
-        Reserva.estado   == "notificado"
+        Reserva.estado.in_(["pendiente_pago", "notificado"])  # ← Aceptar ambos estados
     ).first()
 
     if not reserva:
         raise HTTPException(
             status_code=404,
-            detail="No se encontró un cupo pendiente de aceptación para esta reserva"
+            detail="Reserva no encontrada o ya fue procesada"
+        )
+
+    # Si ya fue confirmada, devolver mensaje
+    if reserva.estado == "confirmada":
+        raise HTTPException(
+            status_code=409,
+            detail="Esta reserva ya fue confirmada"
         )
 
     clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
 
     # Verificar que el cupo sigue disponible
-    # (pudo ocuparse entre la notificación y la aceptación)
     ocupadas = db.query(Reserva).filter(
         Reserva.clase_id    == clase.id,
         Reserva.fecha_clase == reserva.fecha_clase,
@@ -678,7 +694,6 @@ def aceptar_cupo(
     ).count()
 
     if ocupadas >= clase.cupo:
-        # El cupo ya no está disponible, notificar al siguiente
         reserva.estado = "en_espera"
 
         entrada_lista = db.query(ListaEspera).filter(
@@ -693,18 +708,23 @@ def aceptar_cupo(
 
         db.commit()
 
-        # Intentar notificar al siguiente
-        siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
-        db.commit()
-
         raise HTTPException(
             status_code=409,
-            detail="El cupo ya no está disponible, seguís en lista de espera"
+            detail="El cupo ya no está disponible"
         )
 
-    # Cupo disponible: confirmar la reserva
-    reserva.estado = "confirmada"
+    # Solo cambiar a pendiente_pago, sin procesar pago
+    reserva.estado = "pendiente_pago"
 
+    # Calcular monto pero NO guardarlo aún (solo devolverlo)
+    if reserva.tipo == TipoReserva.Membresia.value:
+        monto_total = clase.precio_individual
+        monto_50 = 0  # No aplica para membresía
+    else:  # Individual
+        monto_total = clase.precio_individual
+        monto_50 = clase.precio_individual * 0.5
+
+    # Limpiar entrada de lista de espera
     entrada_lista = db.query(ListaEspera).filter(
         ListaEspera.socio_id    == socio.id,
         ListaEspera.clase_id    == reserva.clase_id,
@@ -717,13 +737,20 @@ def aceptar_cupo(
 
     db.commit()
 
-    # TODO: enviar mail confirmando la reserva
-
     return {
-        "mensaje": "Cupo aceptado, reserva confirmada",
+        "mensaje": "Listo para pagar",
         "reserva_id": reserva.id,
-        "clase": clase.actividad,
-        "fecha": reserva.fecha_clase
+        "tipo_reserva": reserva.tipo.value if hasattr(reserva.tipo, 'value') else str(reserva.tipo).lower(),
+        "clase": {
+            "id": clase.id,
+            "actividad": clase.actividad,
+            "dia": clase.dia,
+            "horario": str(clase.horario),
+            "precio_individual": clase.precio_individual
+        },
+        "fecha_clase": reserva.fecha_clase,
+        "monto_100": monto_total,
+        "monto_50": monto_50
     }
 
 @router.post("/rechazar-cupo/{reserva_id}")
@@ -748,14 +775,12 @@ async def rechazar_cupo(
 
     clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
 
-    # Primero buscar y notificar al siguiente ANTES de cambiar nuestro estado
-    siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
-    db.commit()
+    # Cancelar la reserva (como si fuera un cancelar normal)
+    reserva.estado = "cancelada"
+    reserva.tipo_cancelacion = "socio"
+    reserva.motivo_cancelacion = "Rechazó cupo ofrecido"
 
-    # AHORA cambiar nuestro estado a en_espera
-    reserva.estado = "en_espera"
-    
-    # Y cambiar nuestra entrada en lista de espera a "esperando"
+    # Borrar la entrada de lista de espera
     entrada_lista = db.query(ListaEspera).filter(
         ListaEspera.socio_id    == socio.id,
         ListaEspera.clase_id    == reserva.clase_id,
@@ -764,11 +789,20 @@ async def rechazar_cupo(
     ).first()
 
     if entrada_lista:
-        entrada_lista.estado = "esperando"
+        db.delete(entrada_lista)
 
     db.commit()
 
-    # Enviar mail al siguiente si existe
+    # Notificar al siguiente (porque el cupo ahora está libre)
+    siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
+    db.commit()
+
+    # Enviar mails
+    try:
+        await enviar_mail_pago_exitoso(socio, clase, reserva)
+    except Exception as e:
+        print(f"⚠️ Mail no enviado: {e}")
+
     if siguiente:
         siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
         if siguiente_socio:
@@ -779,6 +813,150 @@ async def rechazar_cupo(
 
     return {
         "mensaje": "Cupo rechazado, siguiente notificado",
+        "reserva_id": reserva.id,
+        "clase": clase.actividad,
+        "fecha": reserva.fecha_clase
+    }\
+
+
+@router.post("/pagar-cupo/{reserva_id}")
+async def pagar_cupo(
+    reserva_id: int,
+    datos: ConfirmarPagoCupo,
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """Procesa el pago cuando alguien acepta un cupo notificado"""
+    socio = obtener_usuario_actual(db=db, token=token)
+
+    print(f"🔍 BUSCANDO RESERVA {reserva_id} para socio {socio.id}")
+
+    # Buscar la reserva en estado pendiente_pago (que fue notificado antes)
+    reserva = db.query(Reserva).filter(
+        Reserva.id       == reserva_id,
+        Reserva.socio_id == socio.id,
+        Reserva.estado   == "pendiente_pago"
+    ).first()
+
+    # Agregar esto
+    if not reserva:
+        print(f"❌ NO ENCONTRADA. Verificando...")
+        # Buscar sin filtrar estado
+        reserva_sin_filtro = db.query(Reserva).filter(
+            Reserva.id == reserva_id
+        ).first()
+        if reserva_sin_filtro:
+            print(f"  - Reserva existe. ID: {reserva_sin_filtro.id}, Socio: {reserva_sin_filtro.socio_id}, Estado: {reserva_sin_filtro.estado}")
+        else:
+            print(f"  - Reserva NO existe en DB")
+
+    if not reserva:
+        raise HTTPException(
+            status_code=404,
+            detail="Reserva no encontrada o ya fue procesada"
+        )
+
+    clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
+
+    # Calcular monto según tipo de reserva
+    if reserva.tipo == TipoReserva.Membresia.value:
+        monto = clase.precio_individual  # Membresía siempre 100%
+    elif reserva.tipo == TipoReserva.Individual.value:
+        monto = clase.precio_individual * 0.5 if datos.tipo_pago == "sena" else clase.precio_individual
+    else:
+        raise HTTPException(status_code=400, detail="Tipo de reserva inválido")
+
+    # Si usa crédito
+    if datos.usa_credito:
+        if socio.creditos_disponibles < 1:
+            raise HTTPException(status_code=400, detail="No tenés créditos disponibles")
+
+        socio.creditos_disponibles -= 1
+        reserva.estado = "confirmada"
+        reserva.monto_pagado = 0
+
+        db.commit()
+
+        try:
+            await enviar_mail_pago_exitoso(socio, clase, reserva)
+        except Exception as e:
+            print(f"⚠️ Mail no enviado: {e}")
+
+        # Notificar al siguiente en lista
+        siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
+        db.commit()
+
+        if siguiente:
+            siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
+            if siguiente_socio:
+                try:
+                    await enviar_mail_cupo_disponible(siguiente_socio, clase, siguiente.fecha_clase)
+                except Exception as e:
+                    print(f"⚠️ Mail de cupo disponible no enviado: {e}")
+
+        return {"mensaje": "Cupo confirmado con crédito"}
+
+    # Pago con tarjeta
+    numero_limpio = datos.numero_tarjeta.replace(" ", "")
+    titular_normalizado = " ".join(datos.titular.split())
+
+    tarjeta = db.query(TarjetaSimulada).filter(
+        TarjetaSimulada.numero == numero_limpio,
+        func.lower(TarjetaSimulada.titular) == titular_normalizado.lower(),
+        TarjetaSimulada.cvv == datos.cvv,
+        TarjetaSimulada.fecha_vencimiento == datos.fecha_vencimiento
+    ).first()
+
+    if not tarjeta:
+        raise HTTPException(status_code=400, detail="Tarjeta inválida")
+
+    if not tarjeta.conexion_exitosa:
+        raise HTTPException(status_code=400, detail="Hay inconvenientes con la conexión al banco")
+
+    if tarjeta.saldo < monto:
+        raise HTTPException(status_code=400, detail="La cuenta no tiene saldo suficiente")
+
+    # Verificar que el cupo sigue disponible
+    ocupadas = db.query(Reserva).filter(
+        Reserva.clase_id    == clase.id,
+        Reserva.fecha_clase == reserva.fecha_clase,
+        Reserva.estado.in_(["confirmada", "notificado"])
+    ).count()
+
+    if ocupadas >= clase.cupo:
+        raise HTTPException(
+            status_code=409,
+            detail="El cupo se llenó mientras procesabas el pago"
+        )
+
+    # Pago exitoso
+    reserva.estado = "confirmada"
+    reserva.monto_pagado = monto
+    reserva.tarjeta_ultimos = tarjeta.numero
+    reserva.tipo_tarjeta = tarjeta.tipo
+    tarjeta.saldo -= monto
+
+    db.commit()
+
+    try:
+        await enviar_mail_pago_exitoso(socio, clase, reserva)
+    except Exception as e:
+        print(f"⚠️ Mail no enviado: {e}")
+
+    # Notificar al siguiente en lista
+    siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
+    db.commit()
+
+    if siguiente:
+        siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
+        if siguiente_socio:
+            try:
+                await enviar_mail_cupo_disponible(siguiente_socio, clase, siguiente.fecha_clase)
+            except Exception as e:
+                print(f"⚠️ Mail de cupo disponible no enviado: {e}")
+
+    return {
+        "mensaje": "Cupo confirmado y reserva completada",
         "reserva_id": reserva.id,
         "clase": clase.actividad,
         "fecha": reserva.fecha_clase
@@ -794,7 +972,7 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
     # Traer confirmadas futuras + en_espera futuras + pendiente_pago
     reservas = db.query(Reserva).filter(
         Reserva.socio_id == socio.id,
-        Reserva.estado.in_(["confirmada", "en_espera", "pendiente_pago"]),
+        Reserva.estado.in_(["confirmada", "en_espera", "pendiente_pago", "notificado"]),
         Reserva.fecha_clase >= str(hoy),
     ).order_by(Reserva.fecha_clase.asc()).all()
 
@@ -1009,7 +1187,7 @@ def crear_reserva_individual(
         Clase.dia           == clase.dia,
         Clase.horario       == clase.horario,
         Reserva.fecha_clase == datos.fecha_clase,
-        Reserva.estado.in_(["confirmada", "pendiente_pago", "en_espera"])
+        Reserva.estado.in_(["confirmada", "pendiente_pago", "en_espera", "notificado"])
     ).first()
 
     if conflicto:
@@ -1026,6 +1204,7 @@ def crear_reserva_individual(
     if membresia_existente:
         raise HTTPException(status_code=400, detail="Ya posee una membresía para esta clase")
 
+
     ocupadas = db.query(Reserva).filter(
         Reserva.clase_id    == clase.id,
         Reserva.fecha_clase == datos.fecha_clase,
@@ -1033,6 +1212,23 @@ def crear_reserva_individual(
     ).count()
 
     hay_cupo = ocupadas < clase.cupo
+
+    personas_en_espera = db.query(ListaEspera).filter(
+        ListaEspera.clase_id == clase.id,
+        ListaEspera.fecha_clase == datos.fecha_clase,
+        ListaEspera.estado == "esperando"
+    ).count()
+
+    if personas_en_espera > 0:
+        hay_cupo = False
+    
+    if not hay_cupo:
+        return {
+            "mensaje": "No hay cupo disponible",
+            "hay_cupo": False,
+            "debe_lista_espera": True,
+            "monto_a_pagar": 0
+        }
 
     if datos.tipo_pago not in ["sena", "total"]:
         raise HTTPException(status_code=400, detail="Tipo de pago inválido")

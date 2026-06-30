@@ -4,8 +4,10 @@ import api from '../api/api.js';
 import '../assets/css/Perfil.css';
 import ModalConfirmacion from '../components/ModalConfirmacion.jsx';
 import ModalResultado from '../components/ModalResultado.jsx';
+import { useRef } from "react";
 import EscanearQR from "./EscanearQR";
 import QRCode from "qrcode";
+
 
 const Perfil = ({ token, setToken }) => {
     const [user, setUser]           = useState(null);
@@ -27,9 +29,24 @@ const Perfil = ({ token, setToken }) => {
 
     // ── MODALES ──
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+    const [mostrarConfirmacionRechazo, setMostrarConfirmacionRechazo] = useState(false);
+    const [reservaRechazar, setReservaRechazar] = useState(null);
     const [mostrarResultado, setMostrarResultado] = useState(false);
     const [reservaAbordador, setReservaAbordador] = useState(null);
     const [mensajeResultado, setMensajeResultado] = useState("");
+
+    const modalPagoRef = useRef(null);
+
+    const [mostrarPagoCupo, setMostrarPagoCupo] = useState(false);
+    const [pasoPagoCupo, setPasoPagoCupo] = useState("inicio");
+    const [reservaAPagar, setReservaAPagar] = useState(null);
+    const [nroTarjeta, setNroTarjeta] = useState('');
+    const [titular, setTitular] = useState('');
+    const [cvv, setCvv] = useState('');
+    const [vencimiento, setVencimiento] = useState('');
+    const [tipoPagoCupo, setTipoPagoCupo] = useState('total');
+    const [usaCreditoCupo, setUsaCreditoCupo] = useState(false);
+    const [procesandoPago, setProcesandoPago] = useState(false);
 
     const hoy = new Date();
     const dia = hoy.getDate();
@@ -169,6 +186,12 @@ const Perfil = ({ token, setToken }) => {
 
         cargarPerfil();
     }, []);
+
+    useEffect(() => {
+        if (mostrarPagoCupo && modalPagoRef.current) {
+            modalPagoRef.current.scrollTop = 0;
+        }
+    }, [mostrarPagoCupo]);
 
     const salirListaEspera = async (reservaId) => {
         try {
@@ -508,26 +531,135 @@ const Perfil = ({ token, setToken }) => {
         setReservaAbordador(null);
     };
 
-    // ── ACEPTAR CUPO ──
-    const aceptarCupo = async (reservaId) => {
+
+    // ── RECHAZAR CUPO ──
+    const iniciarRechazo = (reserva) => {
+        setReservaRechazar(reserva);
+        setMostrarConfirmacionRechazo(true);
+    };
+
+    const confirmarRechazo = async () => {
+        if (!reservaRechazar) return;
+
         try {
-            const res = await api.post(`/reservas/aceptar-cupo/${reservaId}`);
+            setMostrarConfirmacionRechazo(false);
 
-            setMensajeResultado(res.data.mensaje);
-            setMostrarResultado(true);
+            await rechazarCupo(reservaRechazar.id);
 
-            // Actualizar estado de la reserva
-            setReservas(prev =>
-                prev.map(r =>
-                    r.id === reservaId ? { ...r, estado: 'confirmada', notificado: false } : r
-                )
-            );
+            setReservaRechazar(null);
 
         } catch (error) {
-            console.error("Error aceptando cupo:", error);
+            console.error(error);
+            setMostrarConfirmacionRechazo(false);
+            setReservaRechazar(null);
+        }
+    };
+
+    const cancelarRechazo = () => {
+        setMostrarConfirmacionRechazo(false);
+        setReservaRechazar(null);
+    };
+
+    // ── ACEPTAR CUPO ──
+    const aceptarCupo = async (reserva) => {
+        try {
+            // Llamar al backend para cambiar a pendiente_pago
+            const res = await api.post(`/reservas/aceptar-cupo/${reserva.id}`);
+
+             console.log("RESPUESTA DE ACEPTAR:", res.data);
+
+            // Guardar los datos para el modal
+            setReservaAPagar({
+                id: res.data.reserva_id,
+                tipo: res.data.tipo_reserva,
+                clase: res.data.clase,
+                fecha_clase: res.data.fecha_clase,
+                monto_100: res.data.monto_100,
+                monto_50: res.data.monto_50
+            });
+
+            // Limpiar formulario
+            setNroTarjeta('');
+            setTitular('');
+            setCvv('');
+            setVencimiento('');
+
+            // Para individual: mostrar opciones (default 50%)
+            // Para membresía: solo 100%
+            if (res.data.tipo_reserva === 'membresia') {
+                setTipoPagoCupo('total');
+            } else {
+                setTipoPagoCupo('sena');
+            }
+
+            setUsaCreditoCupo(creditos > 0);
+
+            // Abrir el modal
+            setMostrarPagoCupo(true);
+
+            setPasoPagoCupo("inicio");
+            setUsaCreditoCupo(creditos > 0)
+
+        } catch (error) {
             alert("Error: " + (error.response?.data?.detail || "No se pudo aceptar el cupo"));
         }
     };
+
+
+    const procesarPagoCupo = async () => {
+        // AGREGAR ESTO AL INICIO
+        if (procesandoPago) return;  // Si ya está procesando, no hacer nada
+
+        // Validar tarjeta si no usa crédito
+        if (!usaCreditoCupo && (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim())) {
+            alert("Por favor, completá todos los datos de la tarjeta");
+            return;
+        }
+
+        // AGREGAR ESTO AQUÍ
+        setProcesandoPago(true);  // Bloquear los clics
+
+        try {
+            const res = await api.post(`/reservas/pagar-cupo/${reservaAPagar.id}`, {
+                numero_tarjeta: usaCreditoCupo ? '0000000000000000' : nroTarjeta,
+                titular: usaCreditoCupo ? 'credito' : titular,
+                cvv: usaCreditoCupo ? '000' : cvv,
+                fecha_vencimiento: usaCreditoCupo ? '12/99' : vencimiento,
+                tipo_pago: tipoPagoCupo,
+                usa_credito: creditos > 0
+            });
+
+            // Cerrar modal
+            setMostrarPagoCupo(false);
+
+            // Mostrar mensaje de éxito
+            setMensajeResultado(res.data.mensaje);
+            setMostrarResultado(true);
+
+            // Actualizar la lista: eliminar la reserva que acaba de confirmarse
+            setReservas(prev =>
+                prev.map(r =>
+                    r.id === reservaAPagar.id 
+                        ? { ...r, estado: 'confirmada', notificado: false } 
+                        : r
+                )
+            );
+
+            // Actualizar créditos si se usaron
+            if (usaCreditoCupo) {
+                setCreditos(creditos - 1);
+            }
+
+        } catch (error) {
+            console.error("Error procesando pago:", error);
+            alert("Error: " + (error.response?.data?.detail || "No se pudo procesar el pago"));
+        } finally {
+            // AGREGAR ESTO AL FINAL
+            setProcesandoPago(false);  // Desbloquear
+        }
+    };
+
+
 
     // ── RECHAZAR CUPO ──
     const rechazarCupo = async (reservaId) => {
@@ -538,11 +670,7 @@ const Perfil = ({ token, setToken }) => {
             setMostrarResultado(true);
 
             // Actualizar estado de la reserva
-            setReservas(prev =>
-                prev.map(r =>
-                    r.id === reservaId ? { ...r, estado: 'en_espera', notificado: false } : r
-                )
-            );
+            setReservas(prev => prev.filter(r => r.id !== reservaId));
 
         } catch (error) {
             console.error("Error rechazando cupo:", error);
@@ -599,11 +727,283 @@ const Perfil = ({ token, setToken }) => {
                 onCancel={cancelarCancelacion}
             />
 
+            <ModalConfirmacion
+                isOpen={mostrarConfirmacionRechazo}
+                titulo="¿Rechazar cupo?"
+                mensaje="¿Estás seguro de que querés rechazar este cupo? El lugar será ofrecido al siguiente cliente en la lista de espera."
+                onConfirm={confirmarRechazo}
+                onCancel={cancelarRechazo}
+            />
+
             <ModalResultado
                 isOpen={mostrarResultado}
                 mensaje={mensajeResultado}
                 onClose={() => setMostrarResultado(false)}
             />
+
+            {/* MODAL DE PAGO PARA ACEPTAR CUPO */}
+            {mostrarPagoCupo && reservaAPagar && (
+                <div className="modal-overlay" onClick={() => setMostrarPagoCupo(false)}>
+                    <div className="modal-content modal-pago-cupo" onClick={(e) => e.stopPropagation()}>
+                        <button className="modal-close" onClick={() => setMostrarPagoCupo(false)}>×</button>
+
+                        <h2 className="modal-titulo">Confirmar Aceptación de Cupo</h2>
+                        <div className="reserva-layout"> 
+
+                            <div className="reserva-info-col">
+
+                                {/* RESUMEN - IGUAL A ReservaIndividual */}
+                                <div className="reserva-desglose">
+                                    <div className="reserva-desglose-titulo">Detalle de la sesión</div>
+                                    
+                                    <div className="reserva-desglose-fila" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                                        <span style={{ fontWeight: '500' }}>Fecha elegida:</span>
+                                        <span style={{ textTransform: 'capitalize', color: '#555', marginTop: '2px' }}>
+                                            {new Date(reservaAPagar.fecha_clase + 'T00:00:00').toLocaleDateString('es-AR', {
+                                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                                            })}
+                                        </span>
+                                    </div>
+
+                                    <div className="reserva-desglose-fila">
+                                        <span>Precio base</span>
+                                        <span>${Number(reservaAPagar.monto_100).toFixed(2)}</span>
+                                    </div>
+
+                                    {reservaAPagar.tipo === 'individual' && (
+                                        <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
+                                            <span>Concepto</span>
+                                            <span>{tipoPagoCupo === 'sena' ? 'Seña (50%)' : 'Totalidad (100%)'}</span>
+                                        </div>
+                                    )}
+
+                                    {reservaAPagar.tipo === 'membresia' && (
+                                        <div className="reserva-desglose-fila" style={{ color: '#666', fontSize: '0.95em' }}>
+                                            <span>Concepto</span>
+                                            <span>Totalidad (100%)</span>
+                                        </div>
+                                    )}
+
+                                    {creditos > 0 && (
+                                        <div className="reserva-desglose-fila reserva-desglose-fila--descuento">
+                                            <span>🎟️ Crédito aplicado</span>
+                                            <span>-${Number(
+                                                reservaAPagar.tipo === 'membresia' 
+                                                    ? reservaAPagar.monto_100 
+                                                    : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
+                                            ).toFixed(2)}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="reserva-desglose-total">
+                                        <span>Total a abonar</span>
+                                        <span>${Number(
+                                            usaCreditoCupo ? 0 : (
+                                                reservaAPagar.tipo === 'membresia' 
+                                                    ? reservaAPagar.monto_100 
+                                                    : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
+                                            )
+                                        ).toFixed(2)}</span>
+                                    </div>
+                                </div>
+
+                                {/* TARJETA VISUAL */}
+                                {creditos === 0 && (
+                                    <div className="pago-card-visual" style={{ marginTop: '20px' }}>
+                                        <div className="pago-card-chip">▬</div>
+
+                                        <div className="pago-card-numero">
+                                            {nroTarjeta || '···· ···· ···· ····'}
+                                        </div>
+
+                                        <div className="pago-card-bottom">
+
+                                            <div>
+                                                <div className="pago-card-sublabel">
+                                                    Titular
+                                                </div>
+
+                                                <div
+                                                    className="pago-card-valor"
+                                                    style={{ textTransform: 'uppercase' }}
+                                                >
+                                                    {titular || 'NOMBRE APELLIDO'}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <div className="pago-card-sublabel">
+                                                    CVV
+                                                </div>
+
+                                                <div className="pago-card-valor">
+                                                    {cvv ? '•'.repeat(cvv.length) : '•••'}
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+
+                            <div className="reserva-accion-col">
+
+                                {pasoPagoCupo === "inicio" && creditos > 0 && (
+                                    <div className="reserva-accion-card">
+
+                                        <div className="pago-credito-icon">🎟️</div>
+
+                                        <h3 className="reserva-accion-titulo">
+                                            Tenés créditos disponibles
+                                        </h3>
+
+                                        <p className="reserva-accion-desc">
+                                            Tenés <strong>{creditos} crédito{creditos > 1 ? "s" : ""}</strong> disponible{creditos > 1 ? "s" : ""}.
+                                            Esta reserva quedará completamente cubierta con tus créditos.
+                                        </p>
+
+                                    </div>
+                                )}
+
+                                {/* OPCIONES DE PAGO - SOLO SI ES INDIVIDUAL */}
+                                {reservaAPagar.tipo === 'individual' && !usaCreditoCupo && (
+                                    <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
+                                        <button
+                                            type="button"
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: tipoPagoCupo === 'sena' ? '2px solid #4caf50' : '1px solid #ccc',
+                                                backgroundColor: tipoPagoCupo === 'sena' ? 'rgba(76,175,80,0.1)' : 'transparent',
+                                                color: tipoPagoCupo === 'sena' ? '#4caf50' : '#aaa',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onClick={() => setTipoPagoCupo('sena')}
+                                        >
+                                            Abonar Seña (50%)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            style={{
+                                                flex: 1,
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: tipoPagoCupo === 'total' ? '2px solid #4caf50' : '1px solid #ccc',
+                                                backgroundColor: tipoPagoCupo === 'total' ? 'rgba(76,175,80,0.1)' : 'transparent',
+                                                color: tipoPagoCupo === 'total' ? '#4caf50' : '#aaa',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onClick={() => setTipoPagoCupo('total')}
+                                        >
+                                            Abonar Total (100%)
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* FORMULARIO DE PAGO - IGUAL A ReservaIndividual */}
+                                {creditos === 0 && (
+                                    <div className="pago-form-card">
+                                        <h2 className="pago-form-titulo">Datos de pago</h2>
+                                        
+                                        <div className="pago-field">
+                                            <label className="pago-label">Número de tarjeta</label>
+                                            <input 
+                                                className="pago-input pago-input--wide" 
+                                                type="text" 
+                                                inputMode="numeric"
+                                                placeholder="1111 2222 3333 4444" 
+                                                value={nroTarjeta} 
+                                                maxLength={19}
+                                                onChange={(e) => {
+                                                    const n = e.target.value.replace(/\D/g, '');
+                                                    const parts = [];
+                                                    for (let i = 0; i < n.length; i += 4) parts.push(n.substring(i, i + 4));
+                                                    setNroTarjeta(parts.join(' '));
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="pago-field">
+                                            <label className="pago-label">Nombre del titular</label>
+                                            <input 
+                                                className="pago-input pago-input--wide" 
+                                                type="text"
+                                                placeholder="Tal como aparece en la tarjeta" 
+                                                value={titular}
+                                                onChange={(e) => setTitular(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+                                            />
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '15px' }}>
+                                            <div className="pago-field" style={{ flex: 1 }}>
+                                                <label className="pago-label">CVV</label>
+                                                <input 
+                                                    className="pago-input" 
+                                                    type="text" 
+                                                    inputMode="numeric"
+                                                    style={{ WebkitTextSecurity: 'disc' }} 
+                                                    placeholder="•••" 
+                                                    maxLength={3}
+                                                    value={cvv} 
+                                                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                                                />
+                                            </div>
+                                            <div className="pago-field" style={{ flex: 1 }}>
+                                                <label className="pago-label">Vencimiento</label>
+                                                <input 
+                                                    className="pago-input" 
+                                                    type="text" 
+                                                    placeholder="MM/AA" 
+                                                    maxLength={5}
+                                                    value={vencimiento}
+                                                    onChange={(e) => {
+                                                        let v = e.target.value.replace(/\D/g, '');
+                                                        if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
+                                                        setVencimiento(v);
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            className="pago-btn-primary" 
+                                            onClick={procesarPagoCupo}
+                                            disabled={procesandoPago}
+                                        >
+                                            {procesandoPago ? "Procesando..." :`Pagar $${Number(
+                                                reservaAPagar.tipo === 'membresia' 
+                                                    ? reservaAPagar.monto_100 
+                                                    : (tipoPagoCupo === 'sena' ? reservaAPagar.monto_50 : reservaAPagar.monto_100)
+                                            ).toFixed(2)}`}
+                                        </button>
+
+                                        <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                                    </div>
+                                )}
+
+                                {/* BOTONES */}
+                                {creditos > 0 && (
+                                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                        <button className="boton-cancelar" onClick={() => setMostrarPagoCupo(false)}>
+                                            Cancelar
+                                        </button>
+                                        <button className="pago-btn-primary" onClick={procesarPagoCupo} disabled={procesandoPago}>
+                                            {procesandoPago ? "Procesando..." : "Confirmar con crédito"}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             {user ? (
                 <>
@@ -810,7 +1210,7 @@ const Perfil = ({ token, setToken }) => {
                                                                                         </>
                                                                                     )}
 
-                                                                                    {r.notificado && (
+                                                                                    {r.estado === 'notificado' && (
                                                                                         <span className="reserva-mini-notificado">
                                                                                             ¡Cupo disponible!
                                                                                         </span>
@@ -827,20 +1227,20 @@ const Perfil = ({ token, setToken }) => {
                                                                                     )}
 
                                                                                     {/* Aceptar cupo */}
-                                                                                    {r.notificado && (
+                                                                                    {r.estado === 'notificado' && (
                                                                                         <button
                                                                                             className="btn-aceptar-cupo"
-                                                                                            onClick={() => aceptarCupo(r.id)}
+                                                                                            onClick={() => aceptarCupo(r)}
                                                                                         >
                                                                                             Aceptar cupo
                                                                                         </button>
                                                                                     )}
 
                                                                                     {/* Rechazar cupo */}
-                                                                                    {r.notificado && (
+                                                                                    {r.estado === 'notificado' && (
                                                                                         <button
                                                                                             className="btn-rechazar-cupo"
-                                                                                            onClick={() => rechazarCupo(r.id)}
+                                                                                            onClick={() => iniciarRechazo(r)}
                                                                                         >
                                                                                             Rechazar cupo
                                                                                         </button>

@@ -746,12 +746,22 @@ def cupo_disponible(
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
     ).count()
 
-    disponibles = clase.cupo - ocupadas
+    personas_en_espera = db.query(Reserva).filter(
+        Reserva.clase_id == clase_id,
+        Reserva.fecha_clase == fecha,
+        Reserva.estado.in_(["en_espera", "notificado"])
+    ).count()
+
+    # Si hay alguien esperando, el cupo libre queda reservado para esa lista.
+    if personas_en_espera > 0 and ocupadas < clase.cupo:
+        ocupadas += 1
+
+    disponibles = max(clase.cupo - ocupadas, 0)
 
     return {
         "cupo_maximo": clase.cupo,
         "ocupadas": ocupadas,
-        "disponibles": max(disponibles, 0),
+        "disponibles": disponibles,
         "hay_cupo": disponibles > 0
     }
 
