@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import jsQR from "jsqr";
 import api from "../api/api";
 
-export default function EscanearQR({ fechaClase }) {
+export default function EscanearQR() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [mensaje, setMensaje] = useState(null);
@@ -51,7 +51,6 @@ export default function EscanearQR({ fechaClase }) {
         try {
           const res = await api.post("/clases/escanear-qr", {
             codigo_qr: code.data,
-            fecha_clase: fechaClase,
           });
           setMensaje(res.data.mensaje);
         } catch (err) {
@@ -61,7 +60,7 @@ export default function EscanearQR({ fechaClase }) {
     }, 500);
 
     return () => clearInterval(intervalo);
-  }, [escaneando, fechaClase]);
+  }, [escaneando]);
 
   return (
     <div style={{ textAlign: "center", padding: "1rem" }}>

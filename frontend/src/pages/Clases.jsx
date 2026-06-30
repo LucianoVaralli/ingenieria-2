@@ -2,8 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Clases.css';
-import EscanearQR from "./EscanearQR";
-import QRCode from "qrcode";
 
 const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MESES       = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
@@ -56,21 +54,6 @@ const Clases = ({ token }) => {
                 setUserCargado(true);
             });
     }, []);
-
-    // ── Función para obtener/generar QR ── ← DENTRO del componente
-    const obtenerQRClase = async (claseId) => {
-        if (qrUrls[claseId]) return;
-        try {
-            const res = await api.post(`/clases/${claseId}/generar-qr`);
-            const codigo = res.data.codigo_qr;
-            const url = await QRCode.toDataURL(codigo, { width: 100 });
-            setQrUrls(prev => ({ ...prev, [claseId]: url }));
-            // Para persistir en localStorage
-            localStorage.setItem(`qr_clase_${claseId}`, url);
-        } catch (err) {
-            console.error("Error obteniendo QR", err);
-        }
-    };
 
     // ── Calendario ──
     const [anio, setAnio] = useState(hoy.getFullYear());
@@ -452,68 +435,6 @@ const Clases = ({ token }) => {
                                         </p>
                                     );
                                 })()}
-                                {/* QR chiquito para miembros — centrado, con botón de cámara al lado */}
-                                {!esProfesor && user && qrUrls[clase.id] && (
-                                    <div style={{ 
-                                        display: "flex", 
-                                        flexDirection: "column", 
-                                        alignItems: "center", 
-                                        marginTop: "0.5rem",
-                                        gap: "0.5rem"
-                                    }} onClick={e => e.stopPropagation()}>
-                                        <img
-                                            src={qrUrls[clase.id]}
-                                            alt="QR de asistencia"
-                                            width={80}
-                                        />
-                                        <small style={{ color: "#888" }}>Escaneá para registrar tu asistencia</small>
-                                        <EscanearQR 
-                                            fechaClase={`${anio}-${String(mes + 1).padStart(2, '0')}-${String(diaSelec).padStart(2, '0')}`}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Botón QR para el profesor — solo si es profesor, centrado */}
-                                {esProfesor && userCargado && user?.rol?.toLowerCase() === 'profesor' && (
-                                    <div style={{ 
-                                        display: "flex", 
-                                        flexDirection: "column", 
-                                        alignItems: "center", 
-                                        marginTop: "0.5rem",
-                                        gap: "0.5rem"
-                                    }} onClick={e => e.stopPropagation()}>
-                                        {qrUrls[clase.id] ? (
-                                            <>
-                                                <img
-                                                    src={qrUrls[clase.id]}
-                                                    alt="QR de la clase"
-                                                    width={120}
-                                                />
-                                                <small style={{ color: "#888", textAlign: "center" }}>
-                                                    QR generado con exito
-                                                </small>
-                                            </>
-                                        ) : (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    obtenerQRClase(clase.id);
-                                                }}
-                                                style={{
-                                                    padding: "0.4rem 0.8rem",
-                                                    background: "#5CB84D",
-                                                    color: "white",
-                                                    border: "none",
-                                                    borderRadius: "6px",
-                                                    cursor: "pointer",
-                                                    fontSize: "0.85rem"
-                                                }}
-                                            >
-                                                Generar QR para la asistencia
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
                             </div>
                         ))
                     )}
