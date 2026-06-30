@@ -40,7 +40,6 @@ const ReservaIndividual = () => {
     const [mensaje, setMensaje]   = useState('');
     const [cargando, setCargando] = useState(false);
 
-    const [tipoPago, setTipoPago]                 = useState('sena');
     const [monto, setMonto] =
         useState(
             desdeListaEspera
@@ -49,7 +48,6 @@ const ReservaIndividual = () => {
         );
 
     const [tipoPago, setTipoPago]                       = useState('sena');
-    const [monto, setMonto]                             = useState(clase ? Number(clase.precio_individual) * 0.5 : 0);
 
     const [creditosDisponibles, setCreditosDisponibles] = useState(0);
     const [usaCredito, setUsaCredito]                   = useState(false);
@@ -503,8 +501,6 @@ const ReservaIndividual = () => {
                                 )
                             }
 
-                            <button className="boton-accion" onClick={() => setPaso('pago')} disabled={cargando}>
-                                Confirmar y pagar →
                             <div className="modalidad-selector">
                                 <button
                                     type="button"
