@@ -33,6 +33,7 @@ const Perfil = ({ token, setToken }) => {
     const modalPagoRef = useRef(null);
 
     const [mostrarPagoCupo, setMostrarPagoCupo] = useState(false);
+    const [pasoPagoCupo, setPasoPagoCupo] = useState("inicio");
     const [reservaAPagar, setReservaAPagar] = useState(null);
     const [nroTarjeta, setNroTarjeta] = useState('');
     const [titular, setTitular] = useState('');
@@ -363,6 +364,9 @@ const Perfil = ({ token, setToken }) => {
             // Abrir el modal
             setMostrarPagoCupo(true);
 
+            setPasoPagoCupo("inicio");
+            setUsaCreditoCupo(creditos > 0)
+
         } catch (error) {
             alert("Error: " + (error.response?.data?.detail || "No se pudo aceptar el cupo"));
         }
@@ -564,6 +568,37 @@ const Perfil = ({ token, setToken }) => {
                             </div>
 
                             <div className="reserva-accion-col">
+
+                                {pasoPagoCupo === "inicio" && (
+                                    <div className="reserva-accion-card">
+
+                                        {creditos > 0 ? (
+                                            <>
+                                                <div className="pago-credito-icon">🎟️</div>
+
+                                                <h3 className="reserva-accion-titulo">
+                                                    Tenés créditos disponibles
+                                                </h3>
+
+                                                <p className="reserva-accion-desc">
+                                                    Tenés <strong>{creditos} crédito{creditos > 1 ? "s" : ""}</strong> disponible{creditos > 1 ? "s" : ""}.
+                                                    Esta reserva quedará completamente cubierta con tus créditos.
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    className="boton-accion"
+                                                    onClick={() => setPasoPagoCupo("tipo_pago")}
+                                                >
+                                                    Confirmar y pagar →
+                                                </button>
+                                            </>
+                                        )}
+
+                                    </div>
+                                )}
+
                                 {/* OPCIONES DE PAGO - SOLO SI ES INDIVIDUAL */}
                                 {reservaAPagar.tipo === 'individual' && (
                                     <div style={{ display: 'flex', gap: '12px', margin: '25px 0' }}>
