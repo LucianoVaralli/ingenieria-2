@@ -24,7 +24,7 @@ import GestionPreguntasFrecuentes from './pages/admin/GestionPreguntasFrecuentes
 import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
 import GestionProfesores from './pages/admin/GestionProfesores';
 import PagoResultado from './pages/PagoResultado'
-
+import Estadisticas from "./pages/admin/Estadisticas";
 // 🌟 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
   const location = useLocation();
@@ -73,7 +73,7 @@ function AppContent({ token, setToken }) {
         <Route path="/admin/preguntas-frecuentes" element={<GestionPreguntasFrecuentes />} />
         <Route path="/admin/gestion-profesores" element={<GestionProfesores />} />
         <Route path="/cambiar-password-inicial" element={<CambiarPasswordInicial />} />
-
+        <Route path="/admin/estadisticas" element={<Estadisticas />} />  
         {/* Rutas de Mercado Pago */}
         <Route path="/pago/resultado" element={<PagoResultado />} />
         {/* Ruta 404 - Captura cualquier ruta inexistente */}

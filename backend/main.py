@@ -29,7 +29,7 @@ from routes.reserva import router as reserva_router
 from routes.notificacion import router as notificaciones_router
 from routes.pregunta_frecuente import router as pregunta_frecuente_router
 from routes.membresia import router as membresia_router
-
+from routes.estadisticas import router as estadisticas_router
 from fastapi.staticfiles import StaticFiles
 
 from routes.mercadopago import router as mp_router
@@ -135,6 +135,7 @@ app.include_router(notificaciones_router)
 app.include_router(pregunta_frecuente_router)
 app.include_router(membresia_router)
 app.include_router(mp_router)
+app.include_router(estadisticas_router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

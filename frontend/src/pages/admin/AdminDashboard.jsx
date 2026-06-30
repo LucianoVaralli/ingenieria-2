@@ -32,6 +32,12 @@ const OPCIONES = [
         icon: "👤",
         titulo: "Gestión de Profesores",
         desc: "Administrá la información y disponibilidad de los profesores."
+    },
+    {
+        to: "/admin/estadisticas",
+        icon: "📊",
+        titulo: "Estadísticas",
+        desc: "Aqui poner una descripcion"
     }
 ];
 

@@ -9,6 +9,7 @@ const NAV_ITEMS = [
     { to: "/admin/editar-capacidad",label: "Capacidad",       icon: "◎" },
     { to: "/admin/preguntas-frecuentes", label: "Preguntas Frecuentes", icon: "❓" },
     { to: "/admin/gestion-profesores", label: "Gestión de Profesores", icon: "👨‍🏫" },
+    { to: "/admin/estadisticas", label: "Estadisticas", icon: "📊" },
 ];
 
 function AdminNavbar({ setToken, abierto, setAbierto }) {
