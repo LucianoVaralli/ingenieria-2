@@ -668,17 +668,17 @@ def obtener_calendario(
         fecha_actual = f_inicio + timedelta(days=i)
         weekday_actual = fecha_actual.weekday() # 0 a 6
         fecha_actual_str = fecha_actual.strftime("%Y-%m-%d")
-        cambio_temporal = db.query(
-            CambioProfesorTemporalDB
-        ).filter(
-            CambioProfesorTemporalDB.clase_id == cb.id,
-            CambioProfesorTemporalDB.fecha == fecha_actual
-        ).first()
 
         for cb in clases_base:
             # Verificar si la clase base corresponde al día de la semana actual
             # Usamos cb.dia.name o cb.dia.value según manejes el Enum de SQLAlchemy
             dia_nombre = cb.dia.value if hasattr(cb.dia, 'value') else cb.dia
+            cambio_temporal = db.query(
+                    CambioProfesorTemporalDB
+                ).filter(
+                    CambioProfesorTemporalDB.clase_id == cb.id,
+                    CambioProfesorTemporalDB.fecha == fecha_actual
+                ).first()
             
             if mapa_dias.get(dia_nombre) == weekday_actual:
                 
@@ -988,10 +988,16 @@ def escanear_qr(
         raise HTTPException(status_code=404, detail="Código QR inválido")
 
     from models.reserva_MIO import Reserva
+    from datetime import date
+
+    hoy = date.today()
+
+    
+
     reserva = db.query(Reserva).filter(
         Reserva.clase_id == clase.id,
         Reserva.socio_id == socio_actual.id,
-        Reserva.fecha_clase == datos.fecha_clase,
+        Reserva.fecha_clase == hoy,
         Reserva.estado == "confirmada"
     ).first()
 
@@ -1026,3 +1032,48 @@ def escanear_qr(
         "clase": clase.actividad,
         "fecha": datos.fecha_clase
     }
+
+@router.get("/mis-clases")
+def obtener_clases_profesor(
+    usuario=Depends(obtener_usuario_actual),
+    db: Session = Depends(get_db)
+):
+    profesor = db.query(Socio).filter(
+        Socio.id == usuario.id,
+        Socio.rol == Rol.Profesor.value
+    ).first()
+
+    if not profesor:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo los profesores pueden acceder a este recurso"
+        )
+
+    clases = db.query(Clase).filter(
+        Clase.profesor_id == profesor.id,
+        Clase.activa == True
+    ).all()
+
+    resultado = []
+
+    for c in clases:
+
+        cantidad_alumnos = db.query(Reserva).filter(
+            Reserva.clase_id == c.id,
+            Reserva.estado == "confirmada"
+        ).count()
+
+        resultado.append({
+            "id": c.id,
+            "actividad": c.actividad,
+            "dia": c.dia,
+            "horario": c.horario,
+            "cupo": c.cupo,
+            "precio_individual": c.precio_individual,
+            "duracion": c.duracion,
+            "profesor_id": c.profesor_id,
+            "profesor_nombre": f"{profesor.nombre} {profesor.apellido}",
+            "alumnos_inscriptos": cantidad_alumnos
+        })
+
+    return resultado
