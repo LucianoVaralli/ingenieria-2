@@ -26,6 +26,8 @@ const Perfil = ({ token, setToken }) => {
 
     // ── MODALES ──
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+    const [mostrarConfirmacionRechazo, setMostrarConfirmacionRechazo] = useState(false);
+    const [reservaRechazar, setReservaRechazar] = useState(null);
     const [mostrarResultado, setMostrarResultado] = useState(false);
     const [reservaAbordador, setReservaAbordador] = useState(null);
     const [mensajeResultado, setMensajeResultado] = useState("");
@@ -327,6 +329,35 @@ const Perfil = ({ token, setToken }) => {
         setReservaAbordador(null);
     };
 
+
+    // ── RECHAZAR CUPO ──
+    const iniciarRechazo = (reserva) => {
+        setReservaRechazar(reserva);
+        setMostrarConfirmacionRechazo(true);
+    };
+
+    const confirmarRechazo = async () => {
+        if (!reservaRechazar) return;
+
+        try {
+            setMostrarConfirmacionRechazo(false);
+
+            await rechazarCupo(reservaRechazar.id);
+
+            setReservaRechazar(null);
+
+        } catch (error) {
+            console.error(error);
+            setMostrarConfirmacionRechazo(false);
+            setReservaRechazar(null);
+        }
+    };
+
+    const cancelarRechazo = () => {
+        setMostrarConfirmacionRechazo(false);
+        setReservaRechazar(null);
+    };
+
     // ── ACEPTAR CUPO ──
     const aceptarCupo = async (reserva) => {
         try {
@@ -455,6 +486,14 @@ const Perfil = ({ token, setToken }) => {
                 onCancel={cancelarCancelacion}
             />
 
+            <ModalConfirmacion
+                isOpen={mostrarConfirmacionRechazo}
+                titulo="¿Rechazar cupo?"
+                mensaje="¿Estás seguro de que querés rechazar este cupo? El lugar será ofrecido al siguiente cliente en la lista de espera."
+                onConfirm={confirmarRechazo}
+                onCancel={cancelarRechazo}
+            />
+
             <ModalResultado
                 isOpen={mostrarResultado}
                 mensaje={mensajeResultado}
@@ -569,32 +608,19 @@ const Perfil = ({ token, setToken }) => {
 
                             <div className="reserva-accion-col">
 
-                                {pasoPagoCupo === "inicio" && (
+                                {pasoPagoCupo === "inicio" && creditos > 0 && (
                                     <div className="reserva-accion-card">
 
-                                        {creditos > 0 ? (
-                                            <>
-                                                <div className="pago-credito-icon">🎟️</div>
+                                        <div className="pago-credito-icon">🎟️</div>
 
-                                                <h3 className="reserva-accion-titulo">
-                                                    Tenés créditos disponibles
-                                                </h3>
+                                        <h3 className="reserva-accion-titulo">
+                                            Tenés créditos disponibles
+                                        </h3>
 
-                                                <p className="reserva-accion-desc">
-                                                    Tenés <strong>{creditos} crédito{creditos > 1 ? "s" : ""}</strong> disponible{creditos > 1 ? "s" : ""}.
-                                                    Esta reserva quedará completamente cubierta con tus créditos.
-                                                </p>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <button
-                                                    className="boton-accion"
-                                                    onClick={() => setPasoPagoCupo("tipo_pago")}
-                                                >
-                                                    Confirmar y pagar →
-                                                </button>
-                                            </>
-                                        )}
+                                        <p className="reserva-accion-desc">
+                                            Tenés <strong>{creditos} crédito{creditos > 1 ? "s" : ""}</strong> disponible{creditos > 1 ? "s" : ""}.
+                                            Esta reserva quedará completamente cubierta con tus créditos.
+                                        </p>
 
                                     </div>
                                 )}
@@ -949,7 +975,7 @@ const Perfil = ({ token, setToken }) => {
                                                                                     {r.estado === 'notificado' && (
                                                                                         <button
                                                                                             className="btn-rechazar-cupo"
-                                                                                            onClick={() => rechazarCupo(r.id)}
+                                                                                            onClick={() => iniciarRechazo(r)}
                                                                                         >
                                                                                             Rechazar cupo
                                                                                         </button>

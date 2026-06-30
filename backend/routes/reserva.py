@@ -138,23 +138,20 @@ def crear_reserva_membresia(
     fechas_sin_cupo = []
 
     for fecha in fechas_a_procesar:
-        hay_lista_espera = db.query(Reserva).filter(
-            Reserva.clase_id == datos.clase_id,
-            Reserva.fecha_clase == fecha,
-            Reserva.estado.in_(["en_espera", "notificado"])
-        ).count() > 0
-
-        if hay_lista_espera:
-            fechas_sin_cupo.append(fecha)
-            continue
-
         ocupadas = db.query(Reserva).filter(
             Reserva.clase_id    == datos.clase_id,
             Reserva.fecha_clase == fecha,
             Reserva.estado.in_(["confirmada", "pendiente_pago"])
         ).count()
 
-        if ocupadas < clase.cupo:
+        personas_en_espera = db.query(ListaEspera).filter(
+            ListaEspera.clase_id == datos.clase_id,
+            ListaEspera.fecha_clase == fecha,
+            ListaEspera.estado == "esperando"
+        ).count()
+
+
+        if ocupadas < clase.cupo and personas_en_espera == 0:
             fechas_con_cupo.append(fecha)
         else:
             fechas_sin_cupo.append(fecha)
@@ -1185,18 +1182,6 @@ def crear_reserva_individual(
     if membresia_existente:
         raise HTTPException(status_code=400, detail="Ya posee una membresía para esta clase")
 
-    # Verificar si hay personas esperando un cupo
-    hay_lista_espera = db.query(Reserva).filter(
-        Reserva.clase_id == clase.id,
-        Reserva.fecha_clase == datos.fecha_clase,
-        Reserva.estado.in_(["en_espera", "notificado"])
-    ).count() > 0
-
-    if hay_lista_espera:
-        raise HTTPException(
-            status_code=400,
-            detail="Existe una lista de espera para esta clase. No se pueden realizar nuevas reservas hasta que la lista quede vacía."
-        )
 
     ocupadas = db.query(Reserva).filter(
         Reserva.clase_id    == clase.id,
@@ -1205,6 +1190,23 @@ def crear_reserva_individual(
     ).count()
 
     hay_cupo = ocupadas < clase.cupo
+
+    personas_en_espera = db.query(ListaEspera).filter(
+        ListaEspera.clase_id == clase.id,
+        ListaEspera.fecha_clase == datos.fecha_clase,
+        ListaEspera.estado == "esperando"
+    ).count()
+
+    if personas_en_espera > 0:
+        hay_cupo = False
+    
+    if not hay_cupo:
+        return {
+            "mensaje": "No hay cupo disponible",
+            "hay_cupo": False,
+            "debe_lista_espera": True,
+            "monto_a_pagar": 0
+        }
 
     if datos.tipo_pago not in ["sena", "total"]:
         raise HTTPException(status_code=400, detail="Tipo de pago inválido")
