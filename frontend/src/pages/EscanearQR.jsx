@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import jsQR from "jsqr";
 import api from "../api/api";
+import '../assets/css/Perfil.css';
 
 export default function EscanearQR() {
   const videoRef = useRef(null);
@@ -66,7 +67,7 @@ export default function EscanearQR() {
     <div style={{ textAlign: "center", padding: "1rem" }}>
 
       {!camaraActiva && !mensaje && (
-        <button onClick={iniciarCamara}>
+        <button className="habilitar-camara" onClick={iniciarCamara}>
           Habilitar cámara para escanear QR
         </button>
       )}
@@ -78,7 +79,7 @@ export default function EscanearQR() {
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
       {mensaje && <p style={{ color: "green", fontWeight: "bold" }}>{mensaje}</p>}
-      {error && <p style={{ color: "green", fontWeight: "bold" }}>{error}</p>}
+      {error && <p style={{ color: "#eb0c0c", fontWeight: "bold" }}>{error}</p>}
     </div>
   );
 }
