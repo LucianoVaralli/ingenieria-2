@@ -34,6 +34,8 @@ router = APIRouter(
     tags=["Clases"]
 )
 
+from sqlalchemy import distinct
+
 def validar_capacidad_horaria(
     db,
     dia,
@@ -1068,10 +1070,15 @@ def obtener_clases_profesor(
 
     for c in clases:
 
-        cantidad_alumnos = db.query(Reserva).filter(
-            Reserva.clase_id == c.id,
-            Reserva.estado == "confirmada"
-        ).count()
+        cantidad_alumnos = (
+            db.query(Reserva.socio_id)
+            .filter(
+                Reserva.clase_id == c.id,
+                Reserva.estado == "confirmada"
+            )
+            .distinct()
+            .count()
+        )
 
         resultado.append({
             "id": c.id,
@@ -1101,23 +1108,26 @@ def obtener_alumnos_de_clase(
             detail="Clase no encontrada"
         )
 
-    reservas = db.query(Reserva).filter(
-        Reserva.clase_id == clase_id,
-        Reserva.estado == "confirmada"
-    ).all()
+    alumnos_db = (
+        db.query(Socio)
+        .join(Reserva, Reserva.socio_id == Socio.id)
+        .filter(
+            Reserva.clase_id == clase_id,
+            Reserva.estado == "confirmada"
+        )
+        .distinct()
+        .all()
+    )
 
     alumnos = []
 
-    for r in reservas:
-        socio = db.query(Socio).filter(Socio.id == r.socio_id).first()
-
-        if socio:
-            alumnos.append({
-                "id": socio.id,
-                "nombre": socio.nombre,
-                "apellido": socio.apellido,
-                "email": getattr(socio, "email", None)
-            })
+    for socio in alumnos_db:
+        alumnos.append({
+            "id": socio.id,
+            "nombre": socio.nombre,
+            "apellido": socio.apellido,
+            "email": socio.email
+        })
 
     return {
         "clase_id": clase.id,
