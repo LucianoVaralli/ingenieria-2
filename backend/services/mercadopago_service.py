@@ -20,8 +20,8 @@ from routes.membresia import (
 # ── Configuración ─────────────────────────────────────────────
 ACCESS_TOKEN = "APP_USR-1855583917258264-060413-2c0c94fcc77a60dd765973ed67bb3e29-3450942986"   
 FRONTEND_URL = "http://localhost:5173"
-BACKEND_URL  = "https://prompter-colony-ember.ngrok-free.dev"
-WEBHOOK_URL  = "https://prompter-colony-ember.ngrok-free.dev/mp/webhook"  # ← reemplazá con tu URL de ngrok
+BACKEND_URL  = "https://stench-impose-rumbling.ngrok-free.dev"
+WEBHOOK_URL  = "https://stench-impose-rumbling.ngrok-free.dev/mp/webhook"
 
 sdk = mercadopago.SDK(ACCESS_TOKEN)
 
