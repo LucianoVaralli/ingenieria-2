@@ -746,12 +746,22 @@ def cupo_disponible(
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
     ).count()
 
-    disponibles = clase.cupo - ocupadas
+    personas_en_espera = db.query(Reserva).filter(
+        Reserva.clase_id == clase_id,
+        Reserva.fecha_clase == fecha,
+        Reserva.estado.in_(["en_espera", "notificado"])
+    ).count()
+
+    # Si hay alguien esperando, el cupo libre queda reservado para esa lista.
+    if personas_en_espera > 0 and ocupadas < clase.cupo:
+        ocupadas += 1
+
+    disponibles = max(clase.cupo - ocupadas, 0)
 
     return {
         "cupo_maximo": clase.cupo,
         "ocupadas": ocupadas,
-        "disponibles": max(disponibles, 0),
+        "disponibles": disponibles,
         "hay_cupo": disponibles > 0
     }
 
@@ -1077,3 +1087,40 @@ def obtener_clases_profesor(
         })
 
     return resultado
+
+@router.get("/{clase_id}/alumnos")
+def obtener_alumnos_de_clase(
+    clase_id: int,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(Clase.id == clase_id).first()
+
+    if not clase:
+        raise HTTPException(
+            status_code=404,
+            detail="Clase no encontrada"
+        )
+
+    reservas = db.query(Reserva).filter(
+        Reserva.clase_id == clase_id,
+        Reserva.estado == "confirmada"
+    ).all()
+
+    alumnos = []
+
+    for r in reservas:
+        socio = db.query(Socio).filter(Socio.id == r.socio_id).first()
+
+        if socio:
+            alumnos.append({
+                "id": socio.id,
+                "nombre": socio.nombre,
+                "apellido": socio.apellido,
+                "email": getattr(socio, "email", None)
+            })
+
+    return {
+        "clase_id": clase.id,
+        "actividad": clase.actividad,
+        "alumnos": alumnos
+    }

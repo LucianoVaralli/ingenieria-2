@@ -56,3 +56,12 @@ class ListaEsperaMembresiaCreate(BaseModel):
 
 class RenovarMembresiaRequest(BaseModel):
     clase_ids: list[int]
+
+class ConfirmarPagoCupo(BaseModel):
+    """Schema para pagar un cupo notificado (individual o membresía)"""
+    numero_tarjeta: str
+    titular: str
+    cvv: str
+    fecha_vencimiento: str
+    tipo_pago: str  # "sena" o "total" (solo para individual, membresía siempre 100%)
+    usa_credito: bool = False
