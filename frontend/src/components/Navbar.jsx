@@ -11,6 +11,7 @@ const Navbar = ({ setToken }) => {
 
     const handleLogout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('rol');    // ← agregar esta línea
         if (setToken) setToken(null); 
         navigate('/login');
     };
@@ -31,7 +32,7 @@ const Navbar = ({ setToken }) => {
     
     const rol = localStorage.getItem("rol"); //recupero el rol del localStorage
 
-    const esAdmin = rol === "Admin"; //verifico si el rol es ADMIN
+    const esAdmin = rol?.toLowerCase() === "admin"; //verifico si el rol es ADMIN
 
     const [scrolled, setScrolled] = useState(false);
     const [cantidadNoLeidas, setCantidadNoLeidas] = useState(0);

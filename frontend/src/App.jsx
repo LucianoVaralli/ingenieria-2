@@ -64,16 +64,14 @@ function AppContent({ token, setToken }) {
         <Route path="/cambiar-password" element={<CambiarPassword />} />
 
         {/* Rutas de Administración */}
-        <Route path="/admin" element={ isAdmin()
-            ? <AdminDashboard />
-            : <Navigate to="/" /> } />
-        <Route path="/admin/crear-clase" element={<CrearClase />} />
-        <Route path="/admin/eliminar-clase" element={<ListaClasesAdmin />} />
-        <Route path="/admin/editar-capacidad" element={<EditarCapacidad />} />
-        <Route path="/admin/preguntas-frecuentes" element={<GestionPreguntasFrecuentes />} />
-        <Route path="/admin/gestion-profesores" element={<GestionProfesores />} />
-        <Route path="/cambiar-password-inicial" element={<CambiarPasswordInicial />} />
-        <Route path="/admin/estadisticas" element={<Estadisticas />} />  
+        <Route path="/admin" element={isAdmin() ? <AdminDashboard /> : <Navigate to="/" />} />
+        <Route path="/admin/crear-clase" element={isAdmin() ? <CrearClase /> : <Navigate to="/" />} />
+        <Route path="/admin/eliminar-clase" element={isAdmin() ? <ListaClasesAdmin /> : <Navigate to="/" />} />
+        <Route path="/admin/editar-capacidad" element={isAdmin() ? <EditarCapacidad /> : <Navigate to="/" />} />
+        <Route path="/admin/preguntas-frecuentes" element={isAdmin() ? <GestionPreguntasFrecuentes /> : <Navigate to="/" />} />
+        <Route path="/admin/gestion-profesores" element={isAdmin() ? <GestionProfesores /> : <Navigate to="/" />} />
+        <Route path="/admin/estadisticas" element={isAdmin() ? <Estadisticas /> : <Navigate to="/" />} />
+        <Route path="/cambiar-password-inicial" element={<CambiarPasswordInicial />} /> 
         {/* Rutas de Mercado Pago */}
         <Route path="/pago/resultado" element={<PagoResultado />} />
         {/* Ruta 404 - Captura cualquier ruta inexistente */}
