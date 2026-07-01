@@ -60,7 +60,6 @@ const Perfil = ({ token, setToken }) => {
 
     // PROFESOR
     const [clasesProfesor, setClasesProfesor] = useState([]);
-    const [clases, setClases] = useState([]);
     const [error, setError] = useState("");
 
     //ESCANER 
@@ -77,52 +76,21 @@ const Perfil = ({ token, setToken }) => {
     const [asistencia, setAsistencia] = useState({ presentes: 0, ausentes: 0 });
     const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
 
-    // Tick que fuerza un re-render periódico para que estadoClase() se
-    // recalcule con la hora real, sin necesitar F5 cuando una clase termina.
-    const [tick, setTick] = useState(Date.now());
-
-    useEffect(() => {
-        const intervalo = setInterval(() => {
-            setTick(Date.now());
-        }, 15000);
-
-        return () => clearInterval(intervalo);
-    }, []);
-
-    useEffect(() => {
-            cargarClases();
-        }, []);
-    
-    const cargarClases = async () => {
-        try {
-            const res = await api.get("/clases/mis-clases");
-            setClases(res.data);
-        } catch (error) {
-            setError(
-                error.response?.data?.detail ||
-                "Error cargando las clases"
-            );
-        }
-    };
-    
     const generarQR = async (claseId) => {
         // Buscar la clase
         const clase = clasesProfesor.find(c => c.id === claseId);
 
-        if (!clase) {
-            toast.error("No se encontró la clase.");
-            return;
-        }
+        if (!clase) return;
 
         const estado = estadoClase(clase);
 
-        if (estado === "proxima") {
+        if (estado === "pendiente") {
             toast("El QR sólo puede generarse cuando comienza la clase.");
             return;
         }
 
-        if (estado === "finalizada") {
-            toast.error("La clase ya finalizó, no se puede generar el QR.");
+        if (estado === "caducado") {
+            toast.error("La clase ya finalizó.");
             return;
         }
 
@@ -158,13 +126,13 @@ const Perfil = ({ token, setToken }) => {
     const abrirQR = (clase) => {
         const estado = estadoClase(clase);
 
-        if (estado === "proxima") {
+        if (estado === "pendiente") {
             toast("La clase todavía no comenzó.");
             return;
         }
 
-        if (estado === "finalizada") {
-            toast.error("La clase ya finalizó, el QR caducó.");
+        if (estado === "caducado") {
+            toast.error("El QR ya caducó.");
             return;
         }
 
@@ -226,19 +194,6 @@ const Perfil = ({ token, setToken }) => {
             modalPagoRef.current.scrollTop = 0;
         }
     }, [mostrarPagoCupo]);
-
-    // Si la clase del QR abierto finaliza mientras el modal está visible,
-    // lo cerramos automáticamente y avisamos.
-    useEffect(() => {
-        if (mostrarQR && qrSeleccionado) {
-            const clase = clasesProfesor.find(c => qrGenerado[c.id] === qrSeleccionado);
-            if (clase && estadoClase(clase) === "finalizada") {
-                setMostrarQR(false);
-                toast.error("La clase finalizó, el QR ya no es válido.");
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tick]);
 
     const salirListaEspera = async (reservaId) => {
         try {
@@ -1112,7 +1067,7 @@ const Perfil = ({ token, setToken }) => {
                                 <div className="dato-item">
                                     <span className="dato-label">Créditos disponibles</span>
                                     <span className="dato-valor">
-                                        🎟️ {creditos}  {/* Antes estaba "{user.creditos_disponibles || 0}" pero lo cambie porque me dijo esto claude "Si dejás user.creditos_disponibles, el número en pantalla no cambia después de la cancelación, porque user no se actualiza. Solo creditos (el estado nuevo) se actualiza." */}
+                                        🎟️ {creditos}
                                     </span>
                                 </div>
                             )}

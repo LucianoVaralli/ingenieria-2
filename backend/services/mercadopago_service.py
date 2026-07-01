@@ -1,9 +1,11 @@
 # services/mercadopago_service.py
+import os
 import mercadopago
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from dotenv import load_dotenv
 
 from models.reserva_MIO import Reserva
 from models.clase import Clase
@@ -18,10 +20,14 @@ from routes.membresia import (
 )
 
 # ── Configuración ─────────────────────────────────────────────
-ACCESS_TOKEN = "APP_USR-1855583917258264-060413-2c0c94fcc77a60dd765973ed67bb3e29-3450942986"   
-FRONTEND_URL = "http://localhost:5173"
-BACKEND_URL  = "https://stench-impose-rumbling.ngrok-free.dev"
-WEBHOOK_URL  = "https://stench-impose-rumbling.ngrok-free.dev/mp/webhook"
+load_dotenv()
+
+# Todas estas variables se leen del .env (ver .env.example) — nunca hardcodeadas.
+ACCESS_TOKEN = os.environ["MP_ACCESS_TOKEN"]
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+BACKEND_URL  = os.environ["BACKEND_URL"]          # ej: https://tu-url.ngrok-free.dev
+WEBHOOK_URL  = f"{BACKEND_URL}/mp/webhook"
+PAYER_EMAIL  = os.environ.get("MP_TEST_PAYER_EMAIL", "TESTUSER6649020759030573532@testuser.com")
 
 sdk = mercadopago.SDK(ACCESS_TOKEN)
 
@@ -37,11 +43,11 @@ def crear_preferencia_individual(reserva: Reserva, clase: Clase) -> dict:
             "currency_id": "ARS",
         }],
         "payer": {
-            "email": "TESTUSER6649020759030573532@testuser.com" 
+            "email": PAYER_EMAIL
         },
         "payment_methods": {
             "excluded_payment_types": [
-                {"id": "ticket"},       # efectivo 
+                {"id": "ticket"},       # efectivo
                 {"id": "prepaid_card"}, # tarjetas prepagas
             ]
         },
@@ -79,7 +85,7 @@ def crear_preferencia_membresia(
             "currency_id": "ARS",
         }],
         "payer": {
-            "email": "TESTUSER6649020759030573532@testuser.com" 
+            "email": PAYER_EMAIL
         },
         # Guardamos todo lo que necesitamos para confirmar en el webhook
         "external_reference": f"membresia:{socio_id}:{clase.id}:{fechas_str}:{creditos_a_usar}",
@@ -115,7 +121,7 @@ def procesar_pago_aprobado(payment_id: str, db: Session) -> str:
     external_ref = payment.get("external_reference", "")
     partes       = external_ref.split(":")
 
-    if not partes:
+    if not external_ref or not partes:
         return "referencia_invalida"
 
     tipo = partes[0]
