@@ -421,7 +421,7 @@ async def confirmar_pago_membresia(
             monto_total=datos.monto_total
         )
     except Exception as e:
-        print(f"⚠️ Mail no enviado: {e}")
+        print(f" Mail no enviado: {e}")
 
     return {
         "mensaje":              "Reserva procesada",
@@ -543,7 +543,7 @@ async def cancelar_reserva_membresia(
     try:
         await enviar_mail_pago_exitoso(socio, clase, reserva)
     except Exception as e:
-        print(f"⚠️ Mail de cancelación no enviado: {e}")
+        print(f" Mail de cancelación no enviado: {e}")
 
     if siguiente:
         siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
@@ -551,7 +551,7 @@ async def cancelar_reserva_membresia(
             try:
                 await enviar_mail_cupo_disponible(siguiente_socio, clase, siguiente.fecha_clase)
             except Exception as e:
-                print(f"⚠️ Mail de cupo disponible no enviado: {e}")
+                print(f" Mail de cupo disponible no enviado: {e}")
 
     mensaje = (
         "Cancelación exitosa con crédito otorgado"
@@ -628,7 +628,7 @@ async def cancelar_reserva_individual_confirmada(
     try:
         await enviar_mail_pago_exitoso(socio, clase, reserva)
     except Exception as e:
-        print(f"⚠️ Mail de cancelación no enviado: {e}")
+        print(f" Mail de cancelación no enviado: {e}")
 
     if siguiente:
         siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
@@ -636,7 +636,7 @@ async def cancelar_reserva_individual_confirmada(
             try:
                 await enviar_mail_cupo_disponible(siguiente_socio, clase, siguiente.fecha_clase)
             except Exception as e:
-                print(f"⚠️ Mail de cupo disponible no enviado: {e}")
+                print(f" Mail de cupo disponible no enviado: {e}")
 
     mensaje = (
         "Cancelación exitosa con devolución"
@@ -809,7 +809,7 @@ async def rechazar_cupo(
             try:
                 await enviar_mail_cupo_disponible(siguiente_socio, clase, siguiente.fecha_clase)
             except Exception as e:
-                print(f"⚠️ Mail de cupo disponible no enviado: {e}")
+                print(f" Mail de cupo disponible no enviado: {e}")
 
     return {
         "mensaje": "Cupo rechazado, siguiente notificado",
@@ -1297,7 +1297,7 @@ async def pagar_reserva_individual(
         try:
             await enviar_mail_pago_exitoso(socio, clase, reserva)
         except Exception as e:
-            print(f"⚠️ Mail no enviado: {e}")
+            print(f" Mail no enviado: {e}")
 
         return {"mensaje": "Reserva confirmada con crédito"}
 
@@ -1350,7 +1350,7 @@ async def pagar_reserva_individual(
     try:
         await enviar_mail_pago_exitoso(socio, clase, reserva)
     except Exception as e:
-        print(f"⚠️ Mail no enviado: {e}")
+        print(f" Mail no enviado: {e}")
 
     return {"mensaje": "El pago se realizó correctamente"}
 
