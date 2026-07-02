@@ -60,7 +60,6 @@ const Perfil = ({ token, setToken }) => {
 
     // PROFESOR
     const [clasesProfesor, setClasesProfesor] = useState([]);
-    const [clases, setClases] = useState([]);
     const [error, setError] = useState("");
 
     //ESCANER 
@@ -77,51 +76,50 @@ const Perfil = ({ token, setToken }) => {
     const [asistencia, setAsistencia] = useState({ presentes: 0, ausentes: 0 });
     const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
 
+    const [ahora, setAhora] = useState(new Date());
+
     useEffect(() => {
-            cargarClases();
-        }, []);
-    
-    const cargarClases = async () => {
-        try {
-            const res = await api.get("/clases/mis-clases");
-            setClases(res.data);
-        } catch (error) {
-            setError(
-                error.response?.data?.detail ||
-                "Error cargando las clases"
-            );
-        }
-    };
-    
+        const intervalo = setInterval(() => {
+            setAhora(new Date());
+        }, 30000); // cada 30 segundos
+
+        return () => clearInterval(intervalo);
+    }, []);
+
     const generarQR = async (claseId) => {
-        // Buscar la clase
+
         const clase = clasesProfesor.find(c => c.id === claseId);
 
         if (!clase) return;
 
         const estado = estadoClase(clase);
 
-        if (estado === "pendiente") {
-            toast("El QR sólo puede generarse cuando comienza la clase.");
+        if (estado === "proxima") {
+            toast("La clase todavía no comenzó.");
             return;
         }
 
-        if (estado === "caducado") {
+        if (estado === "finalizada") {
             toast.error("La clase ya finalizó.");
             return;
         }
 
-        // Ya fue generado
         if (qrGenerado[claseId]) {
             toast("El QR ya fue generado.");
+            setQrSeleccionado(qrGenerado[claseId]);
+            setMostrarQR(true);
             return;
         }
 
         try {
+
             const res = await api.post(`/clases/${claseId}/generar-qr`);
+
             const codigo = res.data.codigo_qr;
 
-            const url = await QRCode.toDataURL(codigo, { width: 120 });
+            const url = await QRCode.toDataURL(codigo, {
+                width: 120
+            });
 
             setQrGenerado(prev => ({
                 ...prev,
@@ -134,22 +132,26 @@ const Perfil = ({ token, setToken }) => {
             toast.success("QR generado");
 
         } catch (err) {
+
             toast.error(
-                err?.response?.data?.detail || "Error generando QR"
+                err?.response?.data?.detail ||
+                "Error generando QR"
             );
+
         }
     };
 
     const abrirQR = (clase) => {
+
         const estado = estadoClase(clase);
 
-        if (estado === "pendiente") {
+        if (estado === "proxima") {
             toast("La clase todavía no comenzó.");
             return;
         }
 
-        if (estado === "caducado") {
-            toast.error("El QR ya caducó.");
+        if (estado === "finalizada") {
+            toast.error("El QR ya caducó porque la clase ya finalizó.");
             return;
         }
 
@@ -183,6 +185,13 @@ const Perfil = ({ token, setToken }) => {
     const capitalize = (texto) =>
         texto
             ? texto.charAt(0).toUpperCase() + texto.slice(1)
+            : "";
+
+    // Normaliza texto sacando tildes y pasando a minúsculas,
+    // para poder comparar "Miércoles" (mapeoDias) con "Miercoles" (backend)
+    const quitarTildes = (texto) =>
+        texto
+            ? texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
             : "";
 
     useEffect(() => {
@@ -249,21 +258,19 @@ const Perfil = ({ token, setToken }) => {
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
 
-    const ahora = new Date();
-
-    // 1. Obtenemos el nombre del día de hoy en minúsculas (ej: "martes")
+    // 1. Obtenemos el nombre del día de hoy, sin tildes (ej: "martes")
     const opciones = { weekday: 'long' };
-    const diaHoyTexto = mapeoDias[ahora.getDay()].toLowerCase();
+    const diaHoyTexto = quitarTildes(mapeoDias[ahora.getDay()]);
 
     // 2. Clases de hoy
     const clasesHoy = (clasesProfesor || []).filter(c => {
-        return c?.dia?.toLowerCase() === diaHoyTexto;
+        return quitarTildes(c?.dia) === diaHoyTexto;
     });
 
     // 3. Clases futuras (días distintos a hoy)
     const clasesFuturas = (clasesProfesor || []).filter(c => {
         if (!c?.dia) return false;
-        return c.dia.toLowerCase() !== diaHoyTexto;
+        return quitarTildes(c.dia) !== diaHoyTexto;
     });
 
     useEffect(() => {
@@ -693,12 +700,10 @@ const Perfil = ({ token, setToken }) => {
             sabado: 6
         };
 
-        const ahora = new Date();
-
         const inicio = new Date();
 
         const diferencia =
-            dias[clase.dia.toLowerCase()] - ahora.getDay();
+            dias[quitarTildes(clase.dia)] - ahora.getDay();
 
         inicio.setDate(ahora.getDate() + diferencia);
 
@@ -714,6 +719,22 @@ const Perfil = ({ token, setToken }) => {
         return "proxima";
     };
 
+    const esClaseHoy = (clase) => {
+        const dias = {
+            domingo: 0,
+            lunes: 1,
+            martes: 2,
+            miercoles: 3,
+            jueves: 4,
+            viernes: 5,
+            sabado: 6
+        };
+
+        const hoy = new Date().getDay();
+
+        return dias[quitarTildes(clase.dia)] === hoy;
+    };
+
     const verAlumnos = async (clase) => {
         try {
 
@@ -722,15 +743,20 @@ const Perfil = ({ token, setToken }) => {
             setEstadoSeleccionado(null);
             setClaseSeleccionada(clase);
 
-            const res = await api.get(`/clases/${clase.id}/alumnos`);
+            const hoy = new Date().toISOString().split("T")[0];
+
+            const res = await api.get(
+                `/clases/${clase.id}/alumnos?fecha=${hoy}`
+            );
 
             const estado = estadoClase(clase);
+            const hoyClase =esClaseHoy(clase);
 
             setAlumnos(res.data.alumnos);
             setEstadoSeleccionado(estado);
 
             // SOLO si ya pasó la clase
-            if (estado === "en_curso" || estado === "finalizada") {
+            if (hoyClase) {
                 const presentes = res.data.alumnos.filter(a => a.asistio).length;
                 const total = res.data.alumnos.length;
 
@@ -751,7 +777,7 @@ const Perfil = ({ token, setToken }) => {
 
 
     return (
-        <>
+        <>  {/*esto y el toaster esta demas */}
         <Toaster />
             <div className="perfil-container">
                 
@@ -1054,11 +1080,11 @@ const Perfil = ({ token, setToken }) => {
                                     <h2 className="perfil-nombre">{user.nombre}</h2>
                                     <p className="perfil-id">ID Socio · #2026{user.id || '01'}</p>
                                 </div>
-                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* ── DATOS PERSONALES ── */}
+                    {/* ── DATOS PERSONALES ── */}
                         <div className="perfil-datos-row">
                             <div className="dato-item">
                                 <span className="dato-label">Email</span>
@@ -1077,7 +1103,7 @@ const Perfil = ({ token, setToken }) => {
                                 <div className="dato-item">
                                     <span className="dato-label">Créditos disponibles</span>
                                     <span className="dato-valor">
-                                        🎟️ {creditos}  {/* Antes estaba "{user.creditos_disponibles || 0}" pero lo cambie porque me dijo esto claude "Si dejás user.creditos_disponibles, el número en pantalla no cambia después de la cancelación, porque user no se actualiza. Solo creditos (el estado nuevo) se actualiza." */}
+                                        🎟️ {creditos}
                                     </span>
                                 </div>
                             )}
@@ -1278,7 +1304,7 @@ const Perfil = ({ token, setToken }) => {
                                                                                         {r.notificado && (
                                                                                             <button
                                                                                                 className="btn-aceptar-cupo"
-                                                                                                onClick={() => aceptarCupo(r.id)}
+                                                                                                onClick={() => aceptarCupo(r)}
                                                                                             >
                                                                                                 Aceptar cupo
                                                                                             </button>
@@ -1288,7 +1314,7 @@ const Perfil = ({ token, setToken }) => {
                                                                                         {r.notificado && (
                                                                                             <button
                                                                                                 className="btn-rechazar-cupo"
-                                                                                                onClick={() => rechazarCupo(r.id)}
+                                                                                                onClick={() => iniciarRechazo(r)}
                                                                                             >
                                                                                                 Rechazar cupo
                                                                                             </button>
@@ -1391,10 +1417,6 @@ const Perfil = ({ token, setToken }) => {
 
                                                                         <button
                                                                             className="btn-generar-qr"
-                                                                            disabled={
-                                                                                estadoClase(clase) !== "en_curso" ||
-                                                                                qrGenerado[clase.id]
-                                                                            }
                                                                             onClick={() => generarQR(clase.id)}
                                                                         >
                                                                             {qrGenerado[clase.id]
@@ -1576,7 +1598,7 @@ const Perfil = ({ token, setToken }) => {
                             <h2>📋 Lista de alumnos</h2>
 
                             {/* RESUMEN */}
-                            {asistencia && (estadoSeleccionado === "en_curso" || estadoSeleccionado === "finalizada") &&(
+                            {asistencia && (
                                 <p>
                                     📊 Presentes: {asistencia.presentes} |{" "}
                                     ❌ Ausentes: {asistencia.ausentes}
@@ -1598,6 +1620,18 @@ const Perfil = ({ token, setToken }) => {
                                                 <strong>
                                                     {capitalize(a.nombre)} {capitalize(a.apellido)} - {a.email}
                                                 </strong>
+                                                {asistencia && (
+
+                                                        <span
+                                                            style={{
+                                                                marginLeft: "10px",
+                                                                fontWeight: "bold",
+                                                                color: a.asistio ? "green" : "red"
+                                                            }}
+                                                        >
+                                                            {a.asistio ? "✔ Presente" : "✖ Ausente"}
+                                                        </span>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

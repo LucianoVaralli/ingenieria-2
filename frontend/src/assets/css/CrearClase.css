@@ -3,11 +3,7 @@
 .crear-clase-page {
     font-family: 'Lora', serif;
     color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 48px 24px 80px;
+    min-height: calc(100vh - 80px);    
 }
 
 .crear-clase-header {
@@ -15,6 +11,8 @@
     margin-bottom: 32px;
     width: 100%;
     max-width: 560px;
+    margin: 0 auto 25px;
+    
 }
 
 .crear-clase-label {
@@ -27,10 +25,10 @@
 }
 
 .crear-clase-titulo {
-    font-size: 36px;
+    font-size: 26px;
     font-weight: 700;
     color: #fff;
-    margin: 0 0 6px;
+    margin: 0 0 32px;
     letter-spacing: -0.3px;
 }
 
@@ -49,6 +47,7 @@
     padding: 40px;
     width: 100%;
     max-width: 680px;
+    margin: 0 auto 25px;
 }
 
 .crear-clase-card form {

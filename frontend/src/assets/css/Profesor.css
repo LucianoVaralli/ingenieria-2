@@ -7,8 +7,10 @@
     border: 1px solid #2a2a2a;
     border-radius: 12px;
     padding: 20px;
-    margin-bottom: 25px;
+
     max-width: 700px;
+    width: 100%;
+    margin: 0 auto 25px;
 }
 
 .form-profesor-card h2 {
@@ -264,6 +266,47 @@
 
 .btn-cerrar:hover {
     background: #4b5563 !important;
+}
+
+.admin-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.admin-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: #5CB84D;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.admin-section-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 32px;
+    letter-spacing: -0.3px;
+}
+
+.admin-subtitle {
+    font-size: 25px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #eaeaea;
+}
+
+.admin-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 24px 0;
+}
+
+.admin-section-title-block {
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 /* =========================

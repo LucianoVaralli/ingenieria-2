@@ -10,6 +10,7 @@ from services.mercadopago_service import (
     crear_preferencia_individual,
     crear_preferencia_membresia,
     procesar_pago_aprobado,
+    FRONTEND_URL,
 )
 
 from models.enums import TipoReserva
@@ -130,7 +131,7 @@ def resultado_redirect(
             reserva.estado = "cancelada"
             db.commit()
 
-    url = f"http://localhost:5173/pago/resultado?status={status}&tipo={tipo}"
+    url = f"{FRONTEND_URL}/pago/resultado?status={status}&tipo={tipo}"
     if clase_id:
         url += f"&clase_id={clase_id}"
     if reserva_id:

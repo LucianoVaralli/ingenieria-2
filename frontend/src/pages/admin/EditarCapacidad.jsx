@@ -88,10 +88,13 @@ function EditarCapacidad() {
         <AdminLayout>
             <div className="capacidad-page">
 
-                <div className="capacidad-header">
-                    <div className="capacidad-label">Gestión</div>
-                    <h1 className="capacidad-titulo">Capacidad del Gimnasio</h1>
+                <div className="capacidad-label">
+                    Gestión
                 </div>
+                
+                <h1 className="capacidad-titulo">
+                    Capacidad del Gimnasio
+                </h1>
 
                 <div className="capacidad-stats">
                     <div className="capacidad-stat">
