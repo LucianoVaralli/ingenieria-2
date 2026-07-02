@@ -392,11 +392,13 @@ function ListaClasesAdmin() {
     return (
         <AdminLayout>
             <div className="lista-page">
-
-                <div className="lista-header">
-                    <div className="lista-label">Gestión</div>
-                    <h1 className="lista-titulo">Clases existentes</h1>
+                <div className="lista-label">
+                    Gestión
                 </div>
+
+                <h1 className="lista-titulo">
+                    Clases existentes
+                </h1>
 
                 {mensajeExito && (
                     <p className="lista-mensaje-exito">
@@ -443,7 +445,7 @@ function ListaClasesAdmin() {
                                     className="columna-dia"
                                 >
                                     <div className="columna-dia-header">
-                                        <h3>{dia}</h3>
+                                        <h3>{capitalize(dia)}</h3>
                                         <span className="columna-contador">
                                             {clasesDelDia.length}
                                         </span>

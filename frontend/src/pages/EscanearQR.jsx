@@ -61,7 +61,6 @@ export default function EscanearQR() {
           const detail = err.response?.data?.detail;
           const mensajeError = Array.isArray(detail)
             ? detail.map(d => d.msg).join(', ')
-
             : detail || "Error al registrar asistencia";
 
           setError(mensajeError);

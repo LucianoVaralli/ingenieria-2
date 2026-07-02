@@ -500,8 +500,6 @@ const ReservaIndividual = () => {
 
                                 )
                             }
-
-                            
                             <button className="boton-accion" onClick={async () => {
                                 setCargando(true);
                                 try { await handleCrearReserva(); } catch(e) { setMensaje(e.response?.data?.detail || 'Error al crear reserva.'); setCargando(false); return; }

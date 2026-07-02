@@ -21,7 +21,6 @@ from routes.membresia import (
 # ── Configuración ─────────────────────────────────────────────
 load_dotenv()
 
-
 # Todas estas variables se leen del .env (ver .env.example) — nunca hardcodeadas.
 ACCESS_TOKEN = os.environ["MP_ACCESS_TOKEN"]
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
@@ -47,7 +46,7 @@ def crear_preferencia_individual(reserva: Reserva, clase: Clase) -> dict:
         },
         "payment_methods": {
             "excluded_payment_types": [
-                {"id": "ticket"},       # efectivo 
+                {"id": "ticket"},       # efectivo
                 {"id": "prepaid_card"}, # tarjetas prepagas
             ]
         },
