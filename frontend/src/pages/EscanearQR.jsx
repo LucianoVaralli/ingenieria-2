@@ -32,7 +32,7 @@ export default function EscanearQR() {
       const canvas = canvasRef.current;
       if (!video || !canvas || video.readyState !== 4) return;
 
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -50,12 +50,20 @@ export default function EscanearQR() {
         setCamaraActiva(false);
 
         try {
+          const hoy = new Date();
+          const fechaLocal = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
           const res = await api.post("/clases/escanear-qr", {
             codigo_qr: code.data,
+            fecha_clase: fechaLocal,
           });
           setMensaje(res.data.mensaje);
         } catch (err) {
-          setError(err.response?.data?.detail || "Error al registrar asistencia");
+          const detail = err.response?.data?.detail;
+          const mensajeError = Array.isArray(detail)
+            ? detail.map(d => d.msg).join(', ')
+            : detail || "Error al registrar asistencia";
+
+          setError(mensajeError);
         }
       }
     }, 500);

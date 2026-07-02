@@ -10,10 +10,6 @@
     font-size: 32px;
 }
 
-.lista-header {
-    margin-bottom: 32px;
-}
-
 .lista-label {
     font-size: 10px;
     text-transform: uppercase;
@@ -27,7 +23,7 @@
     font-size: 26px;
     font-weight: 700;
     color: #fff;
-    margin: 0;
+    margin: 0 0 32px;
     letter-spacing: -0.3px;
 }
 
@@ -538,4 +534,206 @@
     font-style: italic;
     color: rgba(255,100,100,0.8);
     margin: 0;
+}
+
+/* ══════════════════════════════
+   FILTROS
+══════════════════════════════ */
+ 
+.filtros-container {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+ 
+/* Botón principal */
+.filtros-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #0c0c0c;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 18px;
+    color: rgba(255,255,255,0.55);
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    align-self: flex-start;
+}
+ 
+.filtros-toggle:hover,
+.filtros-toggle--open {
+    border-color: rgba(92,184,77,0.35);
+    color: #fff;
+}
+ 
+.filtros-toggle-arrow {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+}
+ 
+.filtros-badge {
+    background: #5CB84D;
+    color: #000;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 1px 7px;
+    margin-left: 2px;
+}
+ 
+/* Chips activos */
+.filtros-chips-activos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+ 
+.filtro-chip-activo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(92,184,77,0.10);
+    border: 1px solid rgba(92,184,77,0.3);
+    color: #5CB84D;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    font-weight: 600;
+}
+ 
+.filtro-chip-x {
+    background: none;
+    border: none;
+    color: #5CB84D;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+ 
+.filtro-chip-x:hover { opacity: 1; }
+ 
+.filtros-limpiar {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.25);
+    font-family: 'Lora', serif;
+    font-size: 11px;
+    font-style: italic;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+}
+ 
+.filtros-limpiar:hover { color: rgba(255,80,80,0.7); }
+ 
+/* Panel desplegable */
+.filtros-panel {
+    background: #0c0c0c;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 20px 24px;
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+}
+ 
+.filtros-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 140px;
+}
+ 
+.filtros-grupo-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.25);
+    font-weight: 600;
+    font-family: 'Lora', serif;
+}
+ 
+/* Chips de opciones */
+.filtros-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+ 
+.filtro-chip {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 7px 14px;
+    color: rgba(255,255,255,0.45);
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+ 
+.filtro-chip:hover {
+    border-color: rgba(92,184,77,0.3);
+    color: rgba(255,255,255,0.75);
+}
+ 
+.filtro-chip--activo {
+    background: rgba(92,184,77,0.10);
+    border-color: rgba(92,184,77,0.45);
+    color: #5CB84D;
+}
+ 
+.filtro-chip-sub {
+    font-size: 9px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.3px;
+}
+ 
+.filtro-chip--activo .filtro-chip-sub {
+    color: rgba(92,184,77,0.5);
+}
+ 
+/* Dropdown profesor */
+.filtros-select {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 9px;
+    padding: 9px 12px;
+    color: rgba(255,255,255,0.55);
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 180px;
+}
+ 
+.filtros-select:focus,
+.filtros-select:hover {
+    border-color: rgba(92,184,77,0.4);
+    color: #fff;
+}
+ 
+.filtros-select option {
+    background: #1a1a1a;
+    color: #fff;
 }

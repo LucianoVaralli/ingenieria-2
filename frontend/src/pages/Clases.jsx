@@ -195,19 +195,42 @@ const Clases = ({ token }) => {
 
     const handleReservar = () => {
         if (!claseElegida || !modoReserva) return;
+
         const localToken = localStorage.getItem('token');
         if (!localToken) {
             navigate('/registro', { state: { mensaje: 'Debés registrarte para poder reservar.' } });
             return;
         }
+
         const fechasDelMes = calcularFechasDelMes(claseElegida.dia);
+
+        const hoy = new Date();
+        const limite = new Date();
+        limite.setDate(hoy.getDate() + 7);
+
+        // todas las fechas del mes (membresía)
+        const fechasInvalidas = fechasDelMes.filter(f => {
+            const fecha = new Date(f);
+            return fecha > limite;
+        });
+
+        if (modoReserva === 'membresia' && fechasInvalidas.length > 0) {
+            setMensajeError("Solo podés reservar clases dentro de los próximos 7 días");
+            return;
+        }
+
         if (modoReserva === 'membresia') {
-            navigate('/reservar/membresia', { state: { clase: claseElegida, fechasDelMes } });
+            navigate('/reservar/membresia', {
+                state: { clase: claseElegida, fechasDelMes }
+            });
         } else {
-            const mm       = String(mes + 1).padStart(2, '0');
-            const dd       = String(diaSelec).padStart(2, '0');
+            const mm = String(mes + 1).padStart(2, '0');
+            const dd = String(diaSelec).padStart(2, '0');
             const fechaDia = `${anio}-${mm}-${dd}`;
-            navigate('/reservar/individual', { state: { clase: claseElegida, fechaSeleccionada: fechaDia } });
+
+            navigate('/reservar/individual', {
+                state: { clase: claseElegida, fechaSeleccionada: fechaDia }
+            });
         }
     };
 
@@ -234,6 +257,11 @@ const Clases = ({ token }) => {
             const esHoy      = d === hoy.getDate() && mes === hoy.getMonth() && anio === hoy.getFullYear();
             const esSelec    = d === diaSelec;
             const fechaCelda = new Date(anio, mes, d);
+
+            const limite = new Date();
+            limite.setDate(limite.getDate() + 7);
+            const esFueraDeRango = fechaCelda > limite;
+
             const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
             const esPasado    = fechaCelda < hoy || esHoyExacto;
             const MAP_NUM_A_DB = {
@@ -264,13 +292,24 @@ const Clases = ({ token }) => {
             result.push(
                 <td
                     key={d}
-                    className={`cal-celda ${esHoy ? 'hoy' : ''} ${esSelec ? 'seleccionado' : ''} ${esPasado ? 'pasado' : ''} ${tieneClases && !esPasado ? 'con-clases' : ''}`}
+                    className={`cal-celda ${esHoy ? 'hoy' : ''} ${esSelec ? 'seleccionado' : ''} ${esPasado ? 'pasado' : ''} ${esFueraDeRango ? 'bloqueado' : ''} ${tieneClases && !esPasado ? 'con-clases' : ''}`}
                     onClick={() => {
                         const fechaCelda  = new Date(anio, mes, d);
+
+                        const limite = new Date();
+                        limite.setDate(limite.getDate() + 7);
+                        const esFueraDeRango = fechaCelda > limite;
+
                         const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
                         const esPasado    = fechaCelda < hoy || esHoyExacto;
-                        if (esPasado) {
-                            setMensajeError(esHoyExacto ? 'No podés reservar para hoy.' : 'Esta fecha ya pasó.');
+                        if (esPasado || esFueraDeRango) {
+                            setMensajeError(
+                                esFueraDeRango
+                                    ? "Solo podés reservar dentro de los 7 días"
+                                    : esHoyExacto
+                                        ? "No podés reservar para hoy."
+                                        : "Esta fecha ya pasó."
+                            );
                             return;
                         }
                         setMensajeError('');

@@ -32,6 +32,12 @@ const OPCIONES = [
         icon: "👤",
         titulo: "Gestión de Profesores",
         desc: "Administrá la información y disponibilidad de los profesores."
+    },
+    {
+        to: "/admin/estadisticas",
+        icon: "📊",
+        titulo: "Estadísticas",
+        desc: "Aqui poner una descripcion"
     }
 ];
 
@@ -43,7 +49,7 @@ function AdminDashboard() {
                 <div className="admin-section-label">Panel de control</div>
                 <h1 className="admin-section-title">Dashboard</h1>
 
-                <div className="admin-opciones">
+                <div className="admin-opciones2">
                     {OPCIONES.map(op => (
                         <Link to={op.to} className="admin-card" key={op.to}>
                             <span className="admin-card-icon">{op.icon}</span>

@@ -34,6 +34,8 @@ router = APIRouter(
     tags=["Clases"]
 )
 
+from sqlalchemy import distinct
+
 def validar_capacidad_horaria(
     db,
     dia,
@@ -1002,8 +1004,6 @@ def escanear_qr(
 
     hoy = date.today()
 
-    
-
     reserva = db.query(Reserva).filter(
         Reserva.clase_id == clase.id,
         Reserva.socio_id == socio_actual.id,
@@ -1068,10 +1068,15 @@ def obtener_clases_profesor(
 
     for c in clases:
 
-        cantidad_alumnos = db.query(Reserva).filter(
-            Reserva.clase_id == c.id,
-            Reserva.estado == "confirmada"
-        ).count()
+        cantidad_alumnos = (
+            db.query(Reserva.socio_id)
+            .filter(
+                Reserva.clase_id == c.id,
+                Reserva.estado == "confirmada"
+            )
+            .distinct()
+            .count()
+        )
 
         resultado.append({
             "id": c.id,
@@ -1091,6 +1096,7 @@ def obtener_clases_profesor(
 @router.get("/{clase_id}/alumnos")
 def obtener_alumnos_de_clase(
     clase_id: int,
+    fecha:date,
     db: Session = Depends(get_db)
 ):
     clase = db.query(Clase).filter(Clase.id == clase_id).first()
@@ -1101,23 +1107,54 @@ def obtener_alumnos_de_clase(
             detail="Clase no encontrada"
         )
 
-    reservas = db.query(Reserva).filter(
-        Reserva.clase_id == clase_id,
-        Reserva.estado == "confirmada"
-    ).all()
+    alumnos_db = (
+        db.query(Socio)
+        .join(Reserva, Reserva.socio_id == Socio.id)
+        .filter(
+            Reserva.clase_id == clase_id,
+            Reserva.estado == "confirmada"
+        )
+        .distinct()
+        .all()
+    )
 
     alumnos = []
 
-    for r in reservas:
-        socio = db.query(Socio).filter(Socio.id == r.socio_id).first()
+    for socio in alumnos_db:
 
-        if socio:
-            alumnos.append({
-                "id": socio.id,
-                "nombre": socio.nombre,
-                "apellido": socio.apellido,
-                "email": getattr(socio, "email", None)
-            })
+        reserva = (
+            db.query(Reserva)
+            .filter(
+                Reserva.clase_id == clase_id,
+                Reserva.socio_id == socio.id,
+                Reserva.fecha_clase == fecha,
+                Reserva.estado == "confirmada"
+            )
+            .first()
+        )
+
+        asistio = False
+
+        if reserva:
+            asistencia = (
+                db.query(Asistencia)
+                .filter(
+                    Asistencia.clase_id == clase_id,
+                    Asistencia.socio_id == socio.id,
+                    Asistencia.fecha_clase == fecha
+                )
+                .first()
+            )
+
+            asistio = asistencia is not None
+
+        alumnos.append({
+            "id": socio.id,
+            "nombre": socio.nombre,
+            "apellido": socio.apellido,
+            "email": socio.email,
+            "asistio": asistio
+        })
 
     return {
         "clase_id": clase.id,
