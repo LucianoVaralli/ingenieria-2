@@ -60,7 +60,6 @@ const Perfil = ({ token, setToken }) => {
 
     // PROFESOR
     const [clasesProfesor, setClasesProfesor] = useState([]);
-    const [clases, setClases] = useState([]);
     const [error, setError] = useState("");
 
     //ESCANER 
@@ -77,21 +76,6 @@ const Perfil = ({ token, setToken }) => {
     const [asistencia, setAsistencia] = useState({ presentes: 0, ausentes: 0 });
     const [estadoSeleccionado, setEstadoSeleccionado] = useState(null);
 
-    useEffect(() => {
-            cargarClases();
-        }, []);
-    
-    const cargarClases = async () => {
-        try {
-            const res = await api.get("/clases/mis-clases");
-            setClases(res.data);
-        } catch (error) {
-            setError(
-                error.response?.data?.detail ||
-                "Error cargando las clases"
-            );
-        }
-    };
     
     const generarQR = async (claseId) => {
         // Buscar la clase
@@ -110,6 +94,8 @@ const Perfil = ({ token, setToken }) => {
             toast.error("La clase ya finalizó.");
             return;
         }
+        if (estado === "caducado") {
+            toast.error("La clase ya finalizó.");
 
         // Ya fue generado
         if (qrGenerado[claseId]) {
@@ -185,6 +171,13 @@ const Perfil = ({ token, setToken }) => {
             ? texto.charAt(0).toUpperCase() + texto.slice(1)
             : "";
 
+    // Normaliza texto sacando tildes y pasando a minúsculas,
+    // para poder comparar "Miércoles" (mapeoDias) con "Miercoles" (backend)
+    const quitarTildes = (texto) =>
+        texto
+            ? texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+            : "";
+
     useEffect(() => {
         const cargarPerfil = async () => {
             const res = await api.get('/socios/me');
@@ -251,19 +244,19 @@ const Perfil = ({ token, setToken }) => {
 
     const ahora = new Date();
 
-    // 1. Obtenemos el nombre del día de hoy en minúsculas (ej: "martes")
+    // 1. Obtenemos el nombre del día de hoy, sin tildes (ej: "martes")
     const opciones = { weekday: 'long' };
-    const diaHoyTexto = mapeoDias[ahora.getDay()].toLowerCase();
+    const diaHoyTexto = quitarTildes(mapeoDias[ahora.getDay()]);
 
     // 2. Clases de hoy
     const clasesHoy = (clasesProfesor || []).filter(c => {
-        return c?.dia?.toLowerCase() === diaHoyTexto;
+        return quitarTildes(c?.dia) === diaHoyTexto;
     });
 
     // 3. Clases futuras (días distintos a hoy)
     const clasesFuturas = (clasesProfesor || []).filter(c => {
         if (!c?.dia) return false;
-        return c.dia.toLowerCase() !== diaHoyTexto;
+        return quitarTildes(c.dia) !== diaHoyTexto;
     });
 
     useEffect(() => {
@@ -698,7 +691,7 @@ const Perfil = ({ token, setToken }) => {
         const inicio = new Date();
 
         const diferencia =
-            dias[clase.dia.toLowerCase()] - ahora.getDay();
+            dias[quitarTildes(clase.dia)] - ahora.getDay();
 
         inicio.setDate(ahora.getDate() + diferencia);
 
@@ -751,7 +744,7 @@ const Perfil = ({ token, setToken }) => {
 
 
     return (
-        <>
+        <>  {/*esto y el toaster esta demas */}
         <Toaster />
             <div className="perfil-container">
                 
@@ -1054,11 +1047,11 @@ const Perfil = ({ token, setToken }) => {
                                     <h2 className="perfil-nombre">{user.nombre}</h2>
                                     <p className="perfil-id">ID Socio · #2026{user.id || '01'}</p>
                                 </div>
-                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* ── DATOS PERSONALES ── */}
+                    {/* ── DATOS PERSONALES ── */}
                         <div className="perfil-datos-row">
                             <div className="dato-item">
                                 <span className="dato-label">Email</span>
@@ -1278,7 +1271,7 @@ const Perfil = ({ token, setToken }) => {
                                                                                         {r.notificado && (
                                                                                             <button
                                                                                                 className="btn-aceptar-cupo"
-                                                                                                onClick={() => aceptarCupo(r.id)}
+                                                                                                onClick={() => aceptarCupo(r)}
                                                                                             >
                                                                                                 Aceptar cupo
                                                                                             </button>
@@ -1288,7 +1281,7 @@ const Perfil = ({ token, setToken }) => {
                                                                                         {r.notificado && (
                                                                                             <button
                                                                                                 className="btn-rechazar-cupo"
-                                                                                                onClick={() => rechazarCupo(r.id)}
+                                                                                                onClick={() => iniciarRechazo(r)}
                                                                                             >
                                                                                                 Rechazar cupo
                                                                                             </button>

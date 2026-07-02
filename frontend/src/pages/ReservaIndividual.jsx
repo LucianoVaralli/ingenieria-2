@@ -501,22 +501,7 @@ const ReservaIndividual = () => {
                                 )
                             }
 
-                            <div className="modalidad-selector">
-                                <button
-                                    type="button"
-                                    className={`modalidad-btn ${tipoPago === 'sena' ? 'modalidad-btn--activo' : 'modalidad-btn--inactivo'}`}
-                                    onClick={() => handleCambioModalidad('sena')}
-                                >
-                                    Abonar Seña (50%)
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`modalidad-btn ${tipoPago === 'total' ? 'modalidad-btn--activo' : 'modalidad-btn--inactivo'}`}
-                                    onClick={() => handleCambioModalidad('total')}
-                                >
-                                    Abonar Total (100%)
-                                </button>
-                            </div>
+                            
                             <button className="boton-accion" onClick={async () => {
                                 setCargando(true);
                                 try { await handleCrearReserva(); } catch(e) { setMensaje(e.response?.data?.detail || 'Error al crear reserva.'); setCargando(false); return; }
