@@ -94,7 +94,24 @@ def crear_reserva_membresia(
         raise HTTPException(status_code=404, detail="Clase no encontrada")
 
     fechas_pasadas = [f for f in datos.fechas_clase if datetime.strptime(f, "%Y-%m-%d").date() < hoy]
-    fechas_futuras = [f for f in datos.fechas_clase if datetime.strptime(f, "%Y-%m-%d").date() >= hoy]
+    
+    hoy = date.today()
+    limite = hoy + timedelta(days=7)
+
+    fechas_validas = []
+
+    for f in datos.fechas_clase:
+        fecha = datetime.strptime(f, "%Y-%m-%d").date()
+
+        if fecha < hoy:
+            raise HTTPException(400, f"No podés reservar fechas pasadas: {f}")
+
+        if fecha > limite:
+            raise HTTPException(400, f"Solo podés reservar hasta 7 días: {f}")
+
+        fechas_validas.append(f)
+
+    fechas_futuras = fechas_validas
 
     if not fechas_futuras:
         raise HTTPException(
@@ -1149,8 +1166,21 @@ def crear_reserva_individual(
         raise HTTPException(status_code=403, detail="No tiene permisos para reservar")
 
     clase = db.query(Clase).filter(Clase.id == datos.clase_id).first()
+    
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
+
+    hoy = date.today()
+
+    limite = hoy + timedelta(days=7)
+
+    fecha = datetime.strptime(datos.fecha_clase, "%Y-%m-%d").date()
+
+    if fecha < hoy:
+        raise HTTPException(400, "No podés reservar fechas pasadas")
+
+    if fecha > limite:
+        raise HTTPException(400, "Solo podés reservar hasta 7 días en adelante")
 
     reserva_existente = db.query(Reserva).filter(
         Reserva.socio_id    == socio.id,

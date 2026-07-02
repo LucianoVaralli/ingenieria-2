@@ -198,174 +198,182 @@ function GestionProfesores() {
         <AdminLayout>
 
             <Toaster />
+            <div className="admin-page">
+                <div className="admin-section-label">
+                    Gestión
+                </div>
 
-            <div className="form-profesor-card">
+                <h1 className="admin-section-title">
+                    Profesores
+                </h1>
 
-                <h2>Crear profesor</h2>
+                <div className="form-profesor-card">
 
-                <form
-                    onSubmit={crearProfesor}
-                    className="form-profesor"
-                >
+                    <h2 className="admin-subtitle">Crear profesor</h2>
 
-                    <div className="input-group">
-                        <input
-                            name="nombre"
-                            placeholder="Nombre"
-                            value={form.nombre}
-                            onChange={handleChange}
-                        />
-                        {errors.nombre && (
-                            <span className="error-message">
-                                {errors.nombre}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="input-group">
-                        <input
-                            name="apellido"
-                            placeholder="Apellido"
-                            value={form.apellido}
-                            onChange={handleChange}
-                        />
-                        {errors.apellido && (
-                            <span className="error-message">
-                                {errors.apellido}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="input-group">
-                        <input
-                            name="dni"
-                            placeholder="DNI"
-                            value={form.dni}
-                            onChange={handleChange}
-                        />
-                        {errors.dni && (
-                            <span className="error-message">
-                                {errors.dni}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="input-group">
-                        <input
-                            name="email"
-                            placeholder="Email"
-                            value={form.email}
-                            onChange={handleChange}
-                        />
-                        {errors.email && (
-                            <span className="error-message">
-                                {errors.email}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="input-group">
-                        <input
-                            name="telefono"
-                            placeholder="Teléfono"
-                            value={form.telefono}
-                            onChange={handleChange}
-                        />
-                        {errors.telefono && (
-                            <span className="error-message">
-                                {errors.telefono}
-                            </span>
-                        )}
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="btn-crear-profesor"
+                    <form
+                        onSubmit={crearProfesor}
+                        className="form-profesor"
                     >
-                        Crear profesor
-                    </button>
 
-                </form>
-
-            </div>
-
-            <h2>Profesores registrados</h2>
-
-            <div className="contenido-profesor">
-
-                {profesores.length === 0 ? (
-
-                    <p className="profesores-vacio-txt">
-                        Sin profesores
-                    </p>
-
-                ) : (
-
-                    profesores.map((profesor) => (
-
-                        <div
-                            key={profesor.id}
-                            className="profesor-card"
-                        >
-
-                            <div className="profesor-body">
-
-                                <h4>
-                                    {profesor.nombre}{" "}
-                                    {profesor.apellido}
-                                </h4>
-
-                                <p>
-                                    📧 {profesor.email}
-                                </p>
-
-                                <p>
-                                    🪪 DNI: {profesor.dni}
-                                </p>
-
-                                <p>
-                                    📞 {profesor.telefono}
-                                </p>
-
-                            </div>
-
-                            <div className="profesor-footer">
-
-                                <button
-                                    className="btn-editar-profesor"
-                                    onClick={() =>
-                                        editarProfesor(
-                                            profesor
-                                        )
-                                    }
-                                >
-                                    Editar
-                                </button>
-
-                                <button
-                                    className="btn-eliminar-profesor"
-                                    onClick={() => {
-                                        setProfesorAEliminar(
-                                            profesor
-                                        );
-                                        setMostrarConfirmacion(
-                                            true
-                                        );
-                                    }}
-                                >
-                                    Eliminar
-                                </button>
-
-                            </div>
-
+                        <div className="input-group">
+                            <input
+                                name="nombre"
+                                placeholder="Nombre"
+                                value={form.nombre}
+                                onChange={handleChange}
+                            />
+                            {errors.nombre && (
+                                <span className="error-message">
+                                    {errors.nombre}
+                                </span>
+                            )}
                         </div>
 
-                    ))
+                        <div className="input-group">
+                            <input
+                                name="apellido"
+                                placeholder="Apellido"
+                                value={form.apellido}
+                                onChange={handleChange}
+                            />
+                            {errors.apellido && (
+                                <span className="error-message">
+                                    {errors.apellido}
+                                </span>
+                            )}
+                        </div>
 
-                )}
+                        <div className="input-group">
+                            <input
+                                name="dni"
+                                placeholder="DNI"
+                                value={form.dni}
+                                onChange={handleChange}
+                            />
+                            {errors.dni && (
+                                <span className="error-message">
+                                    {errors.dni}
+                                </span>
+                            )}
+                        </div>
 
+                        <div className="input-group">
+                            <input
+                                name="email"
+                                placeholder="Email"
+                                value={form.email}
+                                onChange={handleChange}
+                            />
+                            {errors.email && (
+                                <span className="error-message">
+                                    {errors.email}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="input-group">
+                            <input
+                                name="telefono"
+                                placeholder="Teléfono"
+                                value={form.telefono}
+                                onChange={handleChange}
+                            />
+                            {errors.telefono && (
+                                <span className="error-message">
+                                    {errors.telefono}
+                                </span>
+                            )}
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="btn-crear-profesor"
+                        >
+                            Crear profesor
+                        </button>
+
+                    </form>
+
+                </div>
+
+                <h2 className="admin-subtitle">Profesores registrados</h2>
+
+                <div className="contenido-profesor">
+
+                    {profesores.length === 0 ? (
+
+                        <p className="profesores-vacio-txt">
+                            Sin profesores
+                        </p>
+
+                    ) : (
+
+                        profesores.map((profesor) => (
+
+                            <div
+                                key={profesor.id}
+                                className="profesor-card"
+                            >
+
+                                <div className="profesor-body">
+
+                                    <h4>
+                                        {profesor.nombre}{" "}
+                                        {profesor.apellido}
+                                    </h4>
+
+                                    <p>
+                                        📧 {profesor.email}
+                                    </p>
+
+                                    <p>
+                                        🪪 DNI: {profesor.dni}
+                                    </p>
+
+                                    <p>
+                                        📞 {profesor.telefono}
+                                    </p>
+
+                                </div>
+
+                                <div className="profesor-footer">
+
+                                    <button
+                                        className="btn-editar-profesor"
+                                        onClick={() =>
+                                            editarProfesor(
+                                                profesor
+                                            )
+                                        }
+                                    >
+                                        Editar
+                                    </button>
+
+                                    <button
+                                        className="btn-eliminar-profesor"
+                                        onClick={() => {
+                                            setProfesorAEliminar(
+                                                profesor
+                                            );
+                                            setMostrarConfirmacion(
+                                                true
+                                            );
+                                        }}
+                                    >
+                                        Eliminar
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        ))
+
+                    )}
+
+                </div>
             </div>
-
             {editMode && (
 
                 <div className="modal-overlay">
