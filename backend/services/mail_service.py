@@ -41,12 +41,14 @@ async def enviar_mail_pago_exitoso(
     clase: Clase,
     reserva: Reserva
 ):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
     cuerpo = f"""
     Pago realizado correctamente.
-
-    Actividad: {clase.actividad}
+    Actividad: {actividad}
     Fecha: {reserva.fecha_clase}
-    Horario: {clase.horario}
+    Horario: {horario}
 
     Monto pagado: ${reserva.monto_pagado}
 
@@ -68,12 +70,15 @@ async def enviar_mail_lista_espera(
     clase: Clase,
     fecha_clase: str
 ):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
     cuerpo = f"""
     Usted ingresó correctamente a la lista de espera.
 
-    Actividad: {clase.actividad}
+    Actividad: {actividad}
     Fecha: {fecha_clase}
-    Horario: {clase.horario}
+    Horario: {horario}
     """
 
     mensaje = MessageSchema(
@@ -112,6 +117,9 @@ async def enviar_mail_membresia(
     fechas_lista_espera: list[str],
     monto_total: float
 ):
+    
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
 
     texto_fechas_confirmadas = "\n".join(
         [f"• {fecha}" for fecha in fechas_confirmadas]
@@ -122,8 +130,8 @@ Pago realizado correctamente.
 
 Tipo de reserva: Membresía mensual
 
-Actividad: {clase.actividad}
-Horario: {clase.horario}
+Actividad: {actividad}
+Horario: {horario}
 
 Fechas reservadas:
 {texto_fechas_confirmadas}
@@ -184,15 +192,18 @@ async def enviar_mail_cupo_disponible(
     clase: Clase,
     fecha_clase: str
 ):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
     """
     Notifica al socio que se liberó un cupo en una clase de la lista de espera.
     """
     cuerpo = f"""
 Se liberó un cupo en la clase que solicitaste.
 
-Actividad: {clase.actividad}
+Actividad: {actividad}
 Fecha: {fecha_clase}
-Horario: {clase.horario}
+Horario: {horario}
 
 Para aceptar el cupo, ingresá a tu perfil en Sportify y apretá el botón "Aceptar cupo".
 Tenés un tiempo limitado para confirmar tu lugar.
