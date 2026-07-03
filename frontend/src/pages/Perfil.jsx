@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
 import ModalConfirmacion from '../components/ModalConfirmacion.jsx';
@@ -8,12 +8,14 @@ import { useRef } from "react";
 import EscanearQR from "./EscanearQR";
 import QRCode from "qrcode";
 import { toast, Toaster } from "react-hot-toast";
+import PagarConMP from "../components/PagarConMP";
 
 
 const Perfil = ({ token, setToken }) => {
     const [user, setUser]           = useState(null);
     const [reservas, setReservas]   = useState([]);
     const navigate                  = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
     const [mensajeExito, setMensajeExito]         = useState('');
     const [rol, setRol]             = useState('');
@@ -35,6 +37,8 @@ const Perfil = ({ token, setToken }) => {
     const [mostrarResultado, setMostrarResultado] = useState(false);
     const [reservaAbordador, setReservaAbordador] = useState(null);
     const [mensajeResultado, setMensajeResultado] = useState("");
+    const [tituloConfirmacion, setTituloConfirmacion] = useState("¿Cancelar reserva?");
+    const [mensajeConfirmacion, setMensajeConfirmacion] = useState("");
 
     const modalPagoRef = useRef(null);
 
@@ -48,6 +52,7 @@ const Perfil = ({ token, setToken }) => {
     const [tipoPagoCupo, setTipoPagoCupo] = useState('total');
     const [usaCreditoCupo, setUsaCreditoCupo] = useState(false);
     const [procesandoPago, setProcesandoPago] = useState(false);
+    const [metodoPagoCupo, setMetodoPagoCupo] = useState('tarjeta'); // 'tarjeta' | 'mp'
 
     const hoy = new Date();
     const dia = hoy.getDate();
@@ -216,6 +221,43 @@ const Perfil = ({ token, setToken }) => {
         }
     }, [mostrarPagoCupo]);
 
+    // ── Manejo de vuelta desde Mercado Pago ──
+    useEffect(() => {
+        const status = searchParams.get('status');
+        if (!status) return;
+
+        if (status === 'approved') {
+            toast.success('¡Pago confirmado con Mercado Pago!');
+
+            // Refrescar reservas para reflejar el cambio de estado
+            (async () => {
+                try {
+                    const resReservas = await api.get('/reservas/mis-reservas');
+                    const activas = resReservas.data.filter(r =>
+                        (
+                            r.estado === "confirmada" ||
+                            r.estado === "en_espera" ||
+                            r.estado === "notificado" ||
+                            r.estado === "pendiente_pago"
+                        ) &&
+                        new Date(r.fecha_clase) >= hoy
+                    );
+                    setReservas(activas);
+                } catch (err) {
+                    console.error("Error refrescando reservas tras pago MP:", err);
+                }
+            })();
+
+        } else if (status === 'failure') {
+            toast.error('El pago con Mercado Pago no se pudo completar.');
+        } else if (status === 'pending') {
+            toast('Tu pago quedó pendiente de confirmación en Mercado Pago.');
+        }
+
+        // Limpiar los query params para que el toast no se repita al recargar/navegar
+        setSearchParams({}, { replace: true });
+    }, [searchParams]);
+
     const salirListaEspera = async (reservaId) => {
         try {
 
@@ -259,7 +301,6 @@ const Perfil = ({ token, setToken }) => {
 
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
-    const ahora = new Date();
 
     // 1. Obtenemos el nombre del día de hoy, sin tildes (ej: "martes")
     const opciones = { weekday: 'long' };
@@ -492,8 +533,74 @@ const Perfil = ({ token, setToken }) => {
     }; 
     // ── CANCELAR RESERVA ──
     const iniciarCancelacion = (reserva) => {
+
+        const ahora = new Date();
+
+        const horario = reserva.clase.horario.substring(0,5);
+
+        const fechaClase = new Date(`${reserva.fecha_clase}T${horario}:00`);
+
+        const horasRestantes =
+            (fechaClase.getTime() - ahora.getTime()) / (1000 * 60 * 60);
+
+        let mensaje = "";
+
+        if (reserva.tipo === "membresia") {
+
+            if (horasRestantes >= 48) {
+
+                mensaje =
+                    `Estás por cancelar esta reserva de membresía.\n\n` +
+                    `Como la cancelación se realiza con 48 horas o más de anticipación, recibirás 1 crédito para una clase individual.\n\n` +
+                    `¿Deseás continuar?`;
+
+            } else {
+
+                mensaje =
+                    `Estás por cancelar esta reserva de membresía.\n\n` +
+                    `Como la cancelación se realiza con menos de 48 horas de anticipación, no recibirás ningún crédito.\n\n` +
+                    `¿Deseás continuar?`;
+
+            }
+
+        } else {
+
+            if (horasRestantes >= 24) {
+
+                if (reserva.tipo_pago === "sena") {
+
+                    mensaje =
+                        `Estás por cancelar esta reserva individual.\n\n` +
+                        `Como la cancelación se realiza con 24 horas o más de anticipación, se te devolverá la seña abonada de $${Number(reserva.monto_pagado).toFixed(2)}.\n\n` +
+                        `¿Deseás continuar?`;
+
+                } else {
+
+                    mensaje =
+                        `Estás por cancelar esta reserva individual.\n\n` +
+                        `Como la cancelación se realiza con 24 horas o más de anticipación, se te devolverá el importe total abonado de $${Number(reserva.monto_pagado).toFixed(2)}.\n\n` +
+                        `¿Deseás continuar?`;
+
+                }
+
+            } else {
+
+                mensaje =
+                    `Estás por cancelar esta reserva individual.\n\n` +
+                    `Como la cancelación se realiza con menos de 24 horas de anticipación, no se realiza la devolución del importe abonado.\n\n` +
+                    `¿Deseás continuar?`;
+
+            }
+
+        }
+
+        setTituloConfirmacion("¿Cancelar reserva?");
+        setMensajeConfirmacion(mensaje);
+
         setReservaAbordador(reserva);
+
         setMostrarConfirmacion(true);
+
     };
 
     const confirmarCancelacion = async () => {
@@ -594,6 +701,7 @@ const Perfil = ({ token, setToken }) => {
             setTitular('');
             setCvv('');
             setVencimiento('');
+            setMetodoPagoCupo('tarjeta');
 
             // Para individual: mostrar opciones (default 50%)
             // Para membresía: solo 100%
@@ -688,7 +796,7 @@ const Perfil = ({ token, setToken }) => {
         } catch (error) {
             console.error("Error rechazando cupo:", error);
 
-            toast.error(error.response?.data?.detail || "No se pudo rechazar el cupo");
+            toast.error(error?.response?.data?.detail || "No se pudo rechazar el cupo");
         }
     };
         
@@ -786,7 +894,8 @@ const Perfil = ({ token, setToken }) => {
                 
                 <ModalConfirmacion
                     isOpen={mostrarConfirmacion}
-                    titulo="¿Estás seguro?"
+                    titulo={tituloConfirmacion}
+                    mensaje={mensajeConfirmacion}
                     onConfirm={confirmarCancelacion}
                     onCancel={cancelarCancelacion}
                 />
@@ -871,8 +980,26 @@ const Perfil = ({ token, setToken }) => {
                                     </div>
                                 </div>
 
-                                {/* TARJETA VISUAL */}
+                                {/* SELECTOR DE MÉTODO DE PAGO — solo si no usa crédito */}
                                 {creditos === 0 && (
+                                    <div className="metodo-pago-selector" style={{ marginTop: '20px' }}>
+                                        <button
+                                            className={`metodo-pago-btn metodo-pago-btn--tarjeta ${metodoPagoCupo === 'tarjeta' ? 'activo' : ''}`}
+                                            onClick={() => setMetodoPagoCupo('tarjeta')}
+                                        >
+                                            Tarjeta
+                                        </button>
+                                        <button
+                                            className={`metodo-pago-btn metodo-pago-btn--mp ${metodoPagoCupo === 'mp' ? 'activo' : ''}`}
+                                            onClick={() => setMetodoPagoCupo('mp')}
+                                        >
+                                            Mercado Pago
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* TARJETA VISUAL — solo con método tarjeta */}
+                                {creditos === 0 && metodoPagoCupo === 'tarjeta' && (
                                     <div className="pago-card-visual" style={{ marginTop: '20px' }}>
                                         <div className="pago-card-chip">▬</div>
 
@@ -970,8 +1097,8 @@ const Perfil = ({ token, setToken }) => {
                                     </div>
                                 )}
 
-                                {/* FORMULARIO DE PAGO - IGUAL A ReservaIndividual */}
-                                {creditos === 0 && (
+                                {/* FORMULARIO DE TARJETA — IGUAL A ReservaIndividual */}
+                                {creditos === 0 && metodoPagoCupo === 'tarjeta' && (
                                     <div className="pago-form-card">
                                         <h2 className="pago-form-titulo">Datos de pago</h2>
                                         
@@ -1048,6 +1175,23 @@ const Perfil = ({ token, setToken }) => {
                                         </button>
 
                                         <p className="pago-seguro-txt">🔒 Pago simulado — tus datos no se almacenan</p>
+                                    </div>
+                                )}
+
+                                {/* MERCADO PAGO */}
+                                {creditos === 0 && metodoPagoCupo === 'mp' && (
+                                    <div className="mp-bloque">
+                                        <p className="mp-descripcion">
+                                            Serás redirigido al sitio de Mercado Pago para completar el pago de forma segura.
+                                        </p>
+                                        <PagarConMP
+                                            tipo="individual"
+                                            payload={{
+                                                reserva_id: reservaAPagar.id,
+                                                tipo_pago: reservaAPagar.tipo === 'membresia' ? 'total' : tipoPagoCupo,
+                                            }}
+                                            onError={(msg) => toast.error(msg)}
+                                        />
                                     </div>
                                 )}
 
