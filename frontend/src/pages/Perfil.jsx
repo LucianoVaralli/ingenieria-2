@@ -54,6 +54,9 @@ const Perfil = ({ token, setToken }) => {
     const [procesandoPago, setProcesandoPago] = useState(false);
     const [metodoPagoCupo, setMetodoPagoCupo] = useState('tarjeta'); // 'tarjeta' | 'mp'
 
+    // ── Asistencia ──
+    const [asistenciaRegistrada, setAsistenciaRegistrada] = useState(false);
+
     const hoy = new Date();
     const dia = hoy.getDate();
 
@@ -132,7 +135,8 @@ const Perfil = ({ token, setToken }) => {
                 ...prev,
                 [claseId]: url
             }));
-
+            // Guardar en localStorage para que persista
+            localStorage.setItem(`qr_clase_${claseId}`, url);
             setQrSeleccionado(url);
             setMostrarQR(true);
 
@@ -201,6 +205,19 @@ const Perfil = ({ token, setToken }) => {
             ? texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
             : "";
 
+    useEffect(() => {
+    // Recuperar QRs guardados del localStorage al montar el componente
+    const qrsGuardados = {};
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('qr_clase_')) {
+            const claseId = key.replace('qr_clase_', '');
+            qrsGuardados[claseId] = localStorage.getItem(key);
+        }
+    });
+    if (Object.keys(qrsGuardados).length > 0) {
+        setQrGenerado(qrsGuardados);
+    }
+    }, []);
     useEffect(() => {
         const cargarPerfil = async () => {
             const res = await api.get('/socios/me');
@@ -302,20 +319,12 @@ const Perfil = ({ token, setToken }) => {
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
 
+    const ahoraLocal = new Date();
+
     // 1. Obtenemos el nombre del día de hoy, sin tildes (ej: "martes")
     const opciones = { weekday: 'long' };
     const diaHoyTexto = quitarTildes(mapeoDias[ahora.getDay()]);
 
-    // 2. Clases de hoy
-    const clasesHoy = (clasesProfesor || []).filter(c => {
-        return quitarTildes(c?.dia) === diaHoyTexto;
-    });
-
-    // 3. Clases futuras (días distintos a hoy)
-    const clasesFuturas = (clasesProfesor || []).filter(c => {
-        if (!c?.dia) return false;
-        return quitarTildes(c.dia) !== diaHoyTexto;
-    });
 
     useEffect(() => {
         if (!token) {
@@ -801,35 +810,41 @@ const Perfil = ({ token, setToken }) => {
     };
         
     const estadoClase = (clase) => {
-        const dias = {
-            domingo: 0,
-            lunes: 1,
-            martes: 2,
-            miercoles: 3,
-            jueves: 4,
-            viernes: 5,
-            sabado: 6
-        };
-
-        const inicio = new Date();
-
-        const diferencia =
-            dias[quitarTildes(clase.dia)] - ahora.getDay();
-
-        inicio.setDate(ahora.getDate() + diferencia);
-
-        const [h, m] = clase.horario.split(":");
-        inicio.setHours(Number(h), Number(m), 0, 0);
-
-        const fin = new Date(inicio);
-        fin.setMinutes(fin.getMinutes() + (clase.duracion || 60));
-
-        if (ahora >= inicio && ahora <= fin) return "en_curso";
-        if (ahora > fin) return "finalizada";
-
-        return "proxima";
+    const dias = {
+        domingo: 0, lunes: 1, martes: 2, miercoles: 3,
+        jueves: 4, viernes: 5, sabado: 6
     };
 
+    const diaSemanaClase = dias[quitarTildes(clase.dia)];
+    const [h, m] = clase.horario.split(":");
+
+    const ocurrenciaEstaSemana = new Date(ahora);
+    const diferencia = diaSemanaClase - ahora.getDay();
+    ocurrenciaEstaSemana.setDate(ahora.getDate() + diferencia);
+    ocurrenciaEstaSemana.setHours(Number(h), Number(m), 0, 0);
+
+    const finEstaSemana = new Date(ocurrenciaEstaSemana);
+    finEstaSemana.setMinutes(finEstaSemana.getMinutes() + (clase.duracion || 60));
+
+    if (ahora >= ocurrenciaEstaSemana && ahora <= finEstaSemana) return "en_curso";
+    if (ahora > finEstaSemana) return "finalizada";
+    return "proxima";
+};
+
+// Clases de hoy: todas las que se dictan hoy sin importar estado
+const clasesHoy = (clasesProfesor || []).filter(c => {
+    if (!c?.dia) return false;
+    return quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
+});
+
+// Próximas: otros días de la semana + las de hoy que ya finalizaron
+// (porque su próxima ocurrencia es la semana que viene)
+const clasesFuturas = (clasesProfesor || []).filter(c => {
+    if (!c?.dia) return false;
+    const esHoy = quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
+    if (!esHoy) return true; // otros días siempre aparecen como próximas
+    return estadoClase(c) === "finalizada"; // las de hoy que ya pasaron también
+});
     const esClaseHoy = (clase) => {
         const dias = {
             domingo: 0,
@@ -846,45 +861,58 @@ const Perfil = ({ token, setToken }) => {
         return dias[quitarTildes(clase.dia)] === hoy;
     };
 
-    const verAlumnos = async (clase) => {
-        try {
+const verAlumnos = async (clase, esFutura = false) => {
+    try {
+        setAlumnos([]);
+        setAsistencia(null);
+        setEstadoSeleccionado(null);
+        setClaseSeleccionada(clase);
 
-            setAlumnos([]);
-            setAsistencia(null);
-            setEstadoSeleccionado(null);
-            setClaseSeleccionada(clase);
+        const estado = estadoClase(clase);
+        const esHoy = quitarTildes(clase.dia.toLowerCase()) === diaHoyTexto;
 
-            const hoy = new Date().toISOString().split("T")[0];
+        const hoyFecha = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
 
-            const res = await api.get(
-                `/clases/${clase.id}/alumnos?fecha=${hoy}`
-            );
+        let fechaConsulta;
 
-            const estado = estadoClase(clase);
-            const hoyClase =esClaseHoy(clase);
-
-            setAlumnos(res.data.alumnos);
-            setEstadoSeleccionado(estado);
-
-            // SOLO si ya pasó la clase
-            if (hoyClase) {
-                const presentes = res.data.alumnos.filter(a => a.asistio).length;
-                const total = res.data.alumnos.length;
-
-                setAsistencia({
-                    presentes,
-                    ausentes: total - presentes
-                });
-            } else {
-                setAsistencia(null);
-            }
-
-            setModalAlumnos(true);
-
-        } catch (err) {
-            toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
+        if (!esFutura && esHoy) {
+            // Desde "clases de hoy" → siempre hoy
+            fechaConsulta = hoyFecha;
+        } else {
+            // Desde "próximas" o clase de otro día → próxima ocurrencia
+            const diasMap = {
+                domingo: 0, lunes: 1, martes: 2, miercoles: 3,
+                jueves: 4, viernes: 5, sabado: 6
+            };
+            const diaSemanaClase = diasMap[quitarTildes(clase.dia)];
+            const proximaFecha = new Date(ahora);
+            let diff = diaSemanaClase - proximaFecha.getDay();
+            if (diff <= 0) diff += 7;
+            proximaFecha.setDate(proximaFecha.getDate() + diff);
+            fechaConsulta = `${proximaFecha.getFullYear()}-${String(proximaFecha.getMonth() + 1).padStart(2, '0')}-${String(proximaFecha.getDate()).padStart(2, '0')}`;
         }
-    };
+
+        const res = await api.get(`/clases/${clase.id}/alumnos?fecha=${fechaConsulta}`);
+        console.log("fecha consultada:", fechaConsulta, "alumnos:", res.data.alumnos);
+
+        setAlumnos(res.data.alumnos);
+        setEstadoSeleccionado(estado);
+
+        // Solo mostrar presentes/ausentes si es hoy finalizada y desde sección de hoy
+        if (!esFutura && esHoy && estado === "finalizada") {
+            const presentes = res.data.alumnos.filter(a => a.asistio === true).length;
+            const total = res.data.alumnos.length;
+            setAsistencia({ presentes, ausentes: total - presentes });
+        } else {
+            setAsistencia(null);
+        }
+
+        setModalAlumnos(true);
+
+    } catch (err) {
+        toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
+    }
+};
 
 
     return (
@@ -1267,8 +1295,10 @@ const Perfil = ({ token, setToken }) => {
                                         <button
                                             className="btn-escanear-qr"
                                             onClick={() => setAbrirScanner(true)}
+                                            disabled={asistenciaRegistrada}
+                                            style={{ opacity: asistenciaRegistrada ? 0.5 : 1, cursor: asistenciaRegistrada ? "not-allowed" : "pointer" }}
                                         >
-                                            📷 Escanear asistencia
+                                            {asistenciaRegistrada ? "✔ Asistencia registrada" : "📷 Escanear asistencia"}
                                         </button>
                                     </div>
 
@@ -1283,7 +1313,12 @@ const Perfil = ({ token, setToken }) => {
                                             >
                                                 <h2>📷 Escanear QR</h2>
 
-                                                <EscanearQR />
+                                                <EscanearQR
+                                                    onAsistenciaRegistrada={() => {
+                                                        setAsistenciaRegistrada(true);
+                                                        setAbrirScanner(false);
+                                                    }}
+                                                />
 
                                                 <button
                                                     className="btn-cerrar"
@@ -1554,26 +1589,40 @@ const Perfil = ({ token, setToken }) => {
 
                                                                 <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
 
-                                                                <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
+                                                                <p>👥 {clase.alumnos_proxima ?? 0} / {clase.cupo}</p>
 
                                                                 <div className="mis-clase-footer">
                                                                     <div className="mis-clase-botones">
-                                                                        <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase)}>
+                                                                        <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, false)}>
                                                                             Ver alumnos
                                                                         </button>
 
+                                                                        {/* Botón Generar QR — se bloquea después de generarlo */}
                                                                         <button
-                                                                            className="btn-generar-qr"
+                                                                            className="btn-ver-alumnos"
+                                                                            disabled={!!qrGenerado[clase.id]}
                                                                             onClick={() => generarQR(clase.id)}
+                                                                            style={{ opacity: qrGenerado[clase.id] ? 0.4 : 1, cursor: qrGenerado[clase.id] ? "not-allowed" : "pointer" }}
                                                                         >
-                                                                            {qrGenerado[clase.id]
-                                                                                ? "QR generado"
-                                                                                : "Generar QR"}
+                                                                            Generar QR
                                                                         </button>
 
+                                                                        {/* Botón Mostrar QR — si no fue generado muestra mensaje */}
                                                                         <button
                                                                             className="btn-ver-qr"
-                                                                            onClick={() => abrirQR(clase)}
+                                                                            onClick={() => {
+                                                                                const estado = estadoClase(clase);
+                                                                                if (estado === "finalizada") {
+                                                                                    toast.error("El QR ya caducó porque la clase ya finalizó.");
+                                                                                    return;
+                                                                                }
+                                                                                if (!qrGenerado[clase.id]) {
+                                                                                    toast("Primero generá el QR");
+                                                                                    return;
+                                                                                }
+                                                                                setQrSeleccionado(qrGenerado[clase.id]);
+                                                                                setMostrarQR(true);
+                                                                            }}
                                                                         >
                                                                             Mostrar QR
                                                                         </button>
@@ -1604,7 +1653,7 @@ const Perfil = ({ token, setToken }) => {
                                                             <div className="mis-clase-footer">
 
                                                                 <div className="mis-clase-botones">
-                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase)}>
+                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, true)}>
                                                                         Ver alumnos
                                                                     </button>
                                                         
@@ -1745,7 +1794,7 @@ const Perfil = ({ token, setToken }) => {
                             <h2>📋 Lista de alumnos</h2>
 
                             {/* RESUMEN */}
-                            {asistencia && (
+                            {asistencia && estadoSeleccionado === "finalizada" && (
                                 <p>
                                     📊 Presentes: {asistencia.presentes} |{" "}
                                     ❌ Ausentes: {asistencia.ausentes}
@@ -1767,18 +1816,19 @@ const Perfil = ({ token, setToken }) => {
                                                 <strong>
                                                     {capitalize(a.nombre)} {capitalize(a.apellido)} - {a.email}
                                                 </strong>
-                                                {asistencia && (
-
-                                                        <span
-                                                            style={{
-                                                                marginLeft: "10px",
-                                                                fontWeight: "bold",
-                                                                color: a.asistio ? "green" : "red"
-                                                            }}
-                                                        >
-                                                            {a.asistio ? "✔ Presente" : "✖ Ausente"}
-                                                        </span>
-                                                )}
+                                                        {estadoSeleccionado !== "finalizada" || a.asistio === null ? (
+                                                            null
+                                                        ) : (
+                                                            <span
+                                                                style={{
+                                                                    marginLeft: "10px",
+                                                                    fontWeight: "bold",
+                                                                    color: a.asistio ? "green" : "red"
+                                                                }}
+                                                            >
+                                                                {a.asistio ? "✔ Presente" : "✖ Ausente"}
+                                                            </span>
+                                                        )}
                                             </div>
                                         ))}
                                     </div>
