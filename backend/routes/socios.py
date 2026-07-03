@@ -422,7 +422,7 @@ async def eliminar_profesor(
         Clase.profesor_id == profesor_id
     ).all()
 
-    nombres_clases = [c.nombre for c in clases]
+    nombres_clases = [c.actividad.value for c in clases]
 
     raise HTTPException(
         status_code=409,
