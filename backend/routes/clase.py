@@ -731,7 +731,143 @@ def obtener_calendario(
                 })
 
     return calendario_eventos
+@router.get("/mis-clases")
+def obtener_clases_profesor(
+    usuario=Depends(obtener_usuario_actual),
+    db: Session = Depends(get_db)
+):
+    profesor = db.query(Socio).filter(
+        Socio.id == usuario.id,
+        Socio.rol == Rol.Profesor.value
+    ).first()
 
+    if not profesor:
+        raise HTTPException(
+            status_code=403,
+            detail="Solo los profesores pueden acceder a este recurso"
+        )
+
+    clases = db.query(Clase).filter(
+        Clase.profesor_id == profesor.id,
+        Clase.activa == True
+    ).all()
+
+    resultado = []
+
+    for c in clases:
+
+        hoy = date.today()
+        dias_map = {
+            "lunes": 0, "martes": 1, "miercoles": 2, "jueves": 3,
+            "viernes": 4, "sabado": 5, "domingo": 6
+        }
+        dia_clase = dias_map.get(c.dia.value if hasattr(c.dia, 'value') else c.dia, -1)
+
+        # Inscriptos HOY
+        cantidad_hoy = (
+            db.query(Reserva.socio_id)
+            .filter(
+                Reserva.clase_id == c.id,
+                Reserva.estado == "confirmada",
+                Reserva.fecha_clase == str(hoy)
+            )
+            .distinct()
+            .count()
+        )
+
+        # Inscriptos PRÓXIMA SEMANA
+        dias_hasta_proxima = (dia_clase - hoy.weekday()) % 7
+        if dias_hasta_proxima == 0:
+            dias_hasta_proxima = 7
+        proxima_fecha = hoy + timedelta(days=dias_hasta_proxima)
+
+        cantidad_proxima = (
+            db.query(Reserva.socio_id)
+            .filter(
+                Reserva.clase_id == c.id,
+                Reserva.estado == "confirmada",
+                Reserva.fecha_clase == str(proxima_fecha)
+            )
+            .distinct()
+            .count()
+        )
+
+        resultado.append({
+            "id": c.id,
+            "actividad": c.actividad,
+            "dia": c.dia,
+            "horario": c.horario,
+            "cupo": c.cupo,
+            "precio_individual": c.precio_individual,
+            "duracion": c.duracion,
+            "profesor_id": c.profesor_id,
+            "profesor_nombre": f"{profesor.nombre} {profesor.apellido}",
+            "alumnos_inscriptos": cantidad_proxima,        # para clase de hoy
+            "alumnos_proxima": cantidad_hoy         # para clase futura
+        })
+
+    return resultado
+
+@router.get("/{clase_id}/alumnos")
+def obtener_alumnos_de_clase(
+    clase_id: int,
+    fecha: date,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(Clase.id == clase_id).first()
+
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
+
+    # Traer reservas confirmadas para ESA fecha específica
+    reservas_fecha = (
+        db.query(Reserva)
+        .filter(
+            Reserva.clase_id == clase_id,
+            Reserva.estado == "confirmada",
+            Reserva.fecha_clase == fecha
+        )
+        .all()
+    )
+
+    alumnos = []
+
+    for reserva in reservas_fecha:
+        socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
+        if not socio:
+            continue
+
+        # Verificar asistencia solo si la fecha es hoy o anterior
+        hoy = date.today()
+        if fecha <= hoy:
+            asistencia = (
+                db.query(Asistencia)
+                .filter(
+                    Asistencia.clase_id == clase_id,
+                    Asistencia.socio_id == socio.id,
+                    Asistencia.fecha_clase == fecha
+                )
+                .first()
+            )
+            asistio = asistencia is not None
+        else:
+            # Fecha futura: no se sabe si va a asistir
+            asistio = None
+
+        alumnos.append({
+            "id": socio.id,
+            "nombre": socio.nombre,
+            "apellido": socio.apellido,
+            "email": socio.email,
+            "tipo_reserva": reserva.tipo,
+            "asistio": asistio  # None = futuro, True/False = pasado
+        })
+
+    return {
+        "clase_id": clase.id,
+        "actividad": clase.actividad,
+        "alumnos": alumnos
+    }
 @router.get("/{clase_id}/cupo-disponible")
 def cupo_disponible(
     clase_id: int,
@@ -1043,121 +1179,3 @@ def escanear_qr(
         "fecha": datos.fecha_clase
     }
 
-@router.get("/mis-clases")
-def obtener_clases_profesor(
-    usuario=Depends(obtener_usuario_actual),
-    db: Session = Depends(get_db)
-):
-    profesor = db.query(Socio).filter(
-        Socio.id == usuario.id,
-        Socio.rol == Rol.Profesor.value
-    ).first()
-
-    if not profesor:
-        raise HTTPException(
-            status_code=403,
-            detail="Solo los profesores pueden acceder a este recurso"
-        )
-
-    clases = db.query(Clase).filter(
-        Clase.profesor_id == profesor.id,
-        Clase.activa == True
-    ).all()
-
-    resultado = []
-
-    for c in clases:
-
-        cantidad_alumnos = (
-            db.query(Reserva.socio_id)
-            .filter(
-                Reserva.clase_id == c.id,
-                Reserva.estado == "confirmada"
-            )
-            .distinct()
-            .count()
-        )
-
-        resultado.append({
-            "id": c.id,
-            "actividad": c.actividad,
-            "dia": c.dia,
-            "horario": c.horario,
-            "cupo": c.cupo,
-            "precio_individual": c.precio_individual,
-            "duracion": c.duracion,
-            "profesor_id": c.profesor_id,
-            "profesor_nombre": f"{profesor.nombre} {profesor.apellido}",
-            "alumnos_inscriptos": cantidad_alumnos
-        })
-
-    return resultado
-
-@router.get("/{clase_id}/alumnos")
-def obtener_alumnos_de_clase(
-    clase_id: int,
-    fecha:date,
-    db: Session = Depends(get_db)
-):
-    clase = db.query(Clase).filter(Clase.id == clase_id).first()
-
-    if not clase:
-        raise HTTPException(
-            status_code=404,
-            detail="Clase no encontrada"
-        )
-
-    alumnos_db = (
-        db.query(Socio)
-        .join(Reserva, Reserva.socio_id == Socio.id)
-        .filter(
-            Reserva.clase_id == clase_id,
-            Reserva.estado == "confirmada"
-        )
-        .distinct()
-        .all()
-    )
-
-    alumnos = []
-
-    for socio in alumnos_db:
-
-        reserva = (
-            db.query(Reserva)
-            .filter(
-                Reserva.clase_id == clase_id,
-                Reserva.socio_id == socio.id,
-                Reserva.fecha_clase == fecha,
-                Reserva.estado == "confirmada"
-            )
-            .first()
-        )
-
-        asistio = False
-
-        if reserva:
-            asistencia = (
-                db.query(Asistencia)
-                .filter(
-                    Asistencia.clase_id == clase_id,
-                    Asistencia.socio_id == socio.id,
-                    Asistencia.fecha_clase == fecha
-                )
-                .first()
-            )
-
-            asistio = asistencia is not None
-
-        alumnos.append({
-            "id": socio.id,
-            "nombre": socio.nombre,
-            "apellido": socio.apellido,
-            "email": socio.email,
-            "asistio": asistio
-        })
-
-    return {
-        "clase_id": clase.id,
-        "actividad": clase.actividad,
-        "alumnos": alumnos
-    }
