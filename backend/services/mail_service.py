@@ -44,7 +44,7 @@ async def enviar_mail_pago_exitoso(
     cuerpo = f"""
     Pago realizado correctamente.
 
-    Actividad: {clase.actividad}
+    Actividad: {clase.actividad.value}
     Fecha: {reserva.fecha_clase}
     Horario: {clase.horario}
 
