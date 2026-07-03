@@ -18,6 +18,8 @@ const Registro = () => {
         confirmar_password: ''
     });
     const [file, setFile] = useState(null);
+    // 🆕 NUEVO: Estado para controlar el casillero de términos
+    const [declaracionAceptada, setDeclaracionAceptada] = useState(false);
     const navigate = useNavigate();
     const [successMessage, setSuccessMessage] = useState('');
 
@@ -30,21 +32,21 @@ const Registro = () => {
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
-        
+
         if (selectedFile) {
             const extension = selectedFile.name.split('.').pop().toLowerCase();
-            
+
             if (extension !== 'pdf') {
-                setErrors(prev => ({ 
-                    ...prev, 
-                    apto_fisico: "Por favor, seleccioná solo archivos PDF." 
+                setErrors(prev => ({
+                    ...prev,
+                    apto_fisico: "Por favor, seleccioná solo archivos PDF."
                 }));
-                e.target.value = ''; 
+                e.target.value = '';
                 setFile(null);
             } else {
-                setErrors(prev => ({ 
-                    ...prev, 
-                    apto_fisico: null 
+                setErrors(prev => ({
+                    ...prev,
+                    apto_fisico: null
                 }));
                 setFile(selectedFile);
             }
@@ -106,6 +108,11 @@ const Registro = () => {
             tempErrors.apto_fisico = "Debés subir un apto físico en PDF.";
         }
 
+        // 🆕 NUEVO: Validación local del casillero
+        if (!declaracionAceptada) {
+            tempErrors.declaracion_medica_aceptada = "Debés confirmar la declaración bajo juramento.";
+        }
+
         setErrors(tempErrors);
         return Object.keys(tempErrors).length === 0;
     };
@@ -129,6 +136,9 @@ const Registro = () => {
         if (file) {
             data.append('apto_fisico', file);
         }
+
+        // 🆕 NUEVO: Se inyecta la aceptación de los términos para el backend
+        data.append('declaracion_medica_aceptada', declaracionAceptada);
 
         try {
             await api.post('/socios/registrar', data, {
@@ -157,12 +167,14 @@ const Registro = () => {
                     } else if (detail.includes("correo") || detail.includes("email")) {
                         setErrors(prev => ({ ...prev, email: detail }));
                     } else if (detail.includes("contraseña") || detail.includes("password")) {
-                        // Si el backend manda error de contraseña, también lo metemos como array
                         setErrors(prev => ({ ...prev, password: [detail] }));
                     } else if (detail.includes("contraseñas")) {
                         setErrors(prev => ({ ...prev, confirmar_password: detail }));
                     } else if (detail.includes("PDF") || detail.includes("archivo") || detail.includes("adjuntar")) {
                         setErrors(prev => ({ ...prev, apto_fisico: detail }));
+                        // 🆕 NUEVO: Atrapa respuestas del backend sobre la declaración médica
+                    } else if (detail.includes("declarar") || detail.includes("juramento") || detail.includes("médica")) {
+                        setErrors(prev => ({ ...prev, declaracion_medica_aceptada: detail }));
                     } else {
                         setErrors(prev => ({ ...prev, general: detail }));
                     }
@@ -213,33 +225,33 @@ const Registro = () => {
                     <h2 className="registro-titulo">Crear tu cuenta</h2>
                     <p className="registro-subtitle">Completá los datos para registrarte</p>
                 </div>
-                
+
                 <form onSubmit={handleRegistro} className="registro-form" noValidate>
-                    
+
                     {/* nombre y apellido */}
                     <div className="registro-row">
                         <div className="registro-field">
                             <label className="registro-label">Nombre</label>
-                            <input 
-                                name="nombre" 
-                                className={`registro-input ${errors.nombre ? 'error' : ''}`} 
-                                placeholder="Ej: Luciano" 
-                                onChange={handleChange} 
+                            <input
+                                name="nombre"
+                                className={`registro-input ${errors.nombre ? 'error' : ''}`}
+                                placeholder="Ej: Luciano"
+                                onChange={handleChange}
                             />
                             {errors.nombre && <span className="error-message">{errors.nombre}</span>}
                         </div>
                         <div className="registro-field">
                             <label className="registro-label">Apellido</label>
-                            <input 
-                                name="apellido" 
-                                className={`registro-input ${errors.apellido ? 'error' : ''}`} 
-                                placeholder="Ej: Pérez" 
-                                onChange={handleChange} 
+                            <input
+                                name="apellido"
+                                className={`registro-input ${errors.apellido ? 'error' : ''}`}
+                                placeholder="Ej: Pérez"
+                                onChange={handleChange}
                             />
                             {errors.apellido && <span className="error-message">{errors.apellido}</span>}
                         </div>
                     </div>
-                    
+
                     {/* dni y telefono */}
                     <div className="registro-row">
                         <div className="registro-field">
@@ -266,7 +278,7 @@ const Registro = () => {
                             {errors.telefono && <span className="error-message">{errors.telefono}</span>}
                         </div>
                     </div>
-                    
+
                     {/* email */}
                     <div className="registro-field">
                         <label className="registro-label">Correo Electrónico</label>
@@ -279,7 +291,7 @@ const Registro = () => {
                         />
                         {errors.email && <span className="error-message">{errors.email}</span>}
                     </div>
-                    
+
                     {/* contraseña */}
                     <div className="registro-field">
                         <label className="registro-label">Contraseña</label>
@@ -291,9 +303,9 @@ const Registro = () => {
                                 placeholder="Ingresá tu contraseña"
                                 onChange={handleChange}
                             />
-                            <button 
-                                type="button" 
-                                className="toggle-password" 
+                            <button
+                                type="button"
+                                className="toggle-password"
                                 onClick={() => setShowPassword(!showPassword)}
                             >
                                 {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
@@ -301,7 +313,7 @@ const Registro = () => {
                         </div>
                         {renderPasswordErrors()}
                     </div>
-                    
+
                     {/* confirmar contraseña */}
                     <div className="registro-field">
                         <label className="registro-label">Confirmar Contraseña</label>
@@ -313,9 +325,9 @@ const Registro = () => {
                                 placeholder="Repetí tu contraseña"
                                 onChange={handleChange}
                             />
-                            <button 
-                                type="button" 
-                                className="toggle-password" 
+                            <button
+                                type="button"
+                                className="toggle-password"
                                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                             >
                                 {showConfirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
@@ -331,15 +343,40 @@ const Registro = () => {
                             <span className="registro-file-text">
                                 {file ? file.name : 'Seleccionar archivo PDF'}
                             </span>
-                            <input 
-                                type="file" 
-                                accept=".pdf" 
-                                className="registro-file-input" 
+                            <input
+                                type="file"
+                                accept=".pdf"
+                                className="registro-file-input"
                                 onChange={handleFileChange}
                             />
                         </label>
                         {errors.apto_fisico && <span className="error-message">{errors.apto_fisico}</span>}
                     </div>
+
+                    {/* 🆕 NUEVO: Renderizado del Checkbox con la Declaración Jurada */}
+                    <div className="registro-field" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '10px', marginBottom: '5px' }}>
+                        <input
+                            type="checkbox"
+                            id="declaracion_medica_aceptada"
+                            checked={declaracionAceptada}
+                            onChange={(e) => {
+                                setDeclaracionAceptada(e.target.checked);
+                                if (errors.declaracion_medica_aceptada) {
+                                    setErrors(prev => ({ ...prev, declaracion_medica_aceptada: null }));
+                                }
+                            }}
+                            style={{ marginTop: '4px', cursor: 'pointer', width: '18px', height: '18px' }}
+                        />
+                        <label htmlFor="declaracion_medica_aceptada" style={{ fontSize: '0.85rem', color: '#cbd5e1', cursor: 'pointer', lineHeight: '1.4' }}>
+                            Confirmo que el archivo adjunto es un certificado médico válido y vigente.
+                            Entiendo que la falsificación de este documento suspenderá mi cuenta de forma inmediata.
+                        </label>
+                    </div>
+                    {errors.declaracion_medica_aceptada && (
+                        <span className="error-message" style={{ display: 'block', marginBottom: '15px', marginTop: '-5px' }}>
+                            {errors.declaracion_medica_aceptada}
+                        </span>
+                    )}
 
                     {errors.general && (
                         <div className="error-message-general" style={{ color: 'red', marginBottom: '15px', fontWeight: 'bold', textAlign: 'center' }}>

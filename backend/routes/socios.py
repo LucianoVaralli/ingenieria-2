@@ -29,6 +29,7 @@ async def registrar_socio(
     telefono: Optional[str] = Form(None),
     password: Optional[str] = Form(None),
     confirmar_password: Optional[str] = Form(None),
+    declaracion_medica_aceptada: Optional[bool] = Form(None),  # 🆕 NUEVO: Recibimos el checkbox desde el Form
     db: Session = Depends(get_db),
 ):
     errores = {}
@@ -73,6 +74,10 @@ async def registrar_socio(
         elif apto_fisico.content_type != "application/pdf":
             errores["apto_fisico"] = "El archivo no es un PDF válido."
 
+    # NUEVO: Validación de la Declaración Jurada Médica
+    if not declaracion_medica_aceptada:
+        errores["declaracion_medica_aceptada"] = "Debe declarar bajo juramento que el archivo adjunto es un comprobante médico válido."
+
     # SI HAY ERRORES ACUMULADOS (DE CUALQUIER TIPO), SE MANDAN TODOS JUNTOS
     if errores:
         raise HTTPException(status_code=400, detail=errores)
@@ -97,6 +102,7 @@ async def registrar_socio(
         hashed_password=hashed_pass,
         apto_fisico_path=file_location,
         rol=Rol.Miembro.value,
+        declaracion_medica_aceptada=declaracion_medica_aceptada,  # NUEVO: Guardamos el booleano en la BD
     )
 
     db.add(nuevo_socio)
@@ -151,10 +157,8 @@ def obtener_profesores(db: Session = Depends(get_db)):
 def obtener_socios(
     db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
 ):
-    # CORREGIDO: Mismo orden de parámetros que en /me (token, db)
     usuario_peticion = obtener_usuario_actual(token, db)
 
-    # CORREGIDO: Se agregó .value para comparar correctamente con los strings/integers de la DB
     if usuario_peticion.rol not in [Rol.Admin.value, Rol.Profesor.value]:
         raise HTTPException(
             status_code=403, detail="No tienes permisos para ver esta lista"
@@ -250,7 +254,7 @@ async def crear_profesor(
         telefono=datos.telefono,
         hashed_password=get_password_hash(password_temporal),
         rol=Rol.Profesor.value,
-        primer_login=True  # El profesor deberá cambiar esta contraseña temporal en su primer login
+        primer_login=True
     )
 
     db.add(nuevo_profesor)
