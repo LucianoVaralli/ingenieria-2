@@ -1004,8 +1004,6 @@ def escanear_qr(
 
     hoy = date.today()
 
-    
-
     reserva = db.query(Reserva).filter(
         Reserva.clase_id == clase.id,
         Reserva.socio_id == socio_actual.id,
@@ -1098,6 +1096,7 @@ def obtener_clases_profesor(
 @router.get("/{clase_id}/alumnos")
 def obtener_alumnos_de_clase(
     clase_id: int,
+    fecha:date,
     db: Session = Depends(get_db)
 ):
     clase = db.query(Clase).filter(Clase.id == clase_id).first()
@@ -1122,11 +1121,39 @@ def obtener_alumnos_de_clase(
     alumnos = []
 
     for socio in alumnos_db:
+
+        reserva = (
+            db.query(Reserva)
+            .filter(
+                Reserva.clase_id == clase_id,
+                Reserva.socio_id == socio.id,
+                Reserva.fecha_clase == fecha,
+                Reserva.estado == "confirmada"
+            )
+            .first()
+        )
+
+        asistio = False
+
+        if reserva:
+            asistencia = (
+                db.query(Asistencia)
+                .filter(
+                    Asistencia.clase_id == clase_id,
+                    Asistencia.socio_id == socio.id,
+                    Asistencia.fecha_clase == fecha
+                )
+                .first()
+            )
+
+            asistio = asistencia is not None
+
         alumnos.append({
             "id": socio.id,
             "nombre": socio.nombre,
             "apellido": socio.apellido,
-            "email": socio.email
+            "email": socio.email,
+            "asistio": asistio
         })
 
     return {

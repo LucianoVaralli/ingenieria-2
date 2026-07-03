@@ -49,7 +49,7 @@ function AdminDashboard() {
                 <div className="admin-section-label">Panel de control</div>
                 <h1 className="admin-section-title">Dashboard</h1>
 
-                <div className="admin-opciones">
+                <div className="admin-opciones2">
                     {OPCIONES.map(op => (
                         <Link to={op.to} className="admin-card" key={op.to}>
                             <span className="admin-card-icon">{op.icon}</span>

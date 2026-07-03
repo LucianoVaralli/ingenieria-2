@@ -104,6 +104,10 @@ function GestionPreguntasFrecuentes() {
                     Preguntas Frecuentes
                 </h1>
 
+                <div className="admin-section-title-block">
+                    <h2 className="admin-subtitle">Crear pregunta</h2>
+                </div>
+
                 <form
                     onSubmit={guardarPregunta}
                     className="admin-form"
@@ -135,42 +139,48 @@ function GestionPreguntasFrecuentes() {
 
                 </form>
 
-                <div className="admin-opciones">
+                <div className="admin-divider" />
 
-                    {preguntas.map((pregunta) => (
+                    <div className="admin-section-title-block">
+                        <h2 className="admin-subtitle">Preguntas creadas</h2>
+                    </div>
 
-                        <div
-                            key={pregunta.id}
-                            className="faq-admin-card"
-                        >
+                    <div className="admin-opciones">
 
-                            <h3>{pregunta.titulo}</h3>
+                        {preguntas.map((pregunta) => (
 
-                            <p>{pregunta.respuesta}</p>
+                            <div
+                                key={pregunta.id}
+                                className="faq-admin-card"
+                            >
 
-                            <div className="faq-admin-actions">
-                                <button
-                                    className="btn-editar"
-                                    onClick={() =>
-                                        editarPregunta(pregunta)
-                                    }
-                                >
-                                    Editar
-                                </button>
+                                <h3>{pregunta.titulo}</h3>
 
-                                <button
-                                    className="btn-eliminar"
-                                    onClick={() =>
-                                        abrirModalEliminar(pregunta.id)
-                                    }
-                                >
-                                    Eliminar
-                                </button>
+                                <p>{pregunta.respuesta}</p>
+
+                                <div className="faq-admin-actions">
+                                    <button
+                                        className="btn-editar"
+                                        onClick={() =>
+                                            editarPregunta(pregunta)
+                                        }
+                                    >
+                                        Editar
+                                    </button>
+
+                                    <button
+                                        className="btn-eliminar"
+                                        onClick={() =>
+                                            abrirModalEliminar(pregunta.id)
+                                        }
+                                    >
+                                        Eliminar
+                                    </button>
+                                </div>
+
                             </div>
 
-                        </div>
-
-                    ))}
+                        ))}
 
                 </div>
 

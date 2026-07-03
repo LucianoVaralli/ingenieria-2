@@ -6,7 +6,6 @@ from sqlalchemy import func
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
-
 from models.reserva_MIO import Reserva
 from models.clase import Clase
 from models.socio import Socio
@@ -86,7 +85,7 @@ def crear_preferencia_membresia(
             "currency_id": "ARS",
         }],
         "payer": {
-            "email": PAYER_EMAIL
+            "email": PAYER_EMAIL 
         },
         # Guardamos todo lo que necesitamos para confirmar en el webhook
         "external_reference": f"membresia:{socio_id}:{clase.id}:{fechas_str}:{creditos_a_usar}",

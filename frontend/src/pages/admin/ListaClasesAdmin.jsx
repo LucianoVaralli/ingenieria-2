@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import api from "../../api/api";
 import "../../assets/css/ListaClasesAdmin.css";
 import AdminLayout from "../../layouts/AdminLayout";
@@ -51,6 +51,62 @@ function ListaClasesAdmin() {
         motivo: "",
         general:""
     });
+
+    //Filtros
+
+    const DISCIPLINAS  = ['Yoga', 'Pilates', 'Funcional'];
+    const RANGOS_HORA  = [
+        { label: 'Mañana',  desde: 0,  hasta: 12 },
+        { label: 'Tarde',   desde: 12, hasta: 18 },
+        { label: 'Noche',   desde: 18, hasta: 24 },
+    ];
+    const [filtroProfesor, setFiltroProfesor] = useState('');
+    const [filtroHorario, setFiltroHorario] = useState([]);
+    const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+    const [filtroDisc, setFiltroDisc] = useState([]);
+
+    const toggleChip = (valor, lista, setLista) => {
+        setLista(prev =>
+            prev.includes(valor) ? prev.filter(v => v !== valor) : [...prev, valor]
+        );
+    };
+
+    const limpiarFiltros = () => {
+        setFiltroDisc([]);
+        setFiltroProfesor('');
+        setFiltroHorario([]);
+    };
+
+    const hayFiltrosActivos = filtroDisc.length > 0 || filtroProfesor || filtroHorario.length > 0;
+
+    const aplicarFiltros = (clases) => {
+        return clases.filter(c => {
+            if (filtroDisc.length > 0 && !filtroDisc.map(d => d.toLowerCase()).includes(c.actividad?.toLowerCase()))
+                return false;
+            if (filtroProfesor && String(c.profesor_id) !== String(filtroProfesor))
+                return false;
+            if (filtroHorario.length > 0) {
+                const hora = parseInt(c.horario?.split(':')[0] ?? 0, 10);
+                const enRango = filtroHorario.some(label => {
+                    const rango = RANGOS_HORA.find(r => r.label === label);
+                    return rango && hora >= rango.desde && hora < rango.hasta;
+                });
+                if (!enRango) return false;
+            }
+            return true;
+        });
+    };
+    
+    const chipsActivos = [
+        ...filtroDisc.map(d => ({ label: d, quitar: () => toggleChip(d, filtroDisc, setFiltroDisc) })),
+        ...filtroHorario.map(h => ({ label: h, quitar: () => toggleChip(h, filtroHorario, setFiltroHorario) })),
+        ...(filtroProfesor ? [{
+            label: profesores.find(p => String(p.id) === String(filtroProfesor))
+                ? `${profesores.find(p => String(p.id) === String(filtroProfesor)).nombre} ${profesores.find(p => String(p.id) === String(filtroProfesor)).apellido}`
+                : 'Profesor',
+            quitar: () => setFiltroProfesor('')
+        }] : []),
+    ];
 
     const normalizarTexto = (txt) =>
         txt
@@ -389,14 +445,20 @@ function ListaClasesAdmin() {
         return `${dia}/${mes}/${anio}`;
     };
 
+    const clasesFiltradas = useMemo(() => {
+        return aplicarFiltros(clases);
+    }, [clases, filtroProfesor, filtroDisc, filtroHorario]);
+    
     return (
         <AdminLayout>
             <div className="lista-page">
-
-                <div className="lista-header">
-                    <div className="lista-label">Gestión</div>
-                    <h1 className="lista-titulo">Clases existentes</h1>
+                <div className="lista-label">
+                    Gestión
                 </div>
+
+                <h1 className="lista-titulo">
+                    Clases existentes
+                </h1>
 
                 {mensajeExito && (
                     <p className="lista-mensaje-exito">
@@ -415,17 +477,90 @@ function ListaClasesAdmin() {
                         {errorEliminar}
                     </p>
                 )}
+{/* ── FILTROS ── */}
+            <div className="filtros-container">
+                <button
+                    className={`filtros-toggle ${filtrosAbiertos ? 'filtros-toggle--open' : ''}`}
+                    onClick={() => setFiltrosAbiertos(v => !v)}
+                >
+                    <span>Filtrar clases</span>
+                    <span className="filtros-toggle-arrow">{filtrosAbiertos ? '▲' : '▼'}</span>
+                    {hayFiltrosActivos && <span className="filtros-badge">{chipsActivos.length}</span>}
+                </button>
 
-                {clases.length === 0 ? (
+                {chipsActivos.length > 0 && (
+                    <div className="filtros-chips-activos">
+                        {chipsActivos.map((chip, i) => (
+                            <span key={i} className="filtro-chip-activo">
+                                {chip.label}
+                                <button onClick={chip.quitar} className="filtro-chip-x">×</button>
+                            </span>
+                        ))}
+                        <button onClick={limpiarFiltros} className="filtros-limpiar">Limpiar todo</button>
+                    </div>
+                )}
+
+                {filtrosAbiertos && (
+                    <div className="filtros-panel">
+                        <div className="filtros-grupo">
+                            <span className="filtros-grupo-label">Disciplina</span>
+                            <div className="filtros-chips">
+                                {DISCIPLINAS.map(d => (
+                                    <button
+                                        key={d}
+                                        className={`filtro-chip ${filtroDisc.includes(d) ? 'filtro-chip--activo' : ''}`}
+                                        onClick={() => toggleChip(d, filtroDisc, setFiltroDisc)}
+                                    >{d}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="filtros-grupo">
+                            <span className="filtros-grupo-label">Horario</span>
+                            <div className="filtros-chips">
+                                {RANGOS_HORA.map(r => (
+                                    <button
+                                        key={r.label}
+                                        className={`filtro-chip ${filtroHorario.includes(r.label) ? 'filtro-chip--activo' : ''}`}
+                                        onClick={() => toggleChip(r.label, filtroHorario, setFiltroHorario)}
+                                    >
+                                        {r.label}
+                                        <span className="filtro-chip-sub">
+                                            {r.desde}:00 – {r.hasta === 24 ? '24:00' : `${r.hasta}:00`}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="filtros-grupo">
+                            <span className="filtros-grupo-label">Profesor</span>
+                            <select
+                                className="filtros-select"
+                                value={filtroProfesor}
+                                onChange={e => setFiltroProfesor(e.target.value)}
+                            >
+                                <option value="">Todos los profesores</option>
+                                {profesores.map(p => (
+                                    <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+                {clasesFiltradas.length === 0 ? (
                     <div className="lista-vacia">
                         <span className="lista-vacia-icon">📭</span>
-                        <p>No hay clases cargadas todavía.</p>
+                        <p>
+                            {clases.length === 0
+                                ? "No hay clases cargadas todavía."
+                                : "No hay clases que coincidan con los filtros."}
+                        </p>
                     </div>
                 ) : (
                     <div className="columnas-semana-container">
-
                         {diasSemana.map((dia) => {
-                            const clasesDelDia = clases
+                            const clasesDelDia = clasesFiltradas
                                 .filter(
                                     (c) =>
                                         normalizarTexto(c.dia) ===
@@ -443,7 +578,7 @@ function ListaClasesAdmin() {
                                     className="columna-dia"
                                 >
                                     <div className="columna-dia-header">
-                                        <h3>{dia}</h3>
+                                        <h3>{capitalize(dia)}</h3>
                                         <span className="columna-contador">
                                             {clasesDelDia.length}
                                         </span>

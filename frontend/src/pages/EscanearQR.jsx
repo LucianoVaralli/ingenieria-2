@@ -52,7 +52,6 @@ export default function EscanearQR() {
         try {
           const hoy = new Date();
           const fechaLocal = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-
           const res = await api.post("/clases/escanear-qr", {
             codigo_qr: code.data,
             fecha_clase: fechaLocal,
