@@ -41,9 +41,18 @@ def preferencia_individual(
     if not clase:
         raise HTTPException(404, "Clase no encontrada")
 
-    pref = crear_preferencia_individual(reserva, clase)
+    if reserva.tipo == TipoReserva.Membresia.value:
+        monto = clase.precio_individual  # membresía siempre 100%
+    else:
+        monto = (
+            clase.precio_individual * 0.5
+            if datos.tipo_pago == "sena"
+            else clase.precio_individual
+        )
 
-    print("PREF INDIVIDUAL:", pref)  # ← para debug
+    reserva.monto_pagado = monto
+
+    pref = crear_preferencia_individual(reserva, clase)
 
     if "id" not in pref:
         raise HTTPException(500, f"Error de MP: {pref}")
@@ -53,7 +62,6 @@ def preferencia_individual(
 
     init_point = pref.get("sandbox_init_point") or pref.get("init_point")
     return {"init_point": init_point}
-
 
 @router.post("/preferencia/membresia")
 def preferencia_membresia(
@@ -101,12 +109,12 @@ async def webhook_mp(request: Request, db: Session = Depends(get_db)):
         return {"status": "ignored"}
 
     payment_id = str(data["data"]["id"])
-    resultado  = procesar_pago_aprobado(payment_id, db)
+    resultado  =await procesar_pago_aprobado(payment_id, db)
 
     return {"status": "ok", "resultado": resultado}
 
 @router.get("/resultado-redirect")
-def resultado_redirect(
+async def resultado_redirect(
     status:     str,
     tipo:       str,
     payment_id: Optional[str] = None,
@@ -116,7 +124,7 @@ def resultado_redirect(
 ):
     if status == "approved" and payment_id:
         try:
-            procesar_pago_aprobado(payment_id, db)
+            await procesar_pago_aprobado(payment_id, db)
         except Exception as e:
             print(f"Error procesando pago: {e}")
 

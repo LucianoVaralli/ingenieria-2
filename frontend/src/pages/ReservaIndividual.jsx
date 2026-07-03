@@ -277,7 +277,20 @@ const ReservaIndividual = () => {
         }
     };
 
-    const handleVolver = () => {
+    const handleVolver = async () => {
+        // 🌟 Si hay una reserva pendiente_pago creada (paso 'pago'), la cancelamos
+        // al volver atrás para no dejarla huérfana bloqueando el cupo.
+        if (paso === 'pago' && reservaId) {
+            try {
+                await api.delete(`/reservas/individual/cancelar/${reservaId}`);
+            } catch (e) {
+                // Si falla (ya cancelada, ya vencida por el job de limpieza, etc.)
+                // no bloqueamos la navegación del usuario.
+                console.warn('No se pudo cancelar la reserva pendiente:', e);
+            }
+            setReservaId(null);
+        }
+
         if (paso === 'creditos')  return setPaso('lista_espera');
         if (paso === 'tipo_pago') return setPaso(creditosDisponibles > 0 ? 'creditos' : 'lista_espera');
         if (paso === 'pago')      return setPaso('tipo_pago');
@@ -501,12 +514,24 @@ const ReservaIndividual = () => {
                                 )
                             }
 
-                            <button className="boton-accion" onClick={async () => {
-                                setCargando(true);
-                                try { await handleCrearReserva(); } catch(e) { setMensaje(e.response?.data?.detail || 'Error al crear reserva.'); setCargando(false); return; }
-                                setCargando(false);
-                                setPaso('pago');
-                            }} disabled={cargando}>
+                           <button 
+                                className="boton-accion" 
+                                onClick={async () => {
+                                    setCargando(true);
+                                    try {
+                                        // 🌟 SI YA EXISTE EL ID (porque fue para atrás), NO CREAMOS OTRA
+                                        if (!reservaId) {
+                                            await handleCrearReserva(); 
+                                        }
+                                        setPaso('pago');
+                                    } catch(e) { 
+                                        setMensaje(e.response?.data?.detail || 'Error al crear reserva.'); 
+                                    } finally {
+                                        setCargando(false); 
+                                    }
+                                }} 
+                                disabled={cargando}
+                            >
                                 {cargando ? <span className="reserva-spinner" /> : 'Confirmar y pagar →'}
                             </button>
                         </div>

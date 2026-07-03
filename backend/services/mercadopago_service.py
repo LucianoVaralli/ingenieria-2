@@ -18,6 +18,7 @@ from routes.membresia import (
     _mes_siguiente,
     DIA_A_WEEKDAY,
 )
+from services.mail_service import enviar_mail_pago_exitoso, enviar_mail_membresia
 
 # ── Configuración ─────────────────────────────────────────────
 load_dotenv()
@@ -37,7 +38,7 @@ sdk = mercadopago.SDK(ACCESS_TOKEN)
 def crear_preferencia_individual(reserva: Reserva, clase: Clase) -> dict:
     preference_data = {
         "items": [{
-            "title":       f"Clase individual: {clase.actividad}",
+            "title":       f"Clase individual: {clase.actividad.value}",
             "quantity":    1,
             "unit_price":  float(reserva.monto_pagado),
             "currency_id": "ARS",
@@ -79,7 +80,7 @@ def crear_preferencia_membresia(
     fechas_str = ",".join(fechas_con_cupo)
     preference_data = {
         "items": [{
-            "title":       f"Membresía: {clase.actividad} — {clase.dia}",
+            "title":       f"Membresía: {clase.actividad.value} — {clase.dia.value}",
             "quantity":    1,
             "unit_price":  float(monto_total),
             "currency_id": "ARS",
@@ -106,7 +107,7 @@ def crear_preferencia_membresia(
 
 # ── Procesar webhook ──────────────────────────────────────────
 
-def procesar_pago_aprobado(payment_id: str, db: Session) -> str:
+async def procesar_pago_aprobado(payment_id: str, db: Session) -> str:
     """
     Consulta el pago a MP, verifica que esté aprobado,
     y confirma la reserva correspondiente.
@@ -126,16 +127,17 @@ def procesar_pago_aprobado(payment_id: str, db: Session) -> str:
 
     tipo = partes[0]
 
+    # ¡Acá es donde necesitás agregar el await!
     if tipo == "individual":
-        return _confirmar_individual(partes, payment, db)
+        return await _confirmar_individual(partes, payment, db)
 
     elif tipo == "membresia":
-        return _confirmar_membresia(partes, payment, db)
+        return await _confirmar_membresia(partes, payment, db)
 
     return "tipo_desconocido"
 
 
-def _confirmar_individual(partes: list[str], payment: dict, db: Session) -> str:
+async def _confirmar_individual(partes: list[str], payment: dict, db: Session) -> str:
     reserva_id = int(partes[1])
     reserva    = db.query(Reserva).filter(Reserva.id == reserva_id).first()
 
@@ -145,10 +147,18 @@ def _confirmar_individual(partes: list[str], payment: dict, db: Session) -> str:
     reserva.estado       = "confirmada"
     reserva.monto_pagado = payment["transaction_amount"]
     db.commit()
+    
+    socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
+    clase = db.query(Clase).filter(Clase.id == reserva.clase_id).first()
+    try:
+        await enviar_mail_pago_exitoso(socio, clase, reserva)
+    except Exception as e:
+        print(f"Mail no enviado: {e}")
+
     return f"individual:{reserva_id}:confirmada"
 
 
-def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
+async def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
     socio_id        = int(partes[1])
     clase_id        = int(partes[2])
     fechas_con_cupo = partes[3].split(",")
@@ -193,7 +203,7 @@ def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
                 monto_total      = monto_total,
                 monto_pagado     = monto_total,
                 es_recurrente    = True,
-                mp_preference_id = payment_id,  # ← guardamos el payment_id
+                mp_preference_id = payment_id,
             ))
 
     weekday = DIA_A_WEEKDAY.get(clase.dia.lower().strip(), -1)
@@ -250,4 +260,16 @@ def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:
         ))
 
     db.commit()
+
+    try:
+        await enviar_mail_membresia(
+            socio=socio,
+            clase=clase,
+            fechas_confirmadas=fechas_con_cupo,
+            fechas_lista_espera=[],
+            monto_total=monto_total,
+        )
+    except Exception as e:
+        print(f"Mail de membresía no enviado: {e}")
+
     return f"membresia:{socio_id}:{clase_id}:confirmada"
