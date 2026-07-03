@@ -3,7 +3,7 @@ import jsQR from "jsqr";
 import api from "../api/api";
 import '../assets/css/Perfil.css';
 
-export default function EscanearQR() {
+export default function EscanearQR({ onAsistenciaRegistrada }){
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [mensaje, setMensaje] = useState(null);
@@ -57,6 +57,7 @@ export default function EscanearQR() {
             fecha_clase: fechaLocal,
           });
           setMensaje(res.data.mensaje);
+          if (onAsistenciaRegistrada) onAsistenciaRegistrada();
         } catch (err) {
           const detail = err.response?.data?.detail;
           const mensajeError = Array.isArray(detail)

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/api.js';
 import '../assets/css/Perfil.css';
 import ModalConfirmacion from '../components/ModalConfirmacion.jsx';
@@ -8,12 +8,14 @@ import { useRef } from "react";
 import EscanearQR from "./EscanearQR";
 import QRCode from "qrcode";
 import { toast, Toaster } from "react-hot-toast";
+import PagarConMP from "../components/PagarConMP";
 
 
 const Perfil = ({ token, setToken }) => {
     const [user, setUser]           = useState(null);
     const [reservas, setReservas]   = useState([]);
     const navigate                  = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [alertaIndividual, setAlertaIndividual] = useState([]);
     const [mensajeExito, setMensajeExito]         = useState('');
     const [rol, setRol]             = useState('');
@@ -35,6 +37,8 @@ const Perfil = ({ token, setToken }) => {
     const [mostrarResultado, setMostrarResultado] = useState(false);
     const [reservaAbordador, setReservaAbordador] = useState(null);
     const [mensajeResultado, setMensajeResultado] = useState("");
+    const [tituloConfirmacion, setTituloConfirmacion] = useState("¿Cancelar reserva?");
+    const [mensajeConfirmacion, setMensajeConfirmacion] = useState("");
 
     const modalPagoRef = useRef(null);
 
@@ -48,6 +52,10 @@ const Perfil = ({ token, setToken }) => {
     const [tipoPagoCupo, setTipoPagoCupo] = useState('total');
     const [usaCreditoCupo, setUsaCreditoCupo] = useState(false);
     const [procesandoPago, setProcesandoPago] = useState(false);
+    const [metodoPagoCupo, setMetodoPagoCupo] = useState('tarjeta'); // 'tarjeta' | 'mp'
+
+    // ── Asistencia ──
+    const [asistenciaRegistrada, setAsistenciaRegistrada] = useState(false);
 
     const hoy = new Date();
     const dia = hoy.getDate();
@@ -127,7 +135,8 @@ const Perfil = ({ token, setToken }) => {
                 ...prev,
                 [claseId]: url
             }));
-
+            // Guardar en localStorage para que persista
+            localStorage.setItem(`qr_clase_${claseId}`, url);
             setQrSeleccionado(url);
             setMostrarQR(true);
 
@@ -197,6 +206,19 @@ const Perfil = ({ token, setToken }) => {
             : "";
 
     useEffect(() => {
+    // Recuperar QRs guardados del localStorage al montar el componente
+    const qrsGuardados = {};
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('qr_clase_')) {
+            const claseId = key.replace('qr_clase_', '');
+            qrsGuardados[claseId] = localStorage.getItem(key);
+        }
+    });
+    if (Object.keys(qrsGuardados).length > 0) {
+        setQrGenerado(qrsGuardados);
+    }
+    }, []);
+    useEffect(() => {
         const cargarPerfil = async () => {
             const res = await api.get('/socios/me');
 
@@ -215,6 +237,43 @@ const Perfil = ({ token, setToken }) => {
             modalPagoRef.current.scrollTop = 0;
         }
     }, [mostrarPagoCupo]);
+
+    // ── Manejo de vuelta desde Mercado Pago ──
+    useEffect(() => {
+        const status = searchParams.get('status');
+        if (!status) return;
+
+        if (status === 'approved') {
+            toast.success('¡Pago confirmado con Mercado Pago!');
+
+            // Refrescar reservas para reflejar el cambio de estado
+            (async () => {
+                try {
+                    const resReservas = await api.get('/reservas/mis-reservas');
+                    const activas = resReservas.data.filter(r =>
+                        (
+                            r.estado === "confirmada" ||
+                            r.estado === "en_espera" ||
+                            r.estado === "notificado" ||
+                            r.estado === "pendiente_pago"
+                        ) &&
+                        new Date(r.fecha_clase) >= hoy
+                    );
+                    setReservas(activas);
+                } catch (err) {
+                    console.error("Error refrescando reservas tras pago MP:", err);
+                }
+            })();
+
+        } else if (status === 'failure') {
+            toast.error('El pago con Mercado Pago no se pudo completar.');
+        } else if (status === 'pending') {
+            toast('Tu pago quedó pendiente de confirmación en Mercado Pago.');
+        }
+
+        // Limpiar los query params para que el toast no se repita al recargar/navegar
+        setSearchParams({}, { replace: true });
+    }, [searchParams]);
 
     const salirListaEspera = async (reservaId) => {
         try {
@@ -260,20 +319,12 @@ const Perfil = ({ token, setToken }) => {
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
 
+    const ahoraLocal = new Date();
+
     // 1. Obtenemos el nombre del día de hoy, sin tildes (ej: "martes")
     const opciones = { weekday: 'long' };
     const diaHoyTexto = quitarTildes(mapeoDias[ahora.getDay()]);
 
-    // 2. Clases de hoy
-    const clasesHoy = (clasesProfesor || []).filter(c => {
-        return quitarTildes(c?.dia) === diaHoyTexto;
-    });
-
-    // 3. Clases futuras (días distintos a hoy)
-    const clasesFuturas = (clasesProfesor || []).filter(c => {
-        if (!c?.dia) return false;
-        return quitarTildes(c.dia) !== diaHoyTexto;
-    });
 
     useEffect(() => {
         if (!token) {
@@ -491,8 +542,74 @@ const Perfil = ({ token, setToken }) => {
     }; 
     // ── CANCELAR RESERVA ──
     const iniciarCancelacion = (reserva) => {
+
+        const ahora = new Date();
+
+        const horario = reserva.clase.horario.substring(0,5);
+
+        const fechaClase = new Date(`${reserva.fecha_clase}T${horario}:00`);
+
+        const horasRestantes =
+            (fechaClase.getTime() - ahora.getTime()) / (1000 * 60 * 60);
+
+        let mensaje = "";
+
+        if (reserva.tipo === "membresia") {
+
+            if (horasRestantes >= 48) {
+
+                mensaje =
+                    `Estás por cancelar esta reserva de membresía.\n\n` +
+                    `Como la cancelación se realiza con 48 horas o más de anticipación, recibirás 1 crédito para una clase individual.\n\n` +
+                    `¿Deseás continuar?`;
+
+            } else {
+
+                mensaje =
+                    `Estás por cancelar esta reserva de membresía.\n\n` +
+                    `Como la cancelación se realiza con menos de 48 horas de anticipación, no recibirás ningún crédito.\n\n` +
+                    `¿Deseás continuar?`;
+
+            }
+
+        } else {
+
+            if (horasRestantes >= 24) {
+
+                if (reserva.tipo_pago === "sena") {
+
+                    mensaje =
+                        `Estás por cancelar esta reserva individual.\n\n` +
+                        `Como la cancelación se realiza con 24 horas o más de anticipación, se te devolverá la seña abonada de $${Number(reserva.monto_pagado).toFixed(2)}.\n\n` +
+                        `¿Deseás continuar?`;
+
+                } else {
+
+                    mensaje =
+                        `Estás por cancelar esta reserva individual.\n\n` +
+                        `Como la cancelación se realiza con 24 horas o más de anticipación, se te devolverá el importe total abonado de $${Number(reserva.monto_pagado).toFixed(2)}.\n\n` +
+                        `¿Deseás continuar?`;
+
+                }
+
+            } else {
+
+                mensaje =
+                    `Estás por cancelar esta reserva individual.\n\n` +
+                    `Como la cancelación se realiza con menos de 24 horas de anticipación, no se realiza la devolución del importe abonado.\n\n` +
+                    `¿Deseás continuar?`;
+
+            }
+
+        }
+
+        setTituloConfirmacion("¿Cancelar reserva?");
+        setMensajeConfirmacion(mensaje);
+
         setReservaAbordador(reserva);
+
         setMostrarConfirmacion(true);
+
     };
 
     const confirmarCancelacion = async () => {
@@ -593,6 +710,7 @@ const Perfil = ({ token, setToken }) => {
             setTitular('');
             setCvv('');
             setVencimiento('');
+            setMetodoPagoCupo('tarjeta');
 
             // Para individual: mostrar opciones (default 50%)
             // Para membresía: solo 100%
@@ -687,40 +805,46 @@ const Perfil = ({ token, setToken }) => {
         } catch (error) {
             console.error("Error rechazando cupo:", error);
 
-            toast.error(error.response?.data?.detail || "No se pudo rechazar el cupo");
+            toast.error(error?.response?.data?.detail || "No se pudo rechazar el cupo");
         }
     };
         
     const estadoClase = (clase) => {
-        const dias = {
-            domingo: 0,
-            lunes: 1,
-            martes: 2,
-            miercoles: 3,
-            jueves: 4,
-            viernes: 5,
-            sabado: 6
-        };
-
-        const inicio = new Date();
-
-        const diferencia =
-            dias[quitarTildes(clase.dia)] - ahora.getDay();
-
-        inicio.setDate(ahora.getDate() + diferencia);
-
-        const [h, m] = clase.horario.split(":");
-        inicio.setHours(Number(h), Number(m), 0, 0);
-
-        const fin = new Date(inicio);
-        fin.setMinutes(fin.getMinutes() + (clase.duracion || 60));
-
-        if (ahora >= inicio && ahora <= fin) return "en_curso";
-        if (ahora > fin) return "finalizada";
-
-        return "proxima";
+    const dias = {
+        domingo: 0, lunes: 1, martes: 2, miercoles: 3,
+        jueves: 4, viernes: 5, sabado: 6
     };
 
+    const diaSemanaClase = dias[quitarTildes(clase.dia)];
+    const [h, m] = clase.horario.split(":");
+
+    const ocurrenciaEstaSemana = new Date(ahora);
+    const diferencia = diaSemanaClase - ahora.getDay();
+    ocurrenciaEstaSemana.setDate(ahora.getDate() + diferencia);
+    ocurrenciaEstaSemana.setHours(Number(h), Number(m), 0, 0);
+
+    const finEstaSemana = new Date(ocurrenciaEstaSemana);
+    finEstaSemana.setMinutes(finEstaSemana.getMinutes() + (clase.duracion || 60));
+
+    if (ahora >= ocurrenciaEstaSemana && ahora <= finEstaSemana) return "en_curso";
+    if (ahora > finEstaSemana) return "finalizada";
+    return "proxima";
+};
+
+// Clases de hoy: todas las que se dictan hoy sin importar estado
+const clasesHoy = (clasesProfesor || []).filter(c => {
+    if (!c?.dia) return false;
+    return quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
+});
+
+// Próximas: otros días de la semana + las de hoy que ya finalizaron
+// (porque su próxima ocurrencia es la semana que viene)
+const clasesFuturas = (clasesProfesor || []).filter(c => {
+    if (!c?.dia) return false;
+    const esHoy = quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
+    if (!esHoy) return true; // otros días siempre aparecen como próximas
+    return estadoClase(c) === "finalizada"; // las de hoy que ya pasaron también
+});
     const esClaseHoy = (clase) => {
         const dias = {
             domingo: 0,
@@ -737,45 +861,58 @@ const Perfil = ({ token, setToken }) => {
         return dias[quitarTildes(clase.dia)] === hoy;
     };
 
-    const verAlumnos = async (clase) => {
-        try {
+const verAlumnos = async (clase, esFutura = false) => {
+    try {
+        setAlumnos([]);
+        setAsistencia(null);
+        setEstadoSeleccionado(null);
+        setClaseSeleccionada(clase);
 
-            setAlumnos([]);
-            setAsistencia(null);
-            setEstadoSeleccionado(null);
-            setClaseSeleccionada(clase);
+        const estado = estadoClase(clase);
+        const esHoy = quitarTildes(clase.dia.toLowerCase()) === diaHoyTexto;
 
-            const hoy = new Date().toISOString().split("T")[0];
+        const hoyFecha = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
 
-            const res = await api.get(
-                `/clases/${clase.id}/alumnos?fecha=${hoy}`
-            );
+        let fechaConsulta;
 
-            const estado = estadoClase(clase);
-            const hoyClase =esClaseHoy(clase);
-
-            setAlumnos(res.data.alumnos);
-            setEstadoSeleccionado(estado);
-
-            // SOLO si ya pasó la clase
-            if (hoyClase) {
-                const presentes = res.data.alumnos.filter(a => a.asistio).length;
-                const total = res.data.alumnos.length;
-
-                setAsistencia({
-                    presentes,
-                    ausentes: total - presentes
-                });
-            } else {
-                setAsistencia(null);
-            }
-
-            setModalAlumnos(true);
-
-        } catch (err) {
-            toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
+        if (!esFutura && esHoy) {
+            // Desde "clases de hoy" → siempre hoy
+            fechaConsulta = hoyFecha;
+        } else {
+            // Desde "próximas" o clase de otro día → próxima ocurrencia
+            const diasMap = {
+                domingo: 0, lunes: 1, martes: 2, miercoles: 3,
+                jueves: 4, viernes: 5, sabado: 6
+            };
+            const diaSemanaClase = diasMap[quitarTildes(clase.dia)];
+            const proximaFecha = new Date(ahora);
+            let diff = diaSemanaClase - proximaFecha.getDay();
+            if (diff <= 0) diff += 7;
+            proximaFecha.setDate(proximaFecha.getDate() + diff);
+            fechaConsulta = `${proximaFecha.getFullYear()}-${String(proximaFecha.getMonth() + 1).padStart(2, '0')}-${String(proximaFecha.getDate()).padStart(2, '0')}`;
         }
-    };
+
+        const res = await api.get(`/clases/${clase.id}/alumnos?fecha=${fechaConsulta}`);
+        console.log("fecha consultada:", fechaConsulta, "alumnos:", res.data.alumnos);
+
+        setAlumnos(res.data.alumnos);
+        setEstadoSeleccionado(estado);
+
+        // Solo mostrar presentes/ausentes si es hoy finalizada y desde sección de hoy
+        if (!esFutura && esHoy && estado === "finalizada") {
+            const presentes = res.data.alumnos.filter(a => a.asistio === true).length;
+            const total = res.data.alumnos.length;
+            setAsistencia({ presentes, ausentes: total - presentes });
+        } else {
+            setAsistencia(null);
+        }
+
+        setModalAlumnos(true);
+
+    } catch (err) {
+        toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
+    }
+};
 
 
     return (
@@ -785,7 +922,8 @@ const Perfil = ({ token, setToken }) => {
                 
                 <ModalConfirmacion
                     isOpen={mostrarConfirmacion}
-                    titulo="¿Estás seguro?"
+                    titulo={tituloConfirmacion}
+                    mensaje={mensajeConfirmacion}
                     onConfirm={confirmarCancelacion}
                     onCancel={cancelarCancelacion}
                 />
@@ -870,8 +1008,26 @@ const Perfil = ({ token, setToken }) => {
                                     </div>
                                 </div>
 
-                                {/* TARJETA VISUAL */}
+                                {/* SELECTOR DE MÉTODO DE PAGO — solo si no usa crédito */}
                                 {creditos === 0 && (
+                                    <div className="metodo-pago-selector" style={{ marginTop: '20px' }}>
+                                        <button
+                                            className={`metodo-pago-btn metodo-pago-btn--tarjeta ${metodoPagoCupo === 'tarjeta' ? 'activo' : ''}`}
+                                            onClick={() => setMetodoPagoCupo('tarjeta')}
+                                        >
+                                            Tarjeta
+                                        </button>
+                                        <button
+                                            className={`metodo-pago-btn metodo-pago-btn--mp ${metodoPagoCupo === 'mp' ? 'activo' : ''}`}
+                                            onClick={() => setMetodoPagoCupo('mp')}
+                                        >
+                                            Mercado Pago
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* TARJETA VISUAL — solo con método tarjeta */}
+                                {creditos === 0 && metodoPagoCupo === 'tarjeta' && (
                                     <div className="pago-card-visual" style={{ marginTop: '20px' }}>
                                         <div className="pago-card-chip">▬</div>
 
@@ -969,8 +1125,8 @@ const Perfil = ({ token, setToken }) => {
                                     </div>
                                 )}
 
-                                {/* FORMULARIO DE PAGO - IGUAL A ReservaIndividual */}
-                                {creditos === 0 && (
+                                {/* FORMULARIO DE TARJETA — IGUAL A ReservaIndividual */}
+                                {creditos === 0 && metodoPagoCupo === 'tarjeta' && (
                                     <div className="pago-form-card">
                                         <h2 className="pago-form-titulo">Datos de pago</h2>
                                         
@@ -1050,6 +1206,23 @@ const Perfil = ({ token, setToken }) => {
                                     </div>
                                 )}
 
+                                {/* MERCADO PAGO */}
+                                {creditos === 0 && metodoPagoCupo === 'mp' && (
+                                    <div className="mp-bloque">
+                                        <p className="mp-descripcion">
+                                            Serás redirigido al sitio de Mercado Pago para completar el pago de forma segura.
+                                        </p>
+                                        <PagarConMP
+                                            tipo="individual"
+                                            payload={{
+                                                reserva_id: reservaAPagar.id,
+                                                tipo_pago: reservaAPagar.tipo === 'membresia' ? 'total' : tipoPagoCupo,
+                                            }}
+                                            onError={(msg) => toast.error(msg)}
+                                        />
+                                    </div>
+                                )}
+
                                 {/* BOTONES */}
                                 {creditos > 0 && (
                                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
@@ -1122,8 +1295,10 @@ const Perfil = ({ token, setToken }) => {
                                         <button
                                             className="btn-escanear-qr"
                                             onClick={() => setAbrirScanner(true)}
+                                            disabled={asistenciaRegistrada}
+                                            style={{ opacity: asistenciaRegistrada ? 0.5 : 1, cursor: asistenciaRegistrada ? "not-allowed" : "pointer" }}
                                         >
-                                            📷 Escanear asistencia
+                                            {asistenciaRegistrada ? "✔ Asistencia registrada" : "📷 Escanear asistencia"}
                                         </button>
                                     </div>
 
@@ -1138,7 +1313,12 @@ const Perfil = ({ token, setToken }) => {
                                             >
                                                 <h2>📷 Escanear QR</h2>
 
-                                                <EscanearQR />
+                                                <EscanearQR
+                                                    onAsistenciaRegistrada={() => {
+                                                        setAsistenciaRegistrada(true);
+                                                        setAbrirScanner(false);
+                                                    }}
+                                                />
 
                                                 <button
                                                     className="btn-cerrar"
@@ -1409,26 +1589,40 @@ const Perfil = ({ token, setToken }) => {
 
                                                                 <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
 
-                                                                <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
+                                                                <p>👥 {clase.alumnos_proxima ?? 0} / {clase.cupo}</p>
 
                                                                 <div className="mis-clase-footer">
                                                                     <div className="mis-clase-botones">
-                                                                        <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase)}>
+                                                                        <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, false)}>
                                                                             Ver alumnos
                                                                         </button>
 
+                                                                        {/* Botón Generar QR — se bloquea después de generarlo */}
                                                                         <button
-                                                                            className="btn-generar-qr"
+                                                                            className="btn-ver-alumnos"
+                                                                            disabled={!!qrGenerado[clase.id]}
                                                                             onClick={() => generarQR(clase.id)}
+                                                                            style={{ opacity: qrGenerado[clase.id] ? 0.4 : 1, cursor: qrGenerado[clase.id] ? "not-allowed" : "pointer" }}
                                                                         >
-                                                                            {qrGenerado[clase.id]
-                                                                                ? "QR generado"
-                                                                                : "Generar QR"}
+                                                                            Generar QR
                                                                         </button>
 
+                                                                        {/* Botón Mostrar QR — si no fue generado muestra mensaje */}
                                                                         <button
                                                                             className="btn-ver-qr"
-                                                                            onClick={() => abrirQR(clase)}
+                                                                            onClick={() => {
+                                                                                const estado = estadoClase(clase);
+                                                                                if (estado === "finalizada") {
+                                                                                    toast.error("El QR ya caducó porque la clase ya finalizó.");
+                                                                                    return;
+                                                                                }
+                                                                                if (!qrGenerado[clase.id]) {
+                                                                                    toast("Primero generá el QR");
+                                                                                    return;
+                                                                                }
+                                                                                setQrSeleccionado(qrGenerado[clase.id]);
+                                                                                setMostrarQR(true);
+                                                                            }}
                                                                         >
                                                                             Mostrar QR
                                                                         </button>
@@ -1459,7 +1653,7 @@ const Perfil = ({ token, setToken }) => {
                                                             <div className="mis-clase-footer">
 
                                                                 <div className="mis-clase-botones">
-                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase)}>
+                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, true)}>
                                                                         Ver alumnos
                                                                     </button>
                                                         
@@ -1600,7 +1794,7 @@ const Perfil = ({ token, setToken }) => {
                             <h2>📋 Lista de alumnos</h2>
 
                             {/* RESUMEN */}
-                            {asistencia && (
+                            {asistencia && estadoSeleccionado === "finalizada" && (
                                 <p>
                                     📊 Presentes: {asistencia.presentes} |{" "}
                                     ❌ Ausentes: {asistencia.ausentes}
@@ -1622,18 +1816,19 @@ const Perfil = ({ token, setToken }) => {
                                                 <strong>
                                                     {capitalize(a.nombre)} {capitalize(a.apellido)} - {a.email}
                                                 </strong>
-                                                {asistencia && (
-
-                                                        <span
-                                                            style={{
-                                                                marginLeft: "10px",
-                                                                fontWeight: "bold",
-                                                                color: a.asistio ? "green" : "red"
-                                                            }}
-                                                        >
-                                                            {a.asistio ? "✔ Presente" : "✖ Ausente"}
-                                                        </span>
-                                                )}
+                                                        {estadoSeleccionado !== "finalizada" || a.asistio === null ? (
+                                                            null
+                                                        ) : (
+                                                            <span
+                                                                style={{
+                                                                    marginLeft: "10px",
+                                                                    fontWeight: "bold",
+                                                                    color: a.asistio ? "green" : "red"
+                                                                }}
+                                                            >
+                                                                {a.asistio ? "✔ Presente" : "✖ Ausente"}
+                                                            </span>
+                                                        )}
                                             </div>
                                         ))}
                                     </div>
