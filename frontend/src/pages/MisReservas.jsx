@@ -23,6 +23,12 @@ const MisReservas = () => {
 
     if (cargando) return <p style={{ textAlign: 'center' }}>Cargando reservas...</p>;
 
+    const capitalize = (texto) =>
+        texto
+            ?.split(" ")
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+            .join(" ") || "";
+
     return (
         <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
             <h2>Mis Reservas</h2>
@@ -39,7 +45,7 @@ const MisReservas = () => {
                         color: 'white'
                     }}>
                         <p><strong>Fecha:</strong> {r.fecha_clase}</p>
-                        <p><strong>Tipo:</strong> {r.tipo}</p>
+                        <p><strong>Tipo:</strong> {capitalize(r.tipo)}</p>
                         <p>
                             <strong>Estado:</strong>{' '}
                             {r.lista_espera

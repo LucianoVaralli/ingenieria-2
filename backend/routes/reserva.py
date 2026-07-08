@@ -95,28 +95,37 @@ def crear_reserva_membresia(
 
     fechas_pasadas = [f for f in datos.fechas_clase if datetime.strptime(f, "%Y-%m-%d").date() < hoy]
     
-    hoy = date.today()
     limite = hoy + timedelta(days=7)
 
-    fechas_validas = []
+    fechas_futuras = []
 
     for f in datos.fechas_clase:
         fecha = datetime.strptime(f, "%Y-%m-%d").date()
 
-        if fecha < hoy:
-            raise HTTPException(400, f"No podés reservar fechas pasadas: {f}")
-
-        if fecha > limite:
-            raise HTTPException(400, f"Solo podés reservar hasta 7 días: {f}")
-
-        fechas_validas.append(f)
-
-    fechas_futuras = fechas_validas
+        if fecha >= hoy:
+            fechas_futuras.append(f)
 
     if not fechas_futuras:
         raise HTTPException(
-            status_code=400,
-            detail="No quedan clases futuras para este mes. No se puede crear la membresía."
+            400,
+            "No quedan clases futuras para este mes"
+        )
+
+    primera_fecha = datetime.strptime(
+        fechas_futuras[0],
+        "%Y-%m-%d"
+    ).date()
+
+    if primera_fecha < hoy:
+        raise HTTPException(
+            400,
+            "No podés iniciar una membresía con una fecha pasada"
+        )
+
+    if primera_fecha > limite:
+        raise HTTPException(
+            400,
+            "La primera clase de la membresía debe estar dentro de los próximos 7 días"
         )
 
     # ── FIX: verificar conflicto SOLO contra fechas que no sean del mismo

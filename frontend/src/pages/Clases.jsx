@@ -204,24 +204,12 @@ const Clases = ({ token }) => {
 
         const fechasDelMes = calcularFechasDelMes(claseElegida.dia);
 
-        const hoy = new Date();
-        const limite = new Date();
-        limite.setDate(hoy.getDate() + 7);
-
-        // todas las fechas del mes (membresía)
-        const fechasInvalidas = fechasDelMes.filter(f => {
-            const fecha = new Date(f);
-            return fecha > limite;
-        });
-
-        if (modoReserva === 'membresia' && fechasInvalidas.length > 0) {
-            setMensajeError("Solo podés reservar clases dentro de los próximos 7 días");
-            return;
-        }
-
         if (modoReserva === 'membresia') {
             navigate('/reservar/membresia', {
-                state: { clase: claseElegida, fechasDelMes }
+                state: { 
+                    clase: claseElegida, 
+                    fechasDelMes 
+                }
             });
         } else {
             const mm = String(mes + 1).padStart(2, '0');
@@ -302,7 +290,7 @@ const Clases = ({ token }) => {
 
                         const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
                         const esPasado    = fechaCelda < hoy || esHoyExacto;
-                        if (esPasado || esFueraDeRango) {
+                        if (esPasado || (modoReserva === 'individual' && esFueraDeRango)) {
                             setMensajeError(
                                 esFueraDeRango
                                     ? "Solo podés reservar dentro de los 7 días"
@@ -316,7 +304,7 @@ const Clases = ({ token }) => {
                         handleClickDia(d);
                     }}
                 >
-                    {d}
+                    {d}  
                     {tieneClases && !esPasado && <span className="cal-dot" />}
                 </td>
             );
