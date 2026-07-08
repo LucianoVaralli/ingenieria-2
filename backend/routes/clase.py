@@ -26,7 +26,10 @@ from services.notificaciones import crear_notificacion
 from models.cambioTemporal import CambioProfesorTemporal as CambioProfesorTemporalDB
 from models.cambioPermanente import CambioProfesorPermanente as CambioProfesorPermanenteDB
 
-from services.auth import obtener_usuario_actual
+from services.auth import (
+    obtener_usuario_actual,
+    oauth2_scheme)
+
 import uuid
 from models.Asistencia import Asistencia
 router = APIRouter(
@@ -35,6 +38,14 @@ router = APIRouter(
 )
 
 from sqlalchemy import distinct
+
+from fastapi import BackgroundTasks
+from services.mail_service import (
+    enviar_mail_nueva_clase,
+    enviar_mail_clase_eliminada,
+    enviar_mail_cambio_permanente,
+    enviar_mail_cambio_temporal
+)
 
 def validar_capacidad_horaria(
     db,
@@ -200,6 +211,7 @@ def validar_superposicion_profesor(
 @router.post("/crear")
 async def crear_clase(
     clase: ClaseCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     # Validaciones estructurales
@@ -273,6 +285,16 @@ async def crear_clase(
     db.add(nueva_clase)
     db.commit()
     db.refresh(nueva_clase)
+
+    try:
+        background_tasks.add_task(
+            enviar_mail_nueva_clase,
+            profesor=profesor,
+            clase=nueva_clase
+        )
+    except Exception as e:
+        print(f"⚠️ Mail profesor no enviado: {e}")
+
     return {"mensaje": "Creación de clase exitosa", "clase_id": nueva_clase.id}
 
 @router.get("/ocupacion/{dia}")
@@ -349,22 +371,36 @@ def obtener_info_eliminacion(
         Reserva.fecha_clase >= hoy_str
     ).all()
 
-    alumnos_afectados = len({
-        reserva.socio_id
-        for reserva in reservas_futuras
-    })
+    socios_membresia = set()
+    socios_individual = set()
+
+    for reserva in reservas_futuras:
+        if reserva.tipo == TipoReserva.Membresia.value:
+            socios_membresia.add(reserva.socio_id)
+
+        elif reserva.tipo == TipoReserva.Individual.value:
+            socios_individual.add(reserva.socio_id)
+
+    ambos = socios_membresia & socios_individual
+    solo_membresia = socios_membresia - ambos
+    solo_individual = socios_individual - ambos
+    total = socios_membresia | socios_individual
 
     return {
         "clase_id": clase.id,
         "actividad": clase.actividad,
-        "alumnos_afectados": alumnos_afectados,
-        "reservas_afectadas": len(reservas_futuras)
+        "alumnos_afectados": len(total),
+        "reservas_afectadas": len(reservas_futuras),
+        "socios_membresia": len(solo_membresia),
+        "socios_individual": len(solo_individual),
+        "socios_ambos": len(ambos)
     }    
 
 @router.put("/eliminar/{clase_id}")
 async def eliminar_clase(
     clase_id: int,
     datos: EliminarClase,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     clase = db.query(Clase).filter(Clase.id == clase_id, Clase.activa == True).first()
@@ -383,11 +419,23 @@ async def eliminar_clase(
         Reserva.estado.in_(["confirmada", "pendiente_pago"]),
         Reserva.fecha_clase >= hoy_str
     ).all()
+
+    profesor= db.query(Socio).filter(Socio.id == clase.profesor_id).first()
  
     # ── CASO 1: Sin alumnos → eliminación física ──
     if not reservas_futuras:
         db.delete(clase)
         db.commit()
+        if profesor:
+            try:
+                background_tasks.add_task(
+                    enviar_mail_clase_eliminada,
+                    profesor=profesor,
+                    clase=clase
+                )
+            except Exception as e:
+                print(f"⚠️ Mail profesor no enviado: {e}")
+
         return {"mensaje": "Eliminación completada exitosamente"}
  
     # ── CASO 2: Con alumnos → baja lógica + compensaciones ──
@@ -395,7 +443,7 @@ async def eliminar_clase(
     clase.motivo_baja = datos.motivo
  
     socios_afectados = set()  # ← NUEVO: para recalcular membresía al final
- 
+    
     for reserva in reservas_futuras:
         estado_previo = reserva.estado
         reserva.estado             = "cancelada"
@@ -412,7 +460,7 @@ async def eliminar_clase(
                 f"fue eliminada antes de tu pago."
             )
             reserva.mensaje_admin = "Cancelada sin impacto económico"
-            socios_afectados.add(reserva.socio_id)  # ← NUEVO
+            socios_afectados.add(reserva.socio_id) 
             continue
  
         # Confirmada de membresía → crédito
@@ -470,6 +518,16 @@ async def eliminar_clase(
         _actualizar_membresia_activa_hasta(socio_id, db)
  
     db.commit()
+
+    try:
+        background_tasks.add_task(
+            enviar_mail_clase_eliminada,
+            profesor=profesor,
+            clase=clase
+        )
+    except Exception as e:
+        print(f"⚠️ Mail profesor no enviado: {e}")
+
     return {"mensaje": "Clase dada de baja correctamente con notificaciones y compensaciones"}
 
 
@@ -612,10 +670,13 @@ def obtener_clases(db: Session = Depends(get_db)):
 
     for c in clases:
 
-        cantidad_alumnos = db.query(Reserva).filter(
+        hoy_str = date.today().strftime("%Y-%m-%d")
+
+        cantidad_alumnos = db.query(Reserva.socio_id).filter(
             Reserva.clase_id == c.id,
-            Reserva.estado == "confirmada"
-        ).count()
+            Reserva.estado.in_(["confirmada", "pendiente_pago"]),
+            Reserva.fecha_clase >= hoy_str
+        ).distinct().count()
 
         profesor = db.query(Socio).filter(
             Socio.id == c.profesor_id
@@ -731,6 +792,7 @@ def obtener_calendario(
                 })
 
     return calendario_eventos
+
 @router.get("/mis-clases")
 def obtener_clases_profesor(
     usuario=Depends(obtener_usuario_actual),
@@ -750,6 +812,11 @@ def obtener_clases_profesor(
     clases = db.query(Clase).filter(
         Clase.profesor_id == profesor.id,
         Clase.activa == True
+    ).all()
+
+    reemplazos = db.query(CambioProfesorTemporalDB).filter(
+        CambioProfesorTemporalDB.profesor_reemplazo_id == profesor.id,
+        CambioProfesorTemporalDB.fecha >= date.today()
     ).all()
 
     resultado = []
@@ -805,8 +872,36 @@ def obtener_clases_profesor(
             "alumnos_inscriptos": cantidad_proxima,        # para clase de hoy
             "alumnos_proxima": cantidad_hoy         # para clase futura
         })
+    clases_temporales = []
 
-    return resultado
+    for cambio in reemplazos:
+        clase = db.query(Clase).filter(
+            Clase.id == cambio.clase_id
+        ).first()
+
+        if not clase:
+            continue
+
+        alumnos = db.query(Reserva.socio_id).filter(
+            Reserva.clase_id == clase.id,
+            Reserva.fecha_clase == cambio.fecha,
+            Reserva.estado.in_(["confirmada", "pendiente_pago"])
+        ).distinct().count()
+
+        clases_temporales.append({
+            "id": clase.id,
+            "actividad": clase.actividad.value,
+            "dia": clase.dia.value,
+            "fecha": cambio.fecha,
+            "horario": clase.horario.strftime("%H:%M"),
+            "cupo": clase.cupo,
+            "alumnos": alumnos,
+            "es_temporal": True
+        })
+
+    return {
+        "clases": resultado, 
+        "clases_temporales": clases_temporales}
 
 @router.get("/{clase_id}/alumnos")
 def obtener_alumnos_de_clase(
@@ -917,6 +1012,7 @@ def cambiar_rol(socio_id: int, rol: str, db: Session = Depends(get_db)):
 async def cambiar_profesor_temporal(
     clase_id: int,
     datos: CambioProfesorTemporal,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     clase = db.query(Clase).filter(
@@ -1007,6 +1103,16 @@ async def cambiar_profesor_temporal(
             f"Solo afecta la clase del día {datos.fecha} y el resto del calendario sigue con el profesor habitual."
         )
 
+    try:
+        background_tasks.add_task(
+            enviar_mail_cambio_temporal,
+            profesor=profesor,
+            clase=clase,
+            fecha=datos.fecha
+        )
+    except Exception as e:
+        print(f"⚠️ Mail profesor no enviado: {e}")
+
     return {
         "mensaje": "Cambio temporal de profesor registrado correctamente"
     }
@@ -1015,6 +1121,7 @@ async def cambiar_profesor_temporal(
 async def cambiar_profesor_permanente(
     clase_id: int,
     datos: CambioProfesorPermanente,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     clase = db.query(Clase).filter(
@@ -1077,6 +1184,15 @@ async def cambiar_profesor_permanente(
         Reserva.clase_id == clase.id,
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
     ).all()
+
+    try:
+        background_tasks.add_task(
+            enviar_mail_cambio_permanente,
+            profesor=profesor,
+            clase=clase
+        )
+    except Exception as e:
+        print(f"⚠️ Mail profesor no enviado: {e}")
 
     for reserva in reservas:
         crear_notificacion(
@@ -1178,4 +1294,3 @@ def escanear_qr(
         "clase": clase.actividad,
         "fecha": datos.fecha_clase
     }
-
