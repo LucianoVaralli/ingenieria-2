@@ -853,7 +853,8 @@ def obtener_clases_profesor(
             .filter(
                 Reserva.clase_id == c.id,
                 Reserva.estado == "confirmada",
-                Reserva.fecha_clase == str(proxima_fecha)
+                Reserva.fecha_clase == str(proxima_fecha),
+                Reserva.tipo == TipoReserva.Membresia.value
             )
             .distinct()
             .count()
@@ -870,7 +871,8 @@ def obtener_clases_profesor(
             "profesor_id": c.profesor_id,
             "profesor_nombre": f"{profesor.nombre} {profesor.apellido}",
             "alumnos_inscriptos": cantidad_proxima,        # para clase de hoy
-            "alumnos_proxima": cantidad_hoy         # para clase futura
+            "alumnos_proxima": cantidad_hoy,         # para clase futura
+            "codigo_qr": c.codigo_qr
         })
     clases_temporales = []
 
@@ -914,16 +916,24 @@ def obtener_alumnos_de_clase(
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
 
-    # Traer reservas confirmadas para ESA fecha específica
-    reservas_fecha = (
-        db.query(Reserva)
-        .filter(
-            Reserva.clase_id == clase_id,
-            Reserva.estado == "confirmada",
-            Reserva.fecha_clase == fecha
-        )
-        .all()
+    hoy = date.today()
+
+    # Traer reservas confirmadas para ESA fecha específica.
+    # Si la fecha consultada es futura (la clase ya pasó a "próxima"),
+    # solo cuentan los socios con reserva por MEMBRESÍA: los que reservaron
+    # como "Individual" pagaron por esa única clase, no por las siguientes.
+    reservas_query = db.query(Reserva).filter(
+        Reserva.clase_id == clase_id,
+        Reserva.estado == "confirmada",
+        Reserva.fecha_clase == fecha
     )
+
+    if fecha > hoy:
+        reservas_query = reservas_query.filter(
+            Reserva.tipo == TipoReserva.Membresia.value
+        )
+
+    reservas_fecha = reservas_query.all()
 
     alumnos = []
 
@@ -933,7 +943,6 @@ def obtener_alumnos_de_clase(
             continue
 
         # Verificar asistencia solo si la fecha es hoy o anterior
-        hoy = date.today()
         if fecha <= hoy:
             asistencia = (
                 db.query(Asistencia)
@@ -1294,3 +1303,17 @@ def escanear_qr(
         "clase": clase.actividad,
         "fecha": datos.fecha_clase
     }
+@router.get("/{clase_id}/mi-asistencia")
+def verificar_mi_asistencia(
+    clase_id: int,
+    fecha: str,
+    db: Session = Depends(get_db),
+    socio_actual = Depends(obtener_usuario_actual)
+):
+    asistencia = db.query(Asistencia).filter(
+        Asistencia.socio_id == socio_actual.id,
+        Asistencia.clase_id == clase_id,
+        Asistencia.fecha_clase == fecha
+    ).first()
+
+    return {"registrada": asistencia is not None}
