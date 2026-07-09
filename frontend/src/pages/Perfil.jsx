@@ -94,6 +94,8 @@ const Perfil = ({ token, setToken }) => {
         return () => clearInterval(intervalo);
     }, []);
 
+    const [clasesTemporales, setClasesTemporales] = useState([]);
+
     const generarQR = async (claseId) => {
 
         const clase = clasesProfesor.find(c => c.id === claseId);
@@ -352,6 +354,9 @@ const Perfil = ({ token, setToken }) => {
                     } else {
                         setQrGenerado({});
                     }
+
+                    setClasesProfesor(resClases.data.clases);
+                    setClasesTemporales(resClases.data.clases_temporales);
                 }
 
                 // ===========================
@@ -847,93 +852,56 @@ const Perfil = ({ token, setToken }) => {
     };
         
     const estadoClase = (clase) => {
-    const dias = {
-        domingo: 0, lunes: 1, martes: 2, miercoles: 3,
-        jueves: 4, viernes: 5, sabado: 6
-    };
-
-    const diaSemanaClase = dias[quitarTildes(clase.dia)];
-    const [h, m] = clase.horario.split(":");
-
-    const ocurrenciaEstaSemana = new Date(ahora);
-    const diferencia = diaSemanaClase - ahora.getDay();
-    ocurrenciaEstaSemana.setDate(ahora.getDate() + diferencia);
-    ocurrenciaEstaSemana.setHours(Number(h), Number(m), 0, 0);
-
-    const finEstaSemana = new Date(ocurrenciaEstaSemana);
-    finEstaSemana.setMinutes(finEstaSemana.getMinutes() + (clase.duracion || 60));
-
-    if (ahora >= ocurrenciaEstaSemana && ahora <= finEstaSemana) return "en_curso";
-    if (ahora > finEstaSemana) return "finalizada";
-    return "proxima";
-};
-
-// Clases de hoy: todas las que se dictan hoy sin importar estado
-const clasesHoy = (clasesProfesor || []).filter(c => {
-    if (!c?.dia) return false;
-    return quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
-});
-
-// Próximas: otros días de la semana + las de hoy que ya finalizaron
-// (porque su próxima ocurrencia es la semana que viene)
-const clasesFuturas = (clasesProfesor || []).filter(c => {
-    if (!c?.dia) return false;
-    const esHoy = quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
-    if (!esHoy) return true; // otros días siempre aparecen como próximas
-    return estadoClase(c) === "finalizada"; // las de hoy que ya pasaron también
-});
-    const esClaseHoy = (clase) => {
         const dias = {
-            domingo: 0,
-            lunes: 1,
-            martes: 2,
-            miercoles: 3,
-            jueves: 4,
-            viernes: 5,
-            sabado: 6
+            domingo: 0, lunes: 1, martes: 2, miercoles: 3,
+            jueves: 4, viernes: 5, sabado: 6
         };
 
-        const hoy = new Date().getDay();
+        const diaSemanaClase = dias[quitarTildes(clase.dia)];
+        const [h, m] = clase.horario.split(":");
 
-        return dias[quitarTildes(clase.dia)] === hoy;
+        const ocurrenciaEstaSemana = new Date(ahora);
+        const diferencia = diaSemanaClase - ahora.getDay();
+        ocurrenciaEstaSemana.setDate(ahora.getDate() + diferencia);
+        ocurrenciaEstaSemana.setHours(Number(h), Number(m), 0, 0);
+
+        const finEstaSemana = new Date(ocurrenciaEstaSemana);
+        finEstaSemana.setMinutes(finEstaSemana.getMinutes() + (clase.duracion || 60));
+
+        if (ahora >= ocurrenciaEstaSemana && ahora <= finEstaSemana) return "en_curso";
+        if (ahora > finEstaSemana) return "finalizada";
+        return "proxima";
     };
 
-const verAlumnos = async (clase, esFutura = false) => {
-    try {
-        setAlumnos([]);
-        setAsistencia(null);
-        setEstadoSeleccionado(null);
-        setClaseSeleccionada(clase);
+    // Clases de hoy: todas las que se dictan hoy sin importar estado
+    const clasesHoy = (clasesProfesor || []).filter(c => {
+        if (!c?.dia) return false;
+        return quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
+    });
 
-        const estado = estadoClase(clase);
-        const esHoy = quitarTildes(clase.dia.toLowerCase()) === diaHoyTexto;
-
-        const hoyFecha = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
-
-        let fechaConsulta;
-
-        if (!esFutura && esHoy) {
-            // Desde "clases de hoy" → siempre hoy
-            fechaConsulta = hoyFecha;
-        } else {
-            // Desde "próximas" o clase de otro día → próxima ocurrencia
-            const diasMap = {
-                domingo: 0, lunes: 1, martes: 2, miercoles: 3,
-                jueves: 4, viernes: 5, sabado: 6
+    // Próximas: otros días de la semana + las de hoy que ya finalizaron
+    // (porque su próxima ocurrencia es la semana que viene)
+    const clasesFuturas = (clasesProfesor || []).filter(c => {
+        if (!c?.dia) return false;
+        const esHoy = quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
+        if (!esHoy) return true; // otros días siempre aparecen como próximas
+        return estadoClase(c) === "finalizada"; // las de hoy que ya pasaron también
+    });
+        const esClaseHoy = (clase) => {
+            const dias = {
+                domingo: 0,
+                lunes: 1,
+                martes: 2,
+                miercoles: 3,
+                jueves: 4,
+                viernes: 5,
+                sabado: 6
             };
-            const diaSemanaClase = diasMap[quitarTildes(clase.dia)];
-            const proximaFecha = new Date(ahora);
-            let diff = diaSemanaClase - proximaFecha.getDay();
-            if (diff <= 0) diff += 7;
-            proximaFecha.setDate(proximaFecha.getDate() + diff);
-            fechaConsulta = `${proximaFecha.getFullYear()}-${String(proximaFecha.getMonth() + 1).padStart(2, '0')}-${String(proximaFecha.getDate()).padStart(2, '0')}`;
-        }
 
-        const res = await api.get(`/clases/${clase.id}/alumnos?fecha=${fechaConsulta}`);
-        console.log("fecha consultada:", fechaConsulta, "alumnos:", res.data.alumnos);
+            const hoy = new Date().getDay();
 
-        setAlumnos(res.data.alumnos);
-        setEstadoSeleccionado(estado);
+            return dias[quitarTildes(clase.dia)] === hoy;
+        };
 
         // Mostrar presentes/ausentes si es hoy y ya arrancó (en curso o finalizada)
         if (!esFutura && esHoy && (estado === "en_curso" || estado === "finalizada")) {
@@ -941,16 +909,60 @@ const verAlumnos = async (clase, esFutura = false) => {
             const total = res.data.alumnos.length;
             setAsistencia({ presentes, ausentes: total - presentes });
         } else {
+
+          const verAlumnos = async (clase, esFutura = false) => {
+         try {
+            setAlumnos([]);
             setAsistencia(null);
+            setEstadoSeleccionado(null);
+            setClaseSeleccionada(clase);
+
+            const estado = estadoClase(clase);
+            const esHoy = quitarTildes(clase.dia.toLowerCase()) === diaHoyTexto;
+
+            const hoyFecha = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+
+            let fechaConsulta;
+
+            if (!esFutura && esHoy) {
+                // Desde "clases de hoy" → siempre hoy
+                fechaConsulta = hoyFecha;
+            } else {
+                // Desde "próximas" o clase de otro día → próxima ocurrencia
+                const diasMap = {
+                    domingo: 0, lunes: 1, martes: 2, miercoles: 3,
+                    jueves: 4, viernes: 5, sabado: 6
+                };
+                const diaSemanaClase = diasMap[quitarTildes(clase.dia)];
+                const proximaFecha = new Date(ahora);
+                let diff = diaSemanaClase - proximaFecha.getDay();
+                if (diff <= 0) diff += 7;
+                proximaFecha.setDate(proximaFecha.getDate() + diff);
+                fechaConsulta = `${proximaFecha.getFullYear()}-${String(proximaFecha.getMonth() + 1).padStart(2, '0')}-${String(proximaFecha.getDate()).padStart(2, '0')}`;
+            }
+
+            const res = await api.get(`/clases/${clase.id}/alumnos?fecha=${fechaConsulta}`);
+            console.log("fecha consultada:", fechaConsulta, "alumnos:", res.data.alumnos);
+
+            setAlumnos(res.data.alumnos);
+            setEstadoSeleccionado(estado);
+
+            // Solo mostrar presentes/ausentes si es hoy finalizada y desde sección de hoy
+            if (!esFutura && esHoy && estado === "finalizada") {
+                const presentes = res.data.alumnos.filter(a => a.asistio === true).length;
+                const total = res.data.alumnos.length;
+                setAsistencia({ presentes, ausentes: total - presentes });
+            } else {
+                setAsistencia(null);
+            }
+
+            setModalAlumnos(true);
+
+        } catch (err) {
+            toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
         }
-
-        setModalAlumnos(true);
-
-    } catch (err) {
-        toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
-    }
-};
-
+    };
+    };
 
     return (
         <>  {/*esto y el toaster esta demas */}
@@ -1465,7 +1477,7 @@ const verAlumnos = async (clase, esFutura = false) => {
                                                                                     </div>
                                                                                     <div className="reserva-mini-detalles">
                                                                                         <span className="reserva-mini-actividad">
-                                                                                            {r.clase?.actividad || `Clase #${r.clase_id}`}
+                                                                                            {capitalize(r.clase?.actividad || `Clase #${r.clase_id}`)}
                                                                                         </span>
                                                                                         <span className="reserva-mini-horario">
                                                                                             {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
@@ -1634,35 +1646,44 @@ const verAlumnos = async (clase, esFutura = false) => {
                                                                             Ver alumnos
                                                                         </button>
 
-                                                                        {/* Botón Generar QR — se bloquea después de generarlo */}
-                                                                        <button
-                                                                            className="btn-ver-alumnos"
-                                                                            disabled={!!qrGenerado[clase.id]}
-                                                                            onClick={() => generarQR(clase.id)}
-                                                                            style={{ opacity: qrGenerado[clase.id] ? 0.4 : 1, cursor: qrGenerado[clase.id] ? "not-allowed" : "pointer" }}
-                                                                        >
-                                                                            Generar QR
-                                                                        </button>
+                                                                        {(clase.alumnos_proxima ?? 0) > 0 && (
+                                                                            <>
+                                                                            {/* Botón Generar QR — se bloquea después de generarlo */}
+                                                                            <button
+                                                                                className="btn-generar-qr"
+                                                                                disabled={!!qrGenerado[clase.id]}
+                                                                                onClick={() => generarQR(clase.id)}
+                                                                                style={{ opacity: qrGenerado[clase.id] ? 0.4 : 1, cursor: qrGenerado[clase.id] ? "not-allowed" : "pointer" }}
+                                                                            >
+                                                                                Generar QR
+                                                                            </button>
 
-                                                                        {/* Botón Mostrar QR — si no fue generado muestra mensaje */}
-                                                                        <button
-                                                                            className="btn-ver-qr"
-                                                                            onClick={() => {
-                                                                                const estado = estadoClase(clase);
-                                                                                if (estado === "finalizada") {
-                                                                                    toast.error("El QR ya caducó porque la clase ya finalizó.");
-                                                                                    return;
-                                                                                }
-                                                                                if (!qrGenerado[clase.id]) {
-                                                                                    toast("Primero generá el QR");
-                                                                                    return;
-                                                                                }
-                                                                                setQrSeleccionado(qrGenerado[clase.id]);
-                                                                                setMostrarQR(true);
-                                                                            }}
-                                                                        >
-                                                                            Mostrar QR
-                                                                        </button>
+                                                                            {/* Botón Mostrar QR — si no fue generado muestra mensaje */}
+                                                                            <button
+                                                                                className="btn-ver-qr"
+                                                                                onClick={() => {
+                                                                                    const estado = estadoClase(clase);
+                                                                                    if (!qrGenerado[clase.id] && estado === "finalizada") {
+                                                                                        toast.error("El QR nunca se genero pero la clase ya finalizó, no se puede generar.");
+                                                                                        return;
+                                                                                    }
+                                                                                    if (estado === "finalizada") {
+                                                                                        toast.error("El QR ya caducó porque la clase ya finalizó.");
+                                                                                        return;
+                                                                                    }
+                                                                                    if (!qrGenerado[clase.id] ) {
+                                                                                        toast.error("Primero generá el QR");
+                                                                                        return;
+                                                                                    }
+                                                                                    
+                                                                                    setQrSeleccionado(qrGenerado[clase.id]);
+                                                                                    setMostrarQR(true);
+                                                                                }}
+                                                                            >
+                                                                                Mostrar QR
+                                                                            </button>
+                                                                            </>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1698,6 +1719,45 @@ const verAlumnos = async (clase, esFutura = false) => {
                                                             </div>
                                                         </div>
                                                     ))}
+                                                </div>
+                                            </>
+                                        )}
+                                        {clasesTemporales.length > 0 && (
+                                            <>
+                                                <h2 className="dia-titulo" style={{ marginTop: "35px" }}>
+                                                    🔄 Clases temporales
+                                                </h2>
+
+                                                <div className="clases-row">
+
+                                                    {clasesTemporales.map(clase => (
+
+                                                        <div
+                                                            key={`${clase.id}-${clase.fecha}`}
+                                                            className="mis-clase-card"
+                                                        >
+
+                                                            <h3>{capitalize(clase.actividad)}</h3>
+
+                                                            <p>📅 {capitalize(clase.dia)} {formatearFecha(clase.fecha)}</p>
+
+                                                            <p>🕒 {clase.horario} hs</p>
+
+                                                            <p>👥 {clase.alumnos} / {clase.cupo}</p>
+                                                            <div className="mis-clase-footer">
+
+                                                                <div className="mis-clase-botones">
+                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, true)}>
+                                                                        Ver alumnos
+                                                                    </button>
+                                                        
+                                                                </div>
+                                                            </div>
+
+                                                        </div>
+
+                                                    ))}
+
                                                 </div>
                                             </>
                                         )}
@@ -1857,11 +1917,7 @@ const verAlumnos = async (clase, esFutura = false) => {
                                                             null
                                                         ) : (
                                                             <span
-                                                                style={{
-                                                                    marginLeft: "10px",
-                                                                    fontWeight: "bold",
-                                                                    color: a.asistio ? "green" : "red"
-                                                                }}
+                                                                className={a.asistio ? "presente" : "ausente"}
                                                             >
                                                                 {a.asistio ? "✔ Presente" : "✖ Ausente"}
                                                             </span>

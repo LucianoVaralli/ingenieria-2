@@ -1314,3 +1314,24 @@ body,
     background-color: #6ad63f;
     color: white;
 }
+
+.alumno-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.alumno-card strong {
+    flex: 1;
+}
+
+.presente {
+    color: #3bb54a;
+    font-weight: bold;
+}
+
+.ausente {
+    color: #e53935;
+    font-weight: bold;
+}
