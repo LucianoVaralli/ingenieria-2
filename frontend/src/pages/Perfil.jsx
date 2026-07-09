@@ -135,8 +135,6 @@ const Perfil = ({ token, setToken }) => {
                 ...prev,
                 [claseId]: url
             }));
-            // Guardar en localStorage para que persista
-            localStorage.setItem(`qr_clase_${claseId}`, url);
             setQrSeleccionado(url);
             setMostrarQR(true);
 
@@ -186,8 +184,6 @@ const Perfil = ({ token, setToken }) => {
 
             setQrUrls(prev => ({ ...prev, [claseId]: url }));
 
-            localStorage.setItem(`qr_clase_${claseId}`, url);
-
         } catch (err) {
             toast.error(err?.response?.data?.detail || "Error obteniendo QR" );
         }
@@ -205,19 +201,6 @@ const Perfil = ({ token, setToken }) => {
             ? texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
             : "";
 
-    useEffect(() => {
-    // Recuperar QRs guardados del localStorage al montar el componente
-    const qrsGuardados = {};
-    Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('qr_clase_')) {
-            const claseId = key.replace('qr_clase_', '');
-            qrsGuardados[claseId] = localStorage.getItem(key);
-        }
-    });
-    if (Object.keys(qrsGuardados).length > 0) {
-        setQrGenerado(qrsGuardados);
-    }
-    }, []);
     useEffect(() => {
         const cargarPerfil = async () => {
             const res = await api.get('/socios/me');
@@ -348,6 +331,27 @@ const Perfil = ({ token, setToken }) => {
 
                     const resClases = await api.get("/clases/mis-clases");
                     setClasesProfesor(resClases.data);
+
+                    // ── Reconstruir qrGenerado desde la verdad del backend ──
+                    // Antes se leía localStorage sin validar nada, lo que
+                    // dejaba QRs "fantasma" de clases viejas/eliminadas cuyo
+                    // id se reciclaba en una clase nueva. Ahora solo se
+                    // considera generado el QR que el backend confirma que
+                    // la clase tiene realmente (clase.codigo_qr).
+                    const clasesConQR = (resClases.data || []).filter(c => c.codigo_qr);
+
+                    if (clasesConQR.length > 0) {
+                        const entradas = await Promise.all(
+                            clasesConQR.map(async (c) => {
+                                const url = await QRCode.toDataURL(c.codigo_qr, { width: 120 });
+                                return [c.id, url];
+                            })
+                        );
+
+                        setQrGenerado(Object.fromEntries(entradas));
+                    } else {
+                        setQrGenerado({});
+                    }
                 }
 
                 // ===========================
@@ -368,6 +372,39 @@ const Perfil = ({ token, setToken }) => {
                     );
 
                     setReservas(activas);
+
+                    // ── Verificar si ya se registró la asistencia de hoy ──
+                    // Esto evita que el botón "Escanear asistencia" se
+                    // desbloquee al recargar la página o al volver a iniciar
+                    // sesión, ya que antes ese estado solo vivía en memoria.
+                    try {
+                        const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+                        // OJO: no se filtra sobre "activas", porque esa lista
+                        // ya pasó por new Date(r.fecha_clase) >= hoy, y al
+                        // comparar una fecha sin hora contra "hoy" (que sí
+                        // tiene hora), la reserva de HOY casi siempre queda
+                        // afuera por el desfasaje de huso horario. Acá se
+                        // compara directo el string de fecha, sin pasar por
+                        // Date, para no heredar ese problema.
+                        const reservasHoy = resReservas.data.filter(r =>
+                            r.estado === "confirmada" &&
+                            String(r.fecha_clase).slice(0, 10) === hoyStr
+                        );
+
+                        for (const r of reservasHoy) {
+                            const resAsist = await api.get(`/clases/${r.clase_id}/mi-asistencia`, {
+                                params: { fecha: hoyStr }
+                            });
+
+                            if (resAsist.data.registrada) {
+                                setAsistenciaRegistrada(true);
+                                break;
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Error verificando asistencia registrada:", err);
+                    }
 
                     if (resUser.data.rol === "miembro") {
                         try {
@@ -898,8 +935,8 @@ const verAlumnos = async (clase, esFutura = false) => {
         setAlumnos(res.data.alumnos);
         setEstadoSeleccionado(estado);
 
-        // Solo mostrar presentes/ausentes si es hoy finalizada y desde sección de hoy
-        if (!esFutura && esHoy && estado === "finalizada") {
+        // Mostrar presentes/ausentes si es hoy y ya arrancó (en curso o finalizada)
+        if (!esFutura && esHoy && (estado === "en_curso" || estado === "finalizada")) {
             const presentes = res.data.alumnos.filter(a => a.asistio === true).length;
             const total = res.data.alumnos.length;
             setAsistencia({ presentes, ausentes: total - presentes });
@@ -1794,7 +1831,7 @@ const verAlumnos = async (clase, esFutura = false) => {
                             <h2>📋 Lista de alumnos</h2>
 
                             {/* RESUMEN */}
-                            {asistencia && estadoSeleccionado === "finalizada" && (
+                            {asistencia && (estadoSeleccionado === "finalizada" || estadoSeleccionado === "en_curso") && (
                                 <p>
                                     📊 Presentes: {asistencia.presentes} |{" "}
                                     ❌ Ausentes: {asistencia.ausentes}
@@ -1816,7 +1853,7 @@ const verAlumnos = async (clase, esFutura = false) => {
                                                 <strong>
                                                     {capitalize(a.nombre)} {capitalize(a.apellido)} - {a.email}
                                                 </strong>
-                                                        {estadoSeleccionado !== "finalizada" || a.asistio === null ? (
+                                                        {a.asistio === null ? (
                                                             null
                                                         ) : (
                                                             <span
