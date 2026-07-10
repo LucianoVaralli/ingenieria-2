@@ -4,8 +4,7 @@ import Login from './pages/Login';
 import Home from './pages/Home'; 
 import Registro from './pages/Registro';
 import Navbar from './components/Navbar';
-import ReservaMembresia from './pages/ReservaMembresia';   
-import MisReservas from './pages/MisReservas';             
+import ReservaMembresia from './pages/ReservaMembresia';               
 import Clases from './pages/Clases';       
 import Pago from './pages/Pago';           
 import Perfil from './pages/Perfil';
@@ -51,7 +50,6 @@ function AppContent({ token, setToken }) {
         <Route path="/reservar/membresia" element={<ReservaMembresia />} />
         <Route path="/reservar/individual" element={<ReservaIndividual />} />
         <Route path="/pago" element={<Pago />} />
-        <Route path="/mis-reservas" element={<MisReservas />} />
         <Route path="/notificaciones" element={<Notificaciones />} />
 
         {/* Rutas de Autenticación y Password */}

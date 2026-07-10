@@ -10,6 +10,7 @@ from models.reserva_MIO import Reserva
 from models.clase import Clase
 from models.socio import Socio
 from models.membresia import Membresia
+from models.lista_espera import ListaEspera
 from models.enums import TipoReserva
 from routes.membresia import (
     _actualizar_membresia_activa_hasta,
@@ -17,7 +18,11 @@ from routes.membresia import (
     _mes_siguiente,
     DIA_A_WEEKDAY,
 )
-from services.mail_service import enviar_mail_pago_exitoso, enviar_mail_membresia
+from services.mail_service import (
+    enviar_mail_pago_exitoso,
+    enviar_mail_membresia,
+    enviar_mail_error_pago,
+)
 
 # ── Configuración ─────────────────────────────────────────────
 load_dotenv()
@@ -32,7 +37,14 @@ PAYER_EMAIL  = os.environ.get("MP_TEST_PAYER_EMAIL", "TESTUSER664902075903057353
 sdk = mercadopago.SDK(ACCESS_TOKEN)
 
 
-# ── Crear preferencia individual ──────────────────────────────
+# ── Crear preferencia individual (LEGADO — solo para aceptar-cupo) ──
+#
+# 🌟 Esta función se mantiene únicamente para el flujo de
+# "aceptar cupo desde lista de espera", que sigue necesitando el
+# hold previo (reserva ya creada en pendiente_pago por /aceptar-cupo)
+# porque ahí sí hace falta reservarle el lugar al socio con prioridad
+# mientras completa el pago. Para el flujo normal de reserva
+# individual, usar crear_preferencia_individual_directa más abajo.
 
 def crear_preferencia_individual(reserva: Reserva, clase: Clase) -> dict:
     preference_data = {
@@ -62,7 +74,53 @@ def crear_preferencia_individual(reserva: Reserva, clase: Clase) -> dict:
     }
 
     result = sdk.preference().create(preference_data)
-    print("RESPUESTA COMPLETA MP:", result)  # ← agregá esta línea
+    print("RESPUESTA COMPLETA MP:", result)
+    pref = result["response"]
+    return pref
+
+
+# ── NUEVO: Crear preferencia individual DIRECTA (sin reserva previa) ──
+#
+# Se usa en el flujo normal de reserva individual. No recibe una
+# Reserva porque todavía no existe ninguna — toda la info necesaria
+# para crearla viaja en el external_reference, y la reserva recién
+# se crea en _confirmar_individual_directo cuando MP aprueba el pago.
+
+def crear_preferencia_individual_directa(
+    socio_id: int,
+    clase: Clase,
+    fecha_clase: str,
+    tipo_pago: str,
+    monto: float,
+) -> dict:
+    preference_data = {
+        "items": [{
+            "title":       f"Clase individual: {clase.actividad.value}",
+            "quantity":    1,
+            "unit_price":  float(monto),
+            "currency_id": "ARS",
+        }],
+        "payer": {
+            "email": PAYER_EMAIL
+        },
+        "payment_methods": {
+            "excluded_payment_types": [
+                {"id": "ticket"},
+                {"id": "prepaid_card"},
+            ]
+        },
+        "external_reference": f"individual_directo:{socio_id}:{clase.id}:{fecha_clase}:{tipo_pago}",
+        "back_urls": {
+            "success": f"{BACKEND_URL}/mp/resultado-redirect?status=approved&tipo=individual",
+            "failure": f"{BACKEND_URL}/mp/resultado-redirect?status=failure&tipo=individual",
+            "pending": f"{BACKEND_URL}/mp/resultado-redirect?status=pending&tipo=individual",
+        },
+        "auto_return": "approved",
+        "notification_url": WEBHOOK_URL,
+    }
+
+    result = sdk.preference().create(preference_data)
+    print("RESPUESTA COMPLETA MP (individual directo):", result)
     pref = result["response"]
     return pref
 
@@ -99,7 +157,7 @@ def crear_preferencia_membresia(
     }
 
     result = sdk.preference().create(preference_data)
-    print("RESPUESTA COMPLETA MP:", result)  # ← agregá esta línea
+    print("RESPUESTA COMPLETA MP:", result)
     pref = result["response"]
     return pref
 
@@ -126,9 +184,13 @@ async def procesar_pago_aprobado(payment_id: str, db: Session) -> str:
 
     tipo = partes[0]
 
-    # ¡Acá es donde necesitás agregar el await!
     if tipo == "individual":
+        # Legado: aceptar-cupo, reserva ya existía como pendiente_pago
         return await _confirmar_individual(partes, payment, db)
+
+    elif tipo == "individual_directo":
+        # 🌟 Flujo nuevo: la reserva se crea acá mismo, recién ahora
+        return await _confirmar_individual_directo(partes, payment, db)
 
     elif tipo == "membresia":
         return await _confirmar_membresia(partes, payment, db)
@@ -137,6 +199,7 @@ async def procesar_pago_aprobado(payment_id: str, db: Session) -> str:
 
 
 async def _confirmar_individual(partes: list[str], payment: dict, db: Session) -> str:
+    """LEGADO — usado solo por el flujo de aceptar-cupo."""
     reserva_id = int(partes[1])
     reserva    = db.query(Reserva).filter(Reserva.id == reserva_id).first()
 
@@ -155,6 +218,93 @@ async def _confirmar_individual(partes: list[str], payment: dict, db: Session) -
         print(f"Mail no enviado: {e}")
 
     return f"individual:{reserva_id}:confirmada"
+
+
+async def _confirmar_individual_directo(partes: list[str], payment: dict, db: Session) -> str:
+    """
+    🌟 NUEVO: crea la reserva Individual recién acá, cuando MP ya
+    aprobó el pago. Antes de esto no existe ningún registro en la
+    base — igual que ya pasa con Membresía.
+    """
+    socio_id     = int(partes[1])
+    clase_id     = int(partes[2])
+    fecha_clase  = partes[3]
+    tipo_pago    = partes[4]
+    payment_id   = str(payment["id"])
+    monto_pagado = payment["transaction_amount"]
+
+    # Idempotencia: si este payment_id ya generó una reserva
+    # (reintento del webhook, doble notificación de MP), no duplicar.
+    ya_procesado = db.query(Reserva).filter(
+        Reserva.mp_preference_id == payment_id
+    ).first()
+    if ya_procesado:
+        return "ya_procesado"
+
+    clase = db.query(Clase).filter(Clase.id == clase_id).first()
+    socio = db.query(Socio).filter(Socio.id == socio_id).first()
+
+    if not clase or not socio:
+        return "clase_o_socio_no_encontrado"
+
+    # 🌟 Re-validamos el cupo justo antes de confirmar. Acá es donde
+    # podría pasar la carrera: dos socios pagando la misma clase/fecha
+    # al mismo tiempo. Como el pago con MP tarda un rato (llenar
+    # tarjeta, etc.), la ventana de riesgo es más grande que con
+    # tarjeta simulada, por eso este chequeo es importante.
+    ocupadas = db.query(Reserva).filter(
+        Reserva.clase_id    == clase_id,
+        Reserva.fecha_clase == fecha_clase,
+        Reserva.estado      == "confirmada",
+    ).count()
+
+    if ocupadas >= clase.cupo:
+        # El pago ya se cobró en Mercado Pago, pero el cupo se llenó
+        # mientras tanto. No hay reembolso automático en este sandbox
+        # todavía, así que anotamos al socio en lista de espera con
+        # prioridad y dejamos rastro claro para gestionar el reembolso
+        # manual. Este caso debería ser muy poco frecuente.
+        db.add(ListaEspera(
+            socio_id    = socio_id,
+            clase_id    = clase_id,
+            fecha_clase = fecha_clase,
+            tipo        = TipoReserva.Individual.value,
+            estado      = "esperando",
+        ))
+        db.commit()
+
+        try:
+            await enviar_mail_error_pago(socio)
+        except Exception as e:
+            print(f"Mail de error de pago no enviado: {e}")
+
+        print(f"⚠️ CUPO LLENO al confirmar pago {payment_id} — socio {socio_id} "
+              f"pagó ${monto_pagado} por clase {clase_id}/{fecha_clase} sin cupo. "
+              f"Requiere reembolso manual.")
+
+        return "cupo_lleno_reembolso_pendiente"
+
+    reserva = Reserva(
+        socio_id         = socio_id,
+        clase_id         = clase_id,
+        tipo             = TipoReserva.Individual.value,
+        estado           = "confirmada",
+        fecha_clase      = fecha_clase,
+        monto_total      = clase.precio_individual,
+        monto_pagado     = monto_pagado,
+        tipo_pago        = tipo_pago,
+        mp_preference_id = payment_id,
+    )
+    db.add(reserva)
+    db.commit()
+    db.refresh(reserva)
+
+    try:
+        await enviar_mail_pago_exitoso(socio, clase, reserva)
+    except Exception as e:
+        print(f"Mail no enviado: {e}")
+
+    return f"individual:{reserva.id}:confirmada"
 
 
 async def _confirmar_membresia(partes: list[str], payment: dict, db: Session) -> str:

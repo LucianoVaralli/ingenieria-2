@@ -166,8 +166,20 @@ const ReservaMembresia = () => {
     };
 
     const handleVolver = () => {
-        if (paso === 'creditos') return setPaso('cargando');
-        if (paso === 'pago')     return setPaso(creditos > 0 ? 'creditos' : 'cargando');
+        if (paso === 'creditos') {
+            // En lugar de 'cargando', volvemos a la pantalla anterior del sitio
+            navigate(-1); 
+            return;
+        }
+        if (paso === 'pago') {
+            if (creditos > 0) {
+                return setPaso('creditos');
+            } else {
+                // Si no hay créditos que mostrar atrás, sale de la reserva
+                navigate(-1); 
+                return;
+            }
+        }
         navigate(-1);
     };
 
