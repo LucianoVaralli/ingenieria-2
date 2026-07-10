@@ -341,6 +341,11 @@ const Perfil = ({ token, setToken }) => {
 
 
     useEffect(() => {
+        // Si el token es null, significa que aún está cargando.
+        // No redirijas todavía, espera a que el estado se actualice.
+        if (token === null) return; 
+
+        // Si ya no es null y sigue sin haber token, entonces sí redirige.
         if (!token) {
             navigate("/login");
             return;
@@ -359,35 +364,32 @@ const Perfil = ({ token, setToken }) => {
                 // PROFESOR
                 // ===========================
                 if (resUser.data.rol === "profesor") {
-
-                    const resClases = await api.get("/clases/mis-clases");
-                    setClasesProfesor(resClases.data);
-
-                    // ── Reconstruir qrGenerado desde la verdad del backend ──
-                    // Antes se leía localStorage sin validar nada, lo que
-                    // dejaba QRs "fantasma" de clases viejas/eliminadas cuyo
-                    // id se reciclaba en una clase nueva. Ahora solo se
-                    // considera generado el QR que el backend confirma que
-                    // la clase tiene realmente (clase.codigo_qr).
-                    const clasesConQR = (resClases.data || []).filter(c => c.codigo_qr);
-
-                    if (clasesConQR.length > 0) {
-                        const entradas = await Promise.all(
-                            clasesConQR.map(async (c) => {
-                                const url = await QRCode.toDataURL(c.codigo_qr, { width: 120 });
-                                return [c.id, url];
-                            })
-                        );
-
-                        setQrGenerado(Object.fromEntries(entradas));
-                    } else {
-                        setQrGenerado({});
+                    try {
+                        const resClases = await api.get("/clases/mis-clases");
+                        console.log("resClases.data:", resClases.data); // podés sacar esta línea ahora
+                    
+                        const clasesConQR = (resClases.data.clases || []).filter(c => c.codigo_qr); // <-- el fix
+                    
+                        if (clasesConQR.length > 0) {
+                            const entradas = await Promise.all(
+                                clasesConQR.map(async (c) => {
+                                    const url = await QRCode.toDataURL(c.codigo_qr, { width: 120 });
+                                    return [c.id, url];
+                                })
+                            );
+                        
+                            setQrGenerado(Object.fromEntries(entradas));
+                        } else {
+                            setQrGenerado({});
+                        }
+                    
+                        setClasesProfesor(resClases.data.clases);
+                        setClasesTemporales(resClases.data.clases_temporales);
+                    } catch (err) {
+                        console.error("Error cargando datos de profesor:", err);
+                        toast.error("Error cargando clases del profesor");
                     }
-
-                    setClasesProfesor(resClases.data.clases);
-                    setClasesTemporales(resClases.data.clases_temporales);
                 }
-
                 // ===========================
                 // SOCIO NORMAL
                 // ===========================
@@ -395,48 +397,33 @@ const Perfil = ({ token, setToken }) => {
 
                     const resReservas = await api.get("/reservas/mis-reservas");
                     
-                    const hoy = new Date().toISOString().split("T")[0];
+                    const hoy = new Date();
+
+                    const hoyStr = hoy.toISOString().split("T")[0];
 
                     const activas = resReservas.data.filter(r =>
                         (
                             r.estado === "confirmada" ||
                             r.estado === "en_espera" ||
                             r.estado === "notificado" ||
-                            // 🌟 Solo mostramos pendiente_pago si es Membresía
-                            // (cupo anticipado de renovación). Las Individuales
-                            // pendiente_pago se ocultan: el scheduler las cancela
-                            // solo a los 15 min si el socio no completó el pago.
                             (r.estado === "pendiente_pago" && r.tipo === "membresia")
                         ) &&
-                        r.fecha_clase >= hoy
+                        r.fecha_clase >= hoyStr
                     );
-                
+
                     setReservas(activas);
 
-                    // ── Verificar si ya se registró la asistencia de hoy ──
-                    // Esto evita que el botón "Escanear asistencia" se
-                    // desbloquee al recargar la página o al volver a iniciar
-                    // sesión, ya que antes ese estado solo vivía en memoria.
                     try {
-                        const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-
-                        // OJO: no se filtra sobre "activas", porque esa lista
-                        // ya pasó por new Date(r.fecha_clase) >= hoy, y al
-                        // comparar una fecha sin hora contra "hoy" (que sí
-                        // tiene hora), la reserva de HOY casi siempre queda
-                        // afuera por el desfasaje de huso horario. Acá se
-                        // compara directo el string de fecha, sin pasar por
-                        // Date, para no heredar ese problema.
                         const reservasHoy = resReservas.data.filter(r =>
                             r.estado === "confirmada" &&
                             String(r.fecha_clase).slice(0, 10) === hoyStr
                         );
-
+                    
                         for (const r of reservasHoy) {
                             const resAsist = await api.get(`/clases/${r.clase_id}/mi-asistencia`, {
                                 params: { fecha: hoyStr }
                             });
-
+                        
                             if (resAsist.data.registrada) {
                                 setAsistenciaRegistrada(true);
                                 break;
@@ -464,10 +451,13 @@ const Perfil = ({ token, setToken }) => {
                 }
 
             } catch (err) {
+                console.error("ERROR EN fetchData:", err);
                 toast.error(err?.response?.data?.detail || "Error cargando perfil");
-                localStorage.removeItem("token");
-                setToken(null);
-                navigate("/login");
+                if (err?.response?.status === 401) {
+                    localStorage.removeItem("token");
+                    setToken(null);
+                    navigate("/login");
+                }
             }
         };
 
