@@ -195,7 +195,7 @@ const Clases = ({ token }) => {
 
     const handleReservar = () => {
         if (!claseElegida || !modoReserva) return;
-
+        
         const localToken = localStorage.getItem('token');
         if (!localToken) {
             navigate('/registro', { state: { mensaje: 'Debés registrarte para poder reservar.' } });
@@ -205,6 +205,8 @@ const Clases = ({ token }) => {
         const fechasDelMes = calcularFechasDelMes(claseElegida.dia);
 
         if (modoReserva === 'membresia') {
+            const fechasDelMes = calcularFechasDelMes(claseElegida.dia);
+            
             navigate('/reservar/membresia', {
                 state: { 
                     clase: claseElegida, 
@@ -215,7 +217,7 @@ const Clases = ({ token }) => {
             const mm = String(mes + 1).padStart(2, '0');
             const dd = String(diaSelec).padStart(2, '0');
             const fechaDia = `${anio}-${mm}-${dd}`;
-
+        
             navigate('/reservar/individual', {
                 state: { clase: claseElegida, fechaSeleccionada: fechaDia }
             });
@@ -276,7 +278,7 @@ const Clases = ({ token }) => {
                 if (filtroProfesor && String(c.profesor_id) !== String(filtroProfesor)) return false;
                 return true;
             });
-
+            
             result.push(
                 <td
                     key={d}
@@ -308,10 +310,11 @@ const Clases = ({ token }) => {
                     {tieneClases && !esPasado && <span className="cal-dot" />}
                 </td>
             );
+            
         }
         return result;
     }, [todasClases, anio, mes, diaSelec, filtroDisc, filtroProfesor, filtroHorario]);
-
+    
     const filas = [];
     for (let i = 0; i < celdas.length; i += 7) {
         filas.push(<tr key={i}>{celdas.slice(i, i + 7)}</tr>);
