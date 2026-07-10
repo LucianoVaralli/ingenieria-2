@@ -105,7 +105,7 @@ const Perfil = ({ token, setToken }) => {
         const estado = estadoClase(clase);
 
         if (estado === "proxima") {
-            toast("La clase todavía no comenzó.");
+            toast.error("La clase todavía no comenzó.");
             return;
         }
 
@@ -117,7 +117,7 @@ const Perfil = ({ token, setToken }) => {
             toast.error("La clase ya finalizó.");
         }    
         if (qrGenerado[claseId]) {
-            toast("El QR ya fue generado.");
+            toast.error("El QR ya fue generado.");
             setQrSeleccionado(qrGenerado[claseId]);
             setMostrarQR(true);
             return;
@@ -157,7 +157,7 @@ const Perfil = ({ token, setToken }) => {
         const estado = estadoClase(clase);
 
         if (estado === "proxima") {
-            toast("La clase todavía no comenzó.");
+            toast.error("La clase todavía no comenzó.");
             return;
         }
 
@@ -167,7 +167,7 @@ const Perfil = ({ token, setToken }) => {
         }
 
         if (!qrGenerado[clase.id]) {
-            toast("Primero generá el QR.");
+            toast.error("Primero generá el QR.");
             return;
         }
 
@@ -1646,44 +1646,50 @@ const Perfil = ({ token, setToken }) => {
                                                                             Ver alumnos
                                                                         </button>
 
-                                                                        {(clase.alumnos_proxima ?? 0) > 0 && (
-                                                                            <>
-                                                                            {/* Botón Generar QR — se bloquea después de generarlo */}
-                                                                            <button
-                                                                                className="btn-generar-qr"
-                                                                                disabled={!!qrGenerado[clase.id]}
-                                                                                onClick={() => generarQR(clase.id)}
-                                                                                style={{ opacity: qrGenerado[clase.id] ? 0.4 : 1, cursor: qrGenerado[clase.id] ? "not-allowed" : "pointer" }}
-                                                                            >
-                                                                                Generar QR
-                                                                            </button>
+                                                                        {/* Botón Generar QR — se bloquea después de generarlo */}
+                                                                        <button
+                                                                            className="btn-generar-qr"
+                                                                            disabled={!!qrGenerado[clase.id]}
+                                                                            onClick={() => {
+                                                                                if ((clase.alumnos_proxima ?? 0) === 0) {
+                                                                                    toast.error("Esta clase no tiene alumnos");
+                                                                                    return;
+                                                                                }
 
-                                                                            {/* Botón Mostrar QR — si no fue generado muestra mensaje */}
-                                                                            <button
-                                                                                className="btn-ver-qr"
-                                                                                onClick={() => {
-                                                                                    const estado = estadoClase(clase);
-                                                                                    if (!qrGenerado[clase.id] && estado === "finalizada") {
-                                                                                        toast.error("El QR nunca se genero pero la clase ya finalizó, no se puede generar.");
-                                                                                        return;
-                                                                                    }
-                                                                                    if (estado === "finalizada") {
-                                                                                        toast.error("El QR ya caducó porque la clase ya finalizó.");
-                                                                                        return;
-                                                                                    }
-                                                                                    if (!qrGenerado[clase.id] ) {
-                                                                                        toast.error("Primero generá el QR");
-                                                                                        return;
-                                                                                    }
-                                                                                    
-                                                                                    setQrSeleccionado(qrGenerado[clase.id]);
-                                                                                    setMostrarQR(true);
-                                                                                }}
-                                                                            >
-                                                                                Mostrar QR
-                                                                            </button>
-                                                                            </>
-                                                                        )}
+                                                                                generarQR(clase.id);
+                                                                            }}
+                                                                            style={{
+                                                                                opacity: qrGenerado[clase.id] ? 0.4 : 1,
+                                                                                cursor: qrGenerado[clase.id] ? "not-allowed" : "pointer"
+                                                                            }}
+                                                                        >
+                                                                            Generar QR
+                                                                        </button>
+
+                                                                        {/* Botón Mostrar QR — si no fue generado muestra mensaje */}
+                                                                        <button
+                                                                            className="btn-ver-qr"
+                                                                            onClick={() => {
+                                                                                const estado = estadoClase(clase);
+                                                                                if (!qrGenerado[clase.id] && estado === "finalizada") {
+                                                                                    toast.error("El QR nunca se genero pero la clase ya finalizó, no se puede generar.");
+                                                                                    return;
+                                                                                }
+                                                                                if (estado === "finalizada") {
+                                                                                    toast.error("El QR ya caducó porque la clase ya finalizó.");
+                                                                                    return;
+                                                                                }
+                                                                                if (!qrGenerado[clase.id] ) {
+                                                                                    toast.error("Primero generá el QR");
+                                                                                    return;
+                                                                                }
+                                                                                
+                                                                                setQrSeleccionado(qrGenerado[clase.id]);
+                                                                                setMostrarQR(true);
+                                                                            }}
+                                                                        >
+                                                                            Mostrar QR
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             </div>

@@ -381,19 +381,13 @@ def obtener_info_eliminacion(
         elif reserva.tipo == TipoReserva.Individual.value:
             socios_individual.add(reserva.socio_id)
 
-    ambos = socios_membresia & socios_individual
-    solo_membresia = socios_membresia - ambos
-    solo_individual = socios_individual - ambos
-    total = socios_membresia | socios_individual
-
     return {
         "clase_id": clase.id,
         "actividad": clase.actividad,
-        "alumnos_afectados": len(total),
+        "alumnos_afectados": len(socios_membresia | socios_individual),
         "reservas_afectadas": len(reservas_futuras),
-        "socios_membresia": len(solo_membresia),
-        "socios_individual": len(solo_individual),
-        "socios_ambos": len(ambos)
+        "socios_membresia": len(socios_membresia),
+        "socios_individual": len(socios_individual),
     }    
 
 @router.put("/eliminar/{clase_id}")
@@ -874,6 +868,7 @@ def obtener_clases_profesor(
             "alumnos_proxima": cantidad_hoy,         # para clase futura
             "codigo_qr": c.codigo_qr
         })
+
     clases_temporales = []
 
     for cambio in reemplazos:
@@ -884,23 +879,45 @@ def obtener_clases_profesor(
         if not clase:
             continue
 
-        alumnos = db.query(Reserva.socio_id).filter(
-            Reserva.clase_id == clase.id,
-            Reserva.fecha_clase == cambio.fecha,
-            Reserva.estado.in_(["confirmada", "pendiente_pago"])
-        ).distinct().count()
+        alumnos = (
+            db.query(Reserva.socio_id)
+            .filter(
+                Reserva.clase_id == clase.id,
+                Reserva.fecha_clase == cambio.fecha,
+                Reserva.estado.in_(["confirmada", "pendiente_pago"])
+            )
+            .distinct()
+            .count()
+        )
 
-        clases_temporales.append({
-            "id": clase.id,
-            "actividad": clase.actividad.value,
-            "dia": clase.dia.value,
-            "fecha": cambio.fecha,
-            "horario": clase.horario.strftime("%H:%M"),
-            "cupo": clase.cupo,
-            "alumnos": alumnos,
-            "es_temporal": True
-        })
-
+        if cambio.fecha == date.today():
+            resultado.append({
+                "id": clase.id,
+                "actividad": clase.actividad,
+                "dia": clase.dia,
+                "horario": clase.horario,
+                "cupo": clase.cupo,
+                "precio_individual": clase.precio_individual,
+                "duracion": clase.duracion,
+                "profesor_id": profesor.id,
+                "profesor_nombre": f"{profesor.nombre} {profesor.apellido}",
+                "alumnos_inscriptos": alumnos,
+                "alumnos_proxima": 0,
+                "codigo_qr": clase.codigo_qr,
+                "es_temporal": True,
+                "fecha": cambio.fecha
+            })
+        else:
+            clases_temporales.append({
+                "id": clase.id,
+                "actividad": clase.actividad.value,
+                "dia": clase.dia.value,
+                "fecha": cambio.fecha,
+                "horario": clase.horario.strftime("%H:%M"),
+                "cupo": clase.cupo,
+                "alumnos": alumnos,
+                "es_temporal": True
+            })
     return {
         "clases": resultado, 
         "clases_temporales": clases_temporales}
