@@ -922,31 +922,25 @@ const Perfil = ({ token, setToken }) => {
         if (!esHoy) return true; // otros días siempre aparecen como próximas
         return estadoClase(c) === "finalizada"; // las de hoy que ya pasaron también
     });
-        const esClaseHoy = (clase) => {
-            const dias = {
-                domingo: 0,
-                lunes: 1,
-                martes: 2,
-                miercoles: 3,
-                jueves: 4,
-                viernes: 5,
-                sabado: 6
-            };
 
-            const hoy = new Date().getDay();
-
-            return dias[quitarTildes(clase.dia)] === hoy;
+    const esClaseHoy = (clase) => {
+        const dias = {
+            domingo: 0,
+            lunes: 1,
+            martes: 2,
+            miercoles: 3,
+            jueves: 4,
+            viernes: 5,
+            sabado: 6
         };
 
-        // Mostrar presentes/ausentes si es hoy y ya arrancó (en curso o finalizada)
-        if (!esFutura && esHoy && (estado === "en_curso" || estado === "finalizada")) {
-            const presentes = res.data.alumnos.filter(a => a.asistio === true).length;
-            const total = res.data.alumnos.length;
-            setAsistencia({ presentes, ausentes: total - presentes });
-        } else {
+        const hoy = new Date().getDay();
 
-          const verAlumnos = async (clase, esFutura = false) => {
-         try {
+        return dias[quitarTildes(clase.dia)] === hoy;
+    };
+
+    const verAlumnos = async (clase, esFutura = false) => {
+        try {
             setAlumnos([]);
             setAsistencia(null);
             setEstadoSeleccionado(null);
@@ -982,8 +976,8 @@ const Perfil = ({ token, setToken }) => {
             setAlumnos(res.data.alumnos);
             setEstadoSeleccionado(estado);
 
-            // Solo mostrar presentes/ausentes si es hoy finalizada y desde sección de hoy
-            if (!esFutura && esHoy && estado === "finalizada") {
+            // Solo mostrar presentes/ausentes si es hoy finalizada (o en curso) y desde sección de hoy
+            if (!esFutura && esHoy && (estado === "en_curso" || estado === "finalizada")) {
                 const presentes = res.data.alumnos.filter(a => a.asistio === true).length;
                 const total = res.data.alumnos.length;
                 setAsistencia({ presentes, ausentes: total - presentes });
@@ -996,7 +990,6 @@ const Perfil = ({ token, setToken }) => {
         } catch (err) {
             toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
         }
-    };
     };
 
     return (
