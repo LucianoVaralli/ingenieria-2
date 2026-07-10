@@ -501,8 +501,8 @@ function GestionProfesores() {
                 <div className="modal-overlay">
                     <div className="modal-confirmacion">
 
-                        <h3>
-                            No se puede eliminar a{" "}
+                        <h3 className="titulo-advertencia">
+                            ⚠️ No se puede eliminar a{" "}
                             <strong>
                                 {capitalize(errorEliminacion.nombre)}
                             </strong>

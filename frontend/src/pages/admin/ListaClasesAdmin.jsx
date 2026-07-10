@@ -675,7 +675,7 @@ function ListaClasesAdmin() {
 
                         <div className="detalle-alumnos">
                             <h3>
-                                Esta clase tiene
+                                <strong> {infoEliminacion.alumnos_afectados} </strong> alumnos que se veran afectados
                             </h3>
 
                             {infoEliminacion.socios_membresia > 0 && (
@@ -687,12 +687,6 @@ function ListaClasesAdmin() {
                             {infoEliminacion.socios_individual > 0 && (
                                 <p>
                                     👥 <strong>{infoEliminacion.socios_individual}</strong> alumnos con reserva individual
-                                </p>
-                            )}
-
-                            {infoEliminacion.socios_ambos > 0 && (
-                                <p>
-                                    👥 <strong>{infoEliminacion.socios_ambos}</strong> alumnoscon ambas modalidades
                                 </p>
                             )}
 

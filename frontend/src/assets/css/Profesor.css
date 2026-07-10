@@ -322,6 +322,11 @@
     margin-bottom: 8px;
 }
 
+.modal-confirmacion .titulo-advertencia {
+    color: #d32f2f;
+    font-weight: 700;
+}
+
 /* =========================
    RESPONSIVE
 ========================= */
