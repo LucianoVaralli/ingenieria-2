@@ -342,3 +342,100 @@ Saludos.
 
     fm = FastMail(conf)
     await fm.send_message(mensaje)
+
+
+async def enviar_mail_cancelacion_individual(
+    socio: Socio,
+    clase: Clase,
+    reserva: Reserva,
+    monto_devolucion: float
+):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
+    cuerpo = f"""
+Tu reserva fue cancelada correctamente.
+
+Actividad: {actividad}
+Fecha: {reserva.fecha_clase}
+Horario: {horario}
+
+Como la cancelación se realizó con la anticipación requerida, corresponde la devolución del importe abonado de ${monto_devolucion:.2f}.
+
+Para gestionar la devolución del dinero, comunicate con el gimnasio.
+
+Gracias por utilizar Sportify.
+"""
+
+    mensaje = MessageSchema(
+        subject="Cancelación de reserva - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+
+async def enviar_mail_cancelacion_membresia(
+    socio: Socio,
+    clase: Clase,
+    reserva: Reserva
+):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
+    cuerpo = f"""
+Tu reserva fue cancelada correctamente.
+
+Actividad: {actividad}
+Fecha: {reserva.fecha_clase}
+Horario: {horario}
+
+Como la cancelación se realizó con 48 horas o más de anticipación, se acreditó 1 crédito para una clase individual en tu cuenta.
+
+Podrás utilizar ese crédito en una futura reserva.
+
+Gracias por utilizar Sportify.
+"""
+
+    mensaje = MessageSchema(
+        subject="Cancelación de reserva - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+async def enviar_mail_cancelacion_sin_beneficio(
+    socio: Socio,
+    clase: Clase,
+    reserva: Reserva
+):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
+    cuerpo = f"""
+Tu reserva fue cancelada correctamente.
+
+Actividad: {actividad}
+Fecha: {reserva.fecha_clase}
+Horario: {horario}
+
+Como la cancelación no se realizó con la anticipación requerida, no corresponde la devolución del importe abonado ni la acreditación de un crédito.
+
+Gracias por utilizar Sportify.
+"""
+
+    mensaje = MessageSchema(
+        subject="Cancelación de reserva - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
