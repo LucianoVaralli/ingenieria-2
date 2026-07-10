@@ -980,7 +980,7 @@ const Perfil = ({ token, setToken }) => {
             <ModalConfirmacion
                 isOpen={mostrarConfirmacionRechazo}
                 titulo="¿Rechazar cupo?"
-                mensaje="¿Estás seguro de que querés rechazar este cupo? El lugar será ofrecido al siguiente cliente en la lista de espera."
+                mensaje="¿Estás seguro de que querés rechazar este cupo?"
                 onConfirm={confirmarRechazo}
                 onCancel={cancelarRechazo}
             />

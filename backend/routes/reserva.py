@@ -34,7 +34,10 @@ from services.mail_service import (
     enviar_mail_lista_espera,
     enviar_mail_membresia,
     enviar_mail_error_pago,
-    enviar_mail_cupo_disponible
+    enviar_mail_cupo_disponible,
+    enviar_mail_cancelacion_individual,
+    enviar_mail_cancelacion_membresia,
+    enviar_mail_cancelacion_sin_beneficio,
 )
 from datetime import timedelta
 
@@ -565,11 +568,22 @@ async def cancelar_reserva_membresia(
     siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
     db.commit()
 
-    # Enviar mails
+    # Enviar mail de cancelación
     try:
-        await enviar_mail_pago_exitoso(socio, clase, reserva)
+        if credito_otorgado:
+            await enviar_mail_cancelacion_membresia(
+                socio=socio,
+                clase=clase,
+                reserva=reserva
+            )
+        else:
+            await enviar_mail_cancelacion_sin_beneficio(
+                socio=socio,
+                clase=clase,
+                reserva=reserva
+            )
     except Exception as e:
-        print(f" Mail de cancelación no enviado: {e}")
+        print(f"Mail de cancelación no enviado: {e}")
 
     if siguiente:
         siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
@@ -650,11 +664,23 @@ async def cancelar_reserva_individual_confirmada(
     siguiente = _notificar_siguiente_en_espera(db, reserva.clase_id, reserva.fecha_clase)
     db.commit()
 
-    # Enviar mails
+    # Enviar mail de cancelación
     try:
-        await enviar_mail_pago_exitoso(socio, clase, reserva)
+        if reembolso:
+            await enviar_mail_cancelacion_individual(
+                socio=socio,
+                clase=clase,
+                reserva=reserva,
+                monto_devolucion=reserva.monto_pagado
+            )
+        else:
+            await enviar_mail_cancelacion_sin_beneficio(
+                socio=socio,
+                clase=clase,
+                reserva=reserva
+            )
     except Exception as e:
-        print(f" Mail de cancelación no enviado: {e}")
+        print(f"Mail de cancelación no enviado: {e}")
 
     if siguiente:
         siguiente_socio = db.query(Socio).filter(Socio.id == siguiente.socio_id).first()
@@ -838,7 +864,7 @@ async def rechazar_cupo(
                 print(f" Mail de cupo disponible no enviado: {e}")
 
     return {
-        "mensaje": "Cupo rechazado, siguiente notificado",
+        "mensaje": "Cupo rechazado",
         "reserva_id": reserva.id,
         "clase": clase.actividad,
         "fecha": reserva.fecha_clase
@@ -1027,6 +1053,7 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
             "fecha_clase":  str(r.fecha_clase),
             "monto_total":  r.monto_total,
             "monto_pagado": r.monto_pagado,
+            "tipo_pago":    r.tipo_pago,
             "fecha_pago":   str(r.fecha_creacion) if r.fecha_creacion else None,
             "clase": {
                 "actividad": clase.actividad if clase else None,
