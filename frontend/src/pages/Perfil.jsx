@@ -52,6 +52,9 @@ const Perfil = ({ token, setToken }) => {
     const [procesandoPago, setProcesandoPago] = useState(false);
     const [metodoPagoCupo, setMetodoPagoCupo] = useState('tarjeta'); // 'tarjeta' | 'mp'
 
+    // 🌟 NUEVO: estado para cancelar manualmente una reserva individual pendiente_pago
+    const [cancelandoPendienteId, setCancelandoPendienteId] = useState(null);
+
     const hoy = new Date();
     const dia = hoy.getDate();
 
@@ -231,15 +234,21 @@ const Perfil = ({ token, setToken }) => {
             (async () => {
                 try {
                     const resReservas = await api.get('/reservas/mis-reservas');
+
                     const activas = resReservas.data.filter(r =>
                         (
                             r.estado === "confirmada" ||
                             r.estado === "en_espera" ||
                             r.estado === "notificado" ||
-                            r.estado === "pendiente_pago"
+                            // 🌟 Solo mostramos pendiente_pago si es Membresía
+                            // (cupo anticipado de renovación). Las Individuales
+                            // pendiente_pago se ocultan: el scheduler las cancela
+                            // solo a los 15 min si el socio no completó el pago.
+                            (r.estado === "pendiente_pago" && r.tipo === "membresia")
                         ) &&
                         new Date(r.fecha_clase) >= hoy
                     );
+                    
                     setReservas(activas);
                 } catch (err) {
                     console.error("Error refrescando reservas tras pago MP:", err);
@@ -274,6 +283,28 @@ const Perfil = ({ token, setToken }) => {
             console.error(error);
 
             toast.error(error?.response?.data?.detail || "No se pudo salir de la lista de espera" );
+        }
+    };
+
+    // 🌟 NUEVO: cancelar manualmente una reserva Individual pendiente_pago
+    // (el pago quedó "a medias" - el socio abandonó el checkout o volvió atrás)
+    const cancelarReservaPendiente = async (reservaId) => {
+        setCancelandoPendienteId(reservaId);
+        try {
+            await api.delete(`/reservas/individual/cancelar/${reservaId}`);
+
+            setReservas(prev => prev.filter(r => r.id !== reservaId));
+
+            setMensajeResultado("Reserva pendiente cancelada");
+            setMostrarResultado(true);
+        } catch (error) {
+            console.error("Error cancelando reserva pendiente:", error);
+            toast.error(
+                error?.response?.data?.detail ||
+                "No se pudo cancelar la reserva pendiente"
+            );
+        } finally {
+            setCancelandoPendienteId(null);
         }
     };
 
@@ -345,17 +376,23 @@ const Perfil = ({ token, setToken }) => {
                 else {
 
                     const resReservas = await api.get("/reservas/mis-reservas");
+                    
+                    const hoy = new Date().toISOString().split("T")[0];
 
                     const activas = resReservas.data.filter(r =>
                         (
                             r.estado === "confirmada" ||
                             r.estado === "en_espera" ||
                             r.estado === "notificado" ||
-                            r.estado === "pendiente_pago"
+                            // 🌟 Solo mostramos pendiente_pago si es Membresía
+                            // (cupo anticipado de renovación). Las Individuales
+                            // pendiente_pago se ocultan: el scheduler las cancela
+                            // solo a los 15 min si el socio no completó el pago.
+                            (r.estado === "pendiente_pago" && r.tipo === "membresia")
                         ) &&
-                        new Date(r.fecha_clase) >= hoy
+                        r.fecha_clase >= hoy
                     );
-
+                
                     setReservas(activas);
 
                     if (resUser.data.rol === "miembro") {
@@ -1310,8 +1347,14 @@ const Perfil = ({ token, setToken }) => {
                                                                     ) : (
                                                                         clasesDelDia.map(r => {
                                                                             const chip = chipMembresia(r);
-                                                                            // Las pendiente_pago de membresía tienen estilo diferente
-                                                                            const esPendiente = r.tipo === 'membresia' && r.estado === 'pendiente_pago';
+                                                                            // 🌟 FIX: antes solo se marcaba como "pendiente"
+                                                                            // el caso de Membresía. Las reservas Individuales
+                                                                            // con estado pendiente_pago (pago abandonado /
+                                                                            // a medias) no tenían ni chip ni acción, y se
+                                                                            // veían como una tarjeta "vacía" y confusa.
+                                                                            const esPendienteMembresia = r.tipo === 'membresia' && r.estado === 'pendiente_pago';
+                                                                            const esPendienteIndividual = r.tipo !== 'membresia' && r.estado === 'pendiente_pago';
+                                                                            const esPendiente = esPendienteMembresia || esPendienteIndividual;
                                                                             return (
                                                                                 <div
                                                                                     className={`reserva-card-mini ${esPendiente ? 'reserva-card-mini--pendiente' : ''}`}
@@ -1333,7 +1376,7 @@ const Perfil = ({ token, setToken }) => {
                                                                                             {r.tipo === 'membresia' ? 'Memb.' : 'Indiv.'}
                                                                                         </span>
 
-                                                                                        {/* Chip: pendiente de pago (mes siguiente pre-reservado) */}
+                                                                                        {/* Chip: pendiente de pago (mes siguiente pre-reservado, membresía) */}
                                                                                         {chip?.tipo === 'pendiente' && (
                                                                                             <span className="reserva-mini-pendiente">
                                                                                                 ⏳ Cupo reservado · Pendiente de pago

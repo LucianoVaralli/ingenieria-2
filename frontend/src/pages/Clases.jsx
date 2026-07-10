@@ -195,31 +195,16 @@ const Clases = ({ token }) => {
 
     const handleReservar = () => {
         if (!claseElegida || !modoReserva) return;
-
+        
         const localToken = localStorage.getItem('token');
         if (!localToken) {
             navigate('/registro', { state: { mensaje: 'Debés registrarte para poder reservar.' } });
             return;
         }
-
-        const fechasDelMes = calcularFechasDelMes(claseElegida.dia);
-
-        const hoy = new Date();
-        const limite = new Date();
-        limite.setDate(hoy.getDate() + 7);
-
-        // todas las fechas del mes (membresía)
-        const fechasInvalidas = fechasDelMes.filter(f => {
-            const fecha = new Date(f);
-            return fecha > limite;
-        });
-
-        if (modoReserva === 'membresia' && fechasInvalidas.length > 0) {
-            setMensajeError("Solo podés reservar clases dentro de los próximos 7 días");
-            return;
-        }
-
+    
         if (modoReserva === 'membresia') {
+            const fechasDelMes = calcularFechasDelMes(claseElegida.dia);
+            
             navigate('/reservar/membresia', {
                 state: { clase: claseElegida, fechasDelMes }
             });
@@ -227,7 +212,7 @@ const Clases = ({ token }) => {
             const mm = String(mes + 1).padStart(2, '0');
             const dd = String(diaSelec).padStart(2, '0');
             const fechaDia = `${anio}-${mm}-${dd}`;
-
+        
             navigate('/reservar/individual', {
                 state: { clase: claseElegida, fechaSeleccionada: fechaDia }
             });
@@ -288,7 +273,7 @@ const Clases = ({ token }) => {
                 if (filtroProfesor && String(c.profesor_id) !== String(filtroProfesor)) return false;
                 return true;
             });
-
+            
             result.push(
                 <td
                     key={d}
@@ -320,10 +305,11 @@ const Clases = ({ token }) => {
                     {tieneClases && !esPasado && <span className="cal-dot" />}
                 </td>
             );
+            
         }
         return result;
     }, [todasClases, anio, mes, diaSelec, filtroDisc, filtroProfesor, filtroHorario]);
-
+    
     const filas = [];
     for (let i = 0; i < celdas.length; i += 7) {
         filas.push(<tr key={i}>{celdas.slice(i, i + 7)}</tr>);

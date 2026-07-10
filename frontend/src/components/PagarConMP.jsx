@@ -7,9 +7,12 @@ export default function PagarConMP({ tipo, payload, onError }) {
     const handlePagar = async () => {
         setCargando(true)
         try {
-            const endpoint = tipo === 'individual'
-                ? '/mp/preferencia/individual'
-                : '/mp/preferencia/membresia'
+            const endpoint =
+                tipo === 'individual'
+                    ? '/mp/preferencia/individual'
+                    : tipo === 'individual-directa'
+                    ? '/mp/preferencia/individual-directa'
+                    : '/mp/preferencia/membresia'
 
             const res = await api.post(endpoint, payload)
             // Redirige al checkout sandbox de MP
