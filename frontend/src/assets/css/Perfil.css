@@ -992,6 +992,32 @@ body,
     white-space: nowrap;
     align-self: center;
 }
+
+.modal-renovar-precio-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    align-self: center;
+}
+
+.modal-renovar-precio-col .modal-renovar-precio {
+    align-self: auto;
+}
+
+.modal-renovar-precio-tachado {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.35);
+    text-decoration: line-through;
+    white-space: nowrap;
+}
+
+.modal-renovar-descuento {
+    font-size: 0.75rem;
+    color: #5CB84D;
+    font-weight: 600;
+    white-space: nowrap;
+}
  
 /* ═══════════════════════════════════════════════════
    FOOTER del modal
