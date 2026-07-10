@@ -37,6 +37,8 @@ const Perfil = ({ token, setToken }) => {
     const [mostrarResultado, setMostrarResultado] = useState(false);
     const [reservaAbordador, setReservaAbordador] = useState(null);
     const [mensajeResultado, setMensajeResultado] = useState("");
+    const [tituloConfirmacion, setTituloConfirmacion] = useState("¿Cancelar reserva?");
+    const [mensajeConfirmacion, setMensajeConfirmacion] = useState("");
 
     const modalPagoRef = useRef(null);
 
@@ -52,8 +54,9 @@ const Perfil = ({ token, setToken }) => {
     const [procesandoPago, setProcesandoPago] = useState(false);
     const [metodoPagoCupo, setMetodoPagoCupo] = useState('tarjeta'); // 'tarjeta' | 'mp'
 
-    // 🌟 NUEVO: estado para cancelar manualmente una reserva individual pendiente_pago
     const [cancelandoPendienteId, setCancelandoPendienteId] = useState(null);
+    // ── Asistencia ──
+    const [asistenciaRegistrada, setAsistenciaRegistrada] = useState(false);
 
     const hoy = new Date();
     const dia = hoy.getDate();
@@ -91,6 +94,8 @@ const Perfil = ({ token, setToken }) => {
 
         return () => clearInterval(intervalo);
     }, []);
+
+    const [clasesTemporales, setClasesTemporales] = useState([]);
 
     const generarQR = async (claseId) => {
 
@@ -133,7 +138,6 @@ const Perfil = ({ token, setToken }) => {
                 ...prev,
                 [claseId]: url
             }));
-
             setQrSeleccionado(url);
             setMostrarQR(true);
 
@@ -182,8 +186,6 @@ const Perfil = ({ token, setToken }) => {
             const url = await QRCode.toDataURL(codigo, { width: 100 });
 
             setQrUrls(prev => ({ ...prev, [claseId]: url }));
-
-            localStorage.setItem(`qr_clase_${claseId}`, url);
 
         } catch (err) {
             toast.error(err?.response?.data?.detail || "Error obteniendo QR" );
@@ -331,20 +333,12 @@ const Perfil = ({ token, setToken }) => {
     const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const mapeoDias  = { 0: 'Domingo', 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado' };
 
+    const ahoraLocal = new Date();
+
     // 1. Obtenemos el nombre del día de hoy, sin tildes (ej: "martes")
     const opciones = { weekday: 'long' };
     const diaHoyTexto = quitarTildes(mapeoDias[ahora.getDay()]);
 
-    // 2. Clases de hoy
-    const clasesHoy = (clasesProfesor || []).filter(c => {
-        return quitarTildes(c?.dia) === diaHoyTexto;
-    });
-
-    // 3. Clases futuras (días distintos a hoy)
-    const clasesFuturas = (clasesProfesor || []).filter(c => {
-        if (!c?.dia) return false;
-        return quitarTildes(c.dia) !== diaHoyTexto;
-    });
 
     useEffect(() => {
         if (!token) {
@@ -368,6 +362,30 @@ const Perfil = ({ token, setToken }) => {
 
                     const resClases = await api.get("/clases/mis-clases");
                     setClasesProfesor(resClases.data);
+
+                    // ── Reconstruir qrGenerado desde la verdad del backend ──
+                    // Antes se leía localStorage sin validar nada, lo que
+                    // dejaba QRs "fantasma" de clases viejas/eliminadas cuyo
+                    // id se reciclaba en una clase nueva. Ahora solo se
+                    // considera generado el QR que el backend confirma que
+                    // la clase tiene realmente (clase.codigo_qr).
+                    const clasesConQR = (resClases.data || []).filter(c => c.codigo_qr);
+
+                    if (clasesConQR.length > 0) {
+                        const entradas = await Promise.all(
+                            clasesConQR.map(async (c) => {
+                                const url = await QRCode.toDataURL(c.codigo_qr, { width: 120 });
+                                return [c.id, url];
+                            })
+                        );
+
+                        setQrGenerado(Object.fromEntries(entradas));
+                    } else {
+                        setQrGenerado({});
+                    }
+
+                    setClasesProfesor(resClases.data.clases);
+                    setClasesTemporales(resClases.data.clases_temporales);
                 }
 
                 // ===========================
@@ -394,6 +412,39 @@ const Perfil = ({ token, setToken }) => {
                     );
                 
                     setReservas(activas);
+
+                    // ── Verificar si ya se registró la asistencia de hoy ──
+                    // Esto evita que el botón "Escanear asistencia" se
+                    // desbloquee al recargar la página o al volver a iniciar
+                    // sesión, ya que antes ese estado solo vivía en memoria.
+                    try {
+                        const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+                        // OJO: no se filtra sobre "activas", porque esa lista
+                        // ya pasó por new Date(r.fecha_clase) >= hoy, y al
+                        // comparar una fecha sin hora contra "hoy" (que sí
+                        // tiene hora), la reserva de HOY casi siempre queda
+                        // afuera por el desfasaje de huso horario. Acá se
+                        // compara directo el string de fecha, sin pasar por
+                        // Date, para no heredar ese problema.
+                        const reservasHoy = resReservas.data.filter(r =>
+                            r.estado === "confirmada" &&
+                            String(r.fecha_clase).slice(0, 10) === hoyStr
+                        );
+
+                        for (const r of reservasHoy) {
+                            const resAsist = await api.get(`/clases/${r.clase_id}/mi-asistencia`, {
+                                params: { fecha: hoyStr }
+                            });
+
+                            if (resAsist.data.registrada) {
+                                setAsistenciaRegistrada(true);
+                                break;
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Error verificando asistencia registrada:", err);
+                    }
 
                     if (resUser.data.rol === "miembro") {
                         try {
@@ -568,8 +619,74 @@ const Perfil = ({ token, setToken }) => {
     }; 
     // ── CANCELAR RESERVA ──
     const iniciarCancelacion = (reserva) => {
+
+        const ahora = new Date();
+
+        const horario = reserva.clase.horario.substring(0,5);
+
+        const fechaClase = new Date(`${reserva.fecha_clase}T${horario}:00`);
+
+        const horasRestantes =
+            (fechaClase.getTime() - ahora.getTime()) / (1000 * 60 * 60);
+
+        let mensaje = "";
+
+        if (reserva.tipo === "membresia") {
+
+            if (horasRestantes >= 48) {
+
+                mensaje =
+                    `Estás por cancelar esta reserva de membresía.\n\n` +
+                    `Como la cancelación se realiza con 48 horas o más de anticipación, recibirás 1 crédito para una clase individual.\n\n` +
+                    `¿Deseás continuar?`;
+
+            } else {
+
+                mensaje =
+                    `Estás por cancelar esta reserva de membresía.\n\n` +
+                    `Como la cancelación se realiza con menos de 48 horas de anticipación, no recibirás ningún crédito.\n\n` +
+                    `¿Deseás continuar?`;
+
+            }
+
+        } else {
+
+            if (horasRestantes >= 24) {
+
+                if (reserva.tipo_pago === "sena") {
+
+                    mensaje =
+                        `Estás por cancelar esta reserva individual.\n\n` +
+                        `Como la cancelación se realiza con 24 horas o más de anticipación, se te devolverá la seña abonada de $${Number(reserva.monto_pagado).toFixed(2)}.\n\n` +
+                        `¿Deseás continuar?`;
+
+                } else {
+
+                    mensaje =
+                        `Estás por cancelar esta reserva individual.\n\n` +
+                        `Como la cancelación se realiza con 24 horas o más de anticipación, se te devolverá el importe total abonado de $${Number(reserva.monto_pagado).toFixed(2)}.\n\n` +
+                        `¿Deseás continuar?`;
+
+                }
+
+            } else {
+
+                mensaje =
+                    `Estás por cancelar esta reserva individual.\n\n` +
+                    `Como la cancelación se realiza con menos de 24 horas de anticipación, no se realiza la devolución del importe abonado.\n\n` +
+                    `¿Deseás continuar?`;
+
+            }
+
+        }
+
+        setTituloConfirmacion("¿Cancelar reserva?");
+        setMensajeConfirmacion(mensaje);
+
         setReservaAbordador(reserva);
+
         setMostrarConfirmacion(true);
+
     };
 
     const confirmarCancelacion = async () => {
@@ -771,79 +888,105 @@ const Perfil = ({ token, setToken }) => {
         
     const estadoClase = (clase) => {
         const dias = {
-            domingo: 0,
-            lunes: 1,
-            martes: 2,
-            miercoles: 3,
-            jueves: 4,
-            viernes: 5,
-            sabado: 6
+            domingo: 0, lunes: 1, martes: 2, miercoles: 3,
+            jueves: 4, viernes: 5, sabado: 6
         };
 
-        const inicio = new Date();
-
-        const diferencia =
-            dias[quitarTildes(clase.dia)] - ahora.getDay();
-
-        inicio.setDate(ahora.getDate() + diferencia);
-
+        const diaSemanaClase = dias[quitarTildes(clase.dia)];
         const [h, m] = clase.horario.split(":");
-        inicio.setHours(Number(h), Number(m), 0, 0);
 
-        const fin = new Date(inicio);
-        fin.setMinutes(fin.getMinutes() + (clase.duracion || 60));
+        const ocurrenciaEstaSemana = new Date(ahora);
+        const diferencia = diaSemanaClase - ahora.getDay();
+        ocurrenciaEstaSemana.setDate(ahora.getDate() + diferencia);
+        ocurrenciaEstaSemana.setHours(Number(h), Number(m), 0, 0);
 
-        if (ahora >= inicio && ahora <= fin) return "en_curso";
-        if (ahora > fin) return "finalizada";
+        const finEstaSemana = new Date(ocurrenciaEstaSemana);
+        finEstaSemana.setMinutes(finEstaSemana.getMinutes() + (clase.duracion || 60));
 
+        if (ahora >= ocurrenciaEstaSemana && ahora <= finEstaSemana) return "en_curso";
+        if (ahora > finEstaSemana) return "finalizada";
         return "proxima";
     };
 
-    const esClaseHoy = (clase) => {
-        const dias = {
-            domingo: 0,
-            lunes: 1,
-            martes: 2,
-            miercoles: 3,
-            jueves: 4,
-            viernes: 5,
-            sabado: 6
+    // Clases de hoy: todas las que se dictan hoy sin importar estado
+    const clasesHoy = (clasesProfesor || []).filter(c => {
+        if (!c?.dia) return false;
+        return quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
+    });
+
+    // Próximas: otros días de la semana + las de hoy que ya finalizaron
+    // (porque su próxima ocurrencia es la semana que viene)
+    const clasesFuturas = (clasesProfesor || []).filter(c => {
+        if (!c?.dia) return false;
+        const esHoy = quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
+        if (!esHoy) return true; // otros días siempre aparecen como próximas
+        return estadoClase(c) === "finalizada"; // las de hoy que ya pasaron también
+    });
+        const esClaseHoy = (clase) => {
+            const dias = {
+                domingo: 0,
+                lunes: 1,
+                martes: 2,
+                miercoles: 3,
+                jueves: 4,
+                viernes: 5,
+                sabado: 6
+            };
+
+            const hoy = new Date().getDay();
+
+            return dias[quitarTildes(clase.dia)] === hoy;
         };
 
-        const hoy = new Date().getDay();
+        // Mostrar presentes/ausentes si es hoy y ya arrancó (en curso o finalizada)
+        if (!esFutura && esHoy && (estado === "en_curso" || estado === "finalizada")) {
+            const presentes = res.data.alumnos.filter(a => a.asistio === true).length;
+            const total = res.data.alumnos.length;
+            setAsistencia({ presentes, ausentes: total - presentes });
+        } else {
 
-        return dias[quitarTildes(clase.dia)] === hoy;
-    };
-
-    const verAlumnos = async (clase) => {
-        try {
-
+          const verAlumnos = async (clase, esFutura = false) => {
+         try {
             setAlumnos([]);
             setAsistencia(null);
             setEstadoSeleccionado(null);
             setClaseSeleccionada(clase);
 
-            const hoy = new Date().toISOString().split("T")[0];
-
-            const res = await api.get(
-                `/clases/${clase.id}/alumnos?fecha=${hoy}`
-            );
-
             const estado = estadoClase(clase);
-            const hoyClase =esClaseHoy(clase);
+            const esHoy = quitarTildes(clase.dia.toLowerCase()) === diaHoyTexto;
+
+            const hoyFecha = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+
+            let fechaConsulta;
+
+            if (!esFutura && esHoy) {
+                // Desde "clases de hoy" → siempre hoy
+                fechaConsulta = hoyFecha;
+            } else {
+                // Desde "próximas" o clase de otro día → próxima ocurrencia
+                const diasMap = {
+                    domingo: 0, lunes: 1, martes: 2, miercoles: 3,
+                    jueves: 4, viernes: 5, sabado: 6
+                };
+                const diaSemanaClase = diasMap[quitarTildes(clase.dia)];
+                const proximaFecha = new Date(ahora);
+                let diff = diaSemanaClase - proximaFecha.getDay();
+                if (diff <= 0) diff += 7;
+                proximaFecha.setDate(proximaFecha.getDate() + diff);
+                fechaConsulta = `${proximaFecha.getFullYear()}-${String(proximaFecha.getMonth() + 1).padStart(2, '0')}-${String(proximaFecha.getDate()).padStart(2, '0')}`;
+            }
+
+            const res = await api.get(`/clases/${clase.id}/alumnos?fecha=${fechaConsulta}`);
+            console.log("fecha consultada:", fechaConsulta, "alumnos:", res.data.alumnos);
 
             setAlumnos(res.data.alumnos);
             setEstadoSeleccionado(estado);
 
-            // SOLO si ya pasó la clase
-            if (hoyClase) {
-                const presentes = res.data.alumnos.filter(a => a.asistio).length;
+            // Solo mostrar presentes/ausentes si es hoy finalizada y desde sección de hoy
+            if (!esFutura && esHoy && estado === "finalizada") {
+                const presentes = res.data.alumnos.filter(a => a.asistio === true).length;
                 const total = res.data.alumnos.length;
-
-                setAsistencia({
-                    presentes,
-                    ausentes: total - presentes
-                });
+                setAsistencia({ presentes, ausentes: total - presentes });
             } else {
                 setAsistencia(null);
             }
@@ -854,7 +997,7 @@ const Perfil = ({ token, setToken }) => {
             toast.error(err?.response?.data?.detail || "Error al obtener alumnos");
         }
     };
-
+    };
 
     return (
         <>  {/*esto y el toaster esta demas */}
@@ -863,7 +1006,8 @@ const Perfil = ({ token, setToken }) => {
                 
                 <ModalConfirmacion
                     isOpen={mostrarConfirmacion}
-                    titulo="¿Estás seguro?"
+                    titulo={tituloConfirmacion}
+                    mensaje={mensajeConfirmacion}
                     onConfirm={confirmarCancelacion}
                     onCancel={cancelarCancelacion}
                 />
@@ -871,7 +1015,7 @@ const Perfil = ({ token, setToken }) => {
             <ModalConfirmacion
                 isOpen={mostrarConfirmacionRechazo}
                 titulo="¿Rechazar cupo?"
-                mensaje="¿Estás seguro de que querés rechazar este cupo? El lugar será ofrecido al siguiente cliente en la lista de espera."
+                mensaje="¿Estás seguro de que querés rechazar este cupo?"
                 onConfirm={confirmarRechazo}
                 onCancel={cancelarRechazo}
             />
@@ -1235,8 +1379,10 @@ const Perfil = ({ token, setToken }) => {
                                         <button
                                             className="btn-escanear-qr"
                                             onClick={() => setAbrirScanner(true)}
+                                            disabled={asistenciaRegistrada}
+                                            style={{ opacity: asistenciaRegistrada ? 0.5 : 1, cursor: asistenciaRegistrada ? "not-allowed" : "pointer" }}
                                         >
-                                            📷 Escanear asistencia
+                                            {asistenciaRegistrada ? "✔ Asistencia registrada" : "📷 Escanear asistencia"}
                                         </button>
                                     </div>
 
@@ -1251,7 +1397,12 @@ const Perfil = ({ token, setToken }) => {
                                             >
                                                 <h2>📷 Escanear QR</h2>
 
-                                                <EscanearQR />
+                                                <EscanearQR
+                                                    onAsistenciaRegistrada={() => {
+                                                        setAsistenciaRegistrada(true);
+                                                        setAbrirScanner(false);
+                                                    }}
+                                                />
 
                                                 <button
                                                     className="btn-cerrar"
@@ -1367,7 +1518,7 @@ const Perfil = ({ token, setToken }) => {
                                                                                     </div>
                                                                                     <div className="reserva-mini-detalles">
                                                                                         <span className="reserva-mini-actividad">
-                                                                                            {r.clase?.actividad || `Clase #${r.clase_id}`}
+                                                                                            {capitalize(r.clase?.actividad || `Clase #${r.clase_id}`)}
                                                                                         </span>
                                                                                         <span className="reserva-mini-horario">
                                                                                             {r.clase?.horario ? r.clase.horario.slice(0, 5) : '—'} hs
@@ -1528,29 +1679,52 @@ const Perfil = ({ token, setToken }) => {
 
                                                                 <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
 
-                                                                <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
+                                                                <p>👥 {clase.alumnos_proxima ?? 0} / {clase.cupo}</p>
 
                                                                 <div className="mis-clase-footer">
                                                                     <div className="mis-clase-botones">
-                                                                        <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase)}>
+                                                                        <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, false)}>
                                                                             Ver alumnos
                                                                         </button>
 
-                                                                        <button
-                                                                            className="btn-generar-qr"
-                                                                            onClick={() => generarQR(clase.id)}
-                                                                        >
-                                                                            {qrGenerado[clase.id]
-                                                                                ? "QR generado"
-                                                                                : "Generar QR"}
-                                                                        </button>
+                                                                        {(clase.alumnos_proxima ?? 0) > 0 && (
+                                                                            <>
+                                                                            {/* Botón Generar QR — se bloquea después de generarlo */}
+                                                                            <button
+                                                                                className="btn-generar-qr"
+                                                                                disabled={!!qrGenerado[clase.id]}
+                                                                                onClick={() => generarQR(clase.id)}
+                                                                                style={{ opacity: qrGenerado[clase.id] ? 0.4 : 1, cursor: qrGenerado[clase.id] ? "not-allowed" : "pointer" }}
+                                                                            >
+                                                                                Generar QR
+                                                                            </button>
 
-                                                                        <button
-                                                                            className="btn-ver-qr"
-                                                                            onClick={() => abrirQR(clase)}
-                                                                        >
-                                                                            Mostrar QR
-                                                                        </button>
+                                                                            {/* Botón Mostrar QR — si no fue generado muestra mensaje */}
+                                                                            <button
+                                                                                className="btn-ver-qr"
+                                                                                onClick={() => {
+                                                                                    const estado = estadoClase(clase);
+                                                                                    if (!qrGenerado[clase.id] && estado === "finalizada") {
+                                                                                        toast.error("El QR nunca se genero pero la clase ya finalizó, no se puede generar.");
+                                                                                        return;
+                                                                                    }
+                                                                                    if (estado === "finalizada") {
+                                                                                        toast.error("El QR ya caducó porque la clase ya finalizó.");
+                                                                                        return;
+                                                                                    }
+                                                                                    if (!qrGenerado[clase.id] ) {
+                                                                                        toast.error("Primero generá el QR");
+                                                                                        return;
+                                                                                    }
+                                                                                    
+                                                                                    setQrSeleccionado(qrGenerado[clase.id]);
+                                                                                    setMostrarQR(true);
+                                                                                }}
+                                                                            >
+                                                                                Mostrar QR
+                                                                            </button>
+                                                                            </>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1578,7 +1752,7 @@ const Perfil = ({ token, setToken }) => {
                                                             <div className="mis-clase-footer">
 
                                                                 <div className="mis-clase-botones">
-                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase)}>
+                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, true)}>
                                                                         Ver alumnos
                                                                     </button>
                                                         
@@ -1586,6 +1760,45 @@ const Perfil = ({ token, setToken }) => {
                                                             </div>
                                                         </div>
                                                     ))}
+                                                </div>
+                                            </>
+                                        )}
+                                        {clasesTemporales.length > 0 && (
+                                            <>
+                                                <h2 className="dia-titulo" style={{ marginTop: "35px" }}>
+                                                    🔄 Clases temporales
+                                                </h2>
+
+                                                <div className="clases-row">
+
+                                                    {clasesTemporales.map(clase => (
+
+                                                        <div
+                                                            key={`${clase.id}-${clase.fecha}`}
+                                                            className="mis-clase-card"
+                                                        >
+
+                                                            <h3>{capitalize(clase.actividad)}</h3>
+
+                                                            <p>📅 {capitalize(clase.dia)} {formatearFecha(clase.fecha)}</p>
+
+                                                            <p>🕒 {clase.horario} hs</p>
+
+                                                            <p>👥 {clase.alumnos} / {clase.cupo}</p>
+                                                            <div className="mis-clase-footer">
+
+                                                                <div className="mis-clase-botones">
+                                                                    <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, true)}>
+                                                                        Ver alumnos
+                                                                    </button>
+                                                        
+                                                                </div>
+                                                            </div>
+
+                                                        </div>
+
+                                                    ))}
+
                                                 </div>
                                             </>
                                         )}
@@ -1719,7 +1932,7 @@ const Perfil = ({ token, setToken }) => {
                             <h2>📋 Lista de alumnos</h2>
 
                             {/* RESUMEN */}
-                            {asistencia && (
+                            {asistencia && (estadoSeleccionado === "finalizada" || estadoSeleccionado === "en_curso") && (
                                 <p>
                                     📊 Presentes: {asistencia.presentes} |{" "}
                                     ❌ Ausentes: {asistencia.ausentes}
@@ -1741,18 +1954,15 @@ const Perfil = ({ token, setToken }) => {
                                                 <strong>
                                                     {capitalize(a.nombre)} {capitalize(a.apellido)} - {a.email}
                                                 </strong>
-                                                {asistencia && (
-
-                                                        <span
-                                                            style={{
-                                                                marginLeft: "10px",
-                                                                fontWeight: "bold",
-                                                                color: a.asistio ? "green" : "red"
-                                                            }}
-                                                        >
-                                                            {a.asistio ? "✔ Presente" : "✖ Ausente"}
-                                                        </span>
-                                                )}
+                                                        {a.asistio === null ? (
+                                                            null
+                                                        ) : (
+                                                            <span
+                                                                className={a.asistio ? "presente" : "ausente"}
+                                                            >
+                                                                {a.asistio ? "✔ Presente" : "✖ Ausente"}
+                                                            </span>
+                                                        )}
                                             </div>
                                         ))}
                                     </div>

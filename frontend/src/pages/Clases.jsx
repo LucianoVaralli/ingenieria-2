@@ -201,12 +201,17 @@ const Clases = ({ token }) => {
             navigate('/registro', { state: { mensaje: 'Debés registrarte para poder reservar.' } });
             return;
         }
-    
+
+        const fechasDelMes = calcularFechasDelMes(claseElegida.dia);
+
         if (modoReserva === 'membresia') {
             const fechasDelMes = calcularFechasDelMes(claseElegida.dia);
             
             navigate('/reservar/membresia', {
-                state: { clase: claseElegida, fechasDelMes }
+                state: { 
+                    clase: claseElegida, 
+                    fechasDelMes 
+                }
             });
         } else {
             const mm = String(mes + 1).padStart(2, '0');
@@ -287,7 +292,7 @@ const Clases = ({ token }) => {
 
                         const esHoyExacto = fechaCelda.toDateString() === hoy.toDateString();
                         const esPasado    = fechaCelda < hoy || esHoyExacto;
-                        if (esPasado || esFueraDeRango) {
+                        if (esPasado || (modoReserva === 'individual' && esFueraDeRango)) {
                             setMensajeError(
                                 esFueraDeRango
                                     ? "Solo podés reservar dentro de los 7 días"
@@ -301,7 +306,7 @@ const Clases = ({ token }) => {
                         handleClickDia(d);
                     }}
                 >
-                    {d}
+                    {d}  
                     {tieneClases && !esPasado && <span className="cal-dot" />}
                 </td>
             );
