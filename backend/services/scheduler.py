@@ -13,11 +13,24 @@ def limpiar_pagos_expirados(db):
     """
     Elimina o cancela las reservas que quedaron colgadas en 'pendiente_pago'
     por más de 15 minutos para liberar los cupos del día.
+
+    OJO: esto NO debe tocar las reservas de membresía pre-reservadas para
+    el mes siguiente (es_recurrente=True), que se crean intencionalmente
+    en 'pendiente_pago' y pueden quedar así durante semanas hasta que el
+    socio decide renovar. La expiración de 15 min es solo para los holds
+    de pago de un cupo individual/puntual (es_recurrente=False), que sí
+    deben liberarse si el socio no completa el pago.
     """
-    hace_15_min = datetime.now() - timedelta(minutes=15)
+    # OJO: fecha_creacion se guarda con datetime.now(timezone.utc), pero acá
+    # se comparaba contra datetime.now() (hora LOCAL del servidor). En
+    # Argentina (UTC-3) eso hacía que la expiración real tardara ~3h15m en
+    # vez de 15 min. Se usa datetime.utcnow() para que ambos lados de la
+    # comparación estén en la misma referencia horaria (UTC).
+    hace_15_min = datetime.utcnow() - timedelta(minutes=15)
     
     reservas_expiradas = db.query(Reserva).filter(
         Reserva.estado == "pendiente_pago",
+        Reserva.es_recurrente == False,
         Reserva.fecha_creacion <= hace_15_min
     ).all()
     
