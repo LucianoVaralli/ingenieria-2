@@ -61,6 +61,27 @@ const Perfil = ({ token, setToken }) => {
     const hoy = new Date();
     const dia = hoy.getDate();
 
+    // ── Estado puntual de UNA reserva (a diferencia de estadoClase, que
+    // calcula el estado de la clase recurrente del profesor para "esta
+    // semana", acá ya sabemos la fecha exacta: r.fecha_clase). Se usa
+    // para decidir si mostrar el botón "Cancelar" o la etiqueta
+    // "En curso" / "Finalizada". ──
+    const estadoReserva = (r) => {
+        const horario = r.clase?.horario ? r.clase.horario.slice(0, 5) : null;
+        if (!horario) return "proxima"; // sin horario conocido, no lo bloqueamos
+
+        const [h, m] = horario.split(":");
+        const inicio = new Date(`${r.fecha_clase}T00:00:00`);
+        inicio.setHours(Number(h), Number(m), 0, 0);
+
+        const fin = new Date(inicio);
+        fin.setMinutes(fin.getMinutes() + (r.clase?.duracion || 60));
+
+        if (ahora >= inicio && ahora <= fin) return "en_curso";
+        if (ahora > fin) return "finalizada";
+        return "proxima";
+    };
+
     const puedeRenovar =
         user?.rol === "miembro" &&
         user?.membresia_vencimiento &&
@@ -237,7 +258,20 @@ const Perfil = ({ token, setToken }) => {
                 try {
                     const resReservas = await api.get('/reservas/mis-reservas');
 
-                    const activas = resReservas.data.filter(r =>
+                    // Normalizamos "tipo" a minúscula: en el resto del archivo
+                    // se compara siempre contra 'membresia' en minúscula, pero
+                    // según cómo se haya guardado el dato (ej. carga manual en
+                    // la BD) podría venir como 'Membresia'. Así no depende de
+                    // la capitalización exacta.
+                    const reservasNormalizadas = resReservas.data.map(r => ({
+                        ...r,
+                        tipo: typeof r.tipo === 'string' ? r.tipo.toLowerCase() : r.tipo
+                    }));
+
+                    const ahora = new Date();
+                    const hoyStr = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+
+                    const activas = reservasNormalizadas.filter(r =>
                         (
                             r.estado === "confirmada" ||
                             r.estado === "en_espera" ||
@@ -248,7 +282,7 @@ const Perfil = ({ token, setToken }) => {
                             // solo a los 15 min si el socio no completó el pago.
                             (r.estado === "pendiente_pago" && r.tipo === "membresia")
                         ) &&
-                        new Date(r.fecha_clase) >= hoy
+                        r.fecha_clase >= hoyStr
                     );
                     
                     setReservas(activas);
@@ -397,11 +431,18 @@ const Perfil = ({ token, setToken }) => {
 
                     const resReservas = await api.get("/reservas/mis-reservas");
                     
+                    // Normalizamos "tipo" a minúscula (ver comentario en el
+                    // bloque de retorno de Mercado Pago más arriba).
+                    const reservasNormalizadas = resReservas.data.map(r => ({
+                        ...r,
+                        tipo: typeof r.tipo === 'string' ? r.tipo.toLowerCase() : r.tipo
+                    }));
+
                     const hoy = new Date();
 
-                    const hoyStr = hoy.toISOString().split("T")[0];
+                    const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
-                    const activas = resReservas.data.filter(r =>
+                    const activas = reservasNormalizadas.filter(r =>
                         (
                             r.estado === "confirmada" ||
                             r.estado === "en_espera" ||
@@ -773,7 +814,7 @@ const Perfil = ({ token, setToken }) => {
             // Guardar los datos para el modal
             setReservaAPagar({
                 id: res.data.reserva_id,
-                tipo: res.data.tipo_reserva,
+                tipo: typeof res.data.tipo_reserva === 'string' ? res.data.tipo_reserva.toLowerCase() : res.data.tipo_reserva,
                 clase: res.data.clase,
                 fecha_clase: res.data.fecha_clase,
                 monto_100: res.data.monto_100,
@@ -789,7 +830,7 @@ const Perfil = ({ token, setToken }) => {
 
             // Para individual: mostrar opciones (default 50%)
             // Para membresía: solo 100%
-            if (res.data.tipo_reserva === 'membresia') {
+            if (String(res.data.tipo_reserva).toLowerCase() === 'membresia') {
                 setTipoPagoCupo('total');
             } else {
                 setTipoPagoCupo('sena');
@@ -1370,11 +1411,10 @@ const Perfil = ({ token, setToken }) => {
                                         <button
                                             className="btn-escanear-qr"
                                             onClick={() => setAbrirScanner(true)}
-                                            disabled={asistenciaRegistrada}
-                                            style={{ opacity: asistenciaRegistrada ? 0.5 : 1, cursor: asistenciaRegistrada ? "not-allowed" : "pointer" }}
                                         >
-                                            {asistenciaRegistrada ? "✔ Asistencia registrada" : "📷 Escanear asistencia"}
+                                            📷 Escanear asistencia
                                         </button>
+
                                     </div>
 
                                     {abrirScanner && (
@@ -1391,7 +1431,6 @@ const Perfil = ({ token, setToken }) => {
                                                 <EscanearQR
                                                     onAsistenciaRegistrada={() => {
                                                         setAsistenciaRegistrada(true);
-                                                        setAbrirScanner(false);
                                                     }}
                                                 />
 
@@ -1553,15 +1592,35 @@ const Perfil = ({ token, setToken }) => {
                                                                                             </span>
                                                                                         )}
 
-                                                                                        {/* Cancelar reserva */}
-                                                                                        {r.estado === 'confirmada' && (
-                                                                                            <button
-                                                                                                className="btn-cancelar-reserva"
-                                                                                                onClick={() => iniciarCancelacion(r)}
-                                                                                            >
-                                                                                                Cancelar
-                                                                                            </button>
-                                                                                        )}
+                                                                                        {/* Cancelar reserva / En curso / Finalizada */}
+                                                                                        {r.estado === 'confirmada' && (() => {
+                                                                                            const est = estadoReserva(r);
+
+                                                                                            if (est === 'finalizada') {
+                                                                                                return (
+                                                                                                    <span className="reserva-mini-finalizada">
+                                                                                                        Finalizada
+                                                                                                    </span>
+                                                                                                );
+                                                                                            }
+
+                                                                                            if (est === 'en_curso') {
+                                                                                                return (
+                                                                                                    <span className="reserva-mini-en-curso">
+                                                                                                        En curso
+                                                                                                    </span>
+                                                                                                );
+                                                                                            }
+
+                                                                                            return (
+                                                                                                <button
+                                                                                                    className="btn-cancelar-reserva"
+                                                                                                    onClick={() => iniciarCancelacion(r)}
+                                                                                                >
+                                                                                                    Cancelar
+                                                                                                </button>
+                                                                                            );
+                                                                                        })()}
 
                                                                                         {/* Aceptar cupo */}
                                                                                         {r.notificado && (
