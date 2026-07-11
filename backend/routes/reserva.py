@@ -993,6 +993,7 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
                 "actividad": clase.actividad if clase else None,
                 "horario":   str(clase.horario) if clase else None,
                 "dia":       clase.dia if clase else None,
+                "duracion":  clase.duracion if clase else None,
             }
         })
     return resultado

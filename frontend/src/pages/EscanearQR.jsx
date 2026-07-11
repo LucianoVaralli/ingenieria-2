@@ -87,7 +87,14 @@ export default function EscanearQR({ onAsistenciaRegistrada }){
       />
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
-      {mensaje && <p style={{ color: "green", fontWeight: "bold" }}>{mensaje}</p>}
+      {mensaje && (
+        <div
+          className="btn-escanear-qr"
+          style={{ cursor: "default", marginTop: "1rem", display: "inline-block" }}
+        >
+          ✔ {mensaje}
+        </div>
+      )}
       {error && <p style={{ color: "#eb0c0c", fontWeight: "bold" }}>{error}</p>}
     </div>
   );
