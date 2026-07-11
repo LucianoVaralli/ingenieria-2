@@ -11,6 +11,7 @@ from models.socio import Socio
 from schemas.socio import ProfesorUpdate, ProfesorCreate, CambiarPasswordRequest, CambiarPasswordInicialRequest
 from services.auth import get_password_hash, oauth2_scheme, obtener_usuario_actual, verificar_password
 import secrets
+from fastapi import BackgroundTasks
 
 router = APIRouter(prefix="/socios", tags=["Socios"])
 
@@ -193,16 +194,9 @@ def cambiar_contrasena_perfil(
 @router.post("/crear_profesores")
 async def crear_profesor(
     datos: ProfesorCreate,
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
 ):
-    usuario = obtener_usuario_actual(token, db)
-
-    if usuario.rol != Rol.Admin.value:
-        raise HTTPException(
-            status_code=403,
-            detail="Solo un administrador puede crear profesores"
-        )
 
     errores = {}
 
@@ -256,7 +250,8 @@ async def crear_profesor(
     db.refresh(nuevo_profesor)
 
     try:
-        await enviar_mail_profesor(
+        background_tasks.add_task(
+            enviar_mail_profesor,
             profesor=nuevo_profesor,
             password_temporal=password_temporal
         )
@@ -300,16 +295,8 @@ def cambiar_password_inicial(
 def editar_profesor(
     profesor_id: int,
     datos: ProfesorUpdate,
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    db: Session = Depends(get_db)
 ):
-    usuario = obtener_usuario_actual(token, db)
-
-    if usuario.rol != Rol.Admin.value:
-        raise HTTPException(
-            status_code=403,
-            detail="Solo un administrador puede editar profesores"
-        )
     
     profesor = (
         db.query(Socio)
@@ -390,22 +377,15 @@ def editar_profesor(
 @router.delete("/profesores/{profesor_id}")
 async def eliminar_profesor(
     profesor_id: int,
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    db: Session = Depends(get_db)
 ):
     from models.clase import Clase
-
-    usuario = obtener_usuario_actual(token, db)
-
-    if usuario.rol != Rol.Admin.value:
-        raise HTTPException(
-            status_code=403,
-            detail="Solo un administrador puede eliminar profesores"
-        )
     
     clase = db.query(Clase).filter(
         Clase.profesor_id == profesor_id
     ).first()
+
+    profesor = db.query(Socio).filter(Socio.id == profesor_id).first()
 
     if not clase:
         db.query(Socio).filter(Socio.id == profesor_id).delete()
@@ -416,12 +396,19 @@ async def eliminar_profesor(
         Clase.profesor_id == profesor_id
     ).all()
 
-    nombres_clases = [c.actividad.value for c in clases]
+    clases_info = [
+        {
+            "actividad": c.actividad.value,
+            "dia": c.dia.value,
+            "horario": c.horario.strftime("%H:%M")
+        }
+        for c in clases
+    ]
 
     raise HTTPException(
         status_code=409,
         detail={
-            "mensaje": "El profesor está asignado a clases",
-            "clases": nombres_clases
+            "nombre": f"{profesor.nombre} {profesor.apellido}",
+            "clases": clases_info
         }
     )

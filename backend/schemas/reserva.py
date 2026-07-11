@@ -65,3 +65,13 @@ class ConfirmarPagoCupo(BaseModel):
     fecha_vencimiento: str
     tipo_pago: str  # "sena" o "total" (solo para individual, membresía siempre 100%)
     usa_credito: bool = False
+    
+class ConfirmarPagoIndividualDirecto(BaseModel):
+    clase_id:           int
+    fecha_clase:        str
+    tipo_pago:          str = "total"
+    usa_credito:        bool = False
+    numero_tarjeta:     str | None = None
+    titular:            str | None = None
+    cvv:                str | None = None
+    fecha_vencimiento:  str | None = None

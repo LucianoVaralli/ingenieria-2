@@ -14,6 +14,17 @@ const formatearFecha = (fechaStr) => {
     });
 };
 
+const extraerMensajeError = (err, fallback) => {
+    const detail = err?.response?.data?.detail;
+    if (Array.isArray(detail)) {
+        return detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+    }
+    if (typeof detail === 'string') {
+        return detail;
+    }
+    return fallback;
+};
+
 const ReservaIndividual = () => {
     const location = useLocation();
     const desdeListaEspera =
@@ -28,12 +39,6 @@ const ReservaIndividual = () => {
 
     const tipoReservaListaEspera =
         location.state?.tipoReserva || null;
-
-    console.log("STATE COMPLETO:", location.state);
-    console.log("DESDE LISTA:", location.state?.desdeListaEspera);
-    console.log("RESERVA ID:", location.state?.reservaId);
-    console.log("CLASE:", clase);
-    console.log("FECHA:", fechaSeleccionada);
 
     // pasos: cargando | lista_espera | creditos | tipo_pago | pago | exito | exito_espera | error
     const [paso, setPaso]         = useState('cargando');
@@ -53,7 +58,6 @@ const ReservaIndividual = () => {
     const [usaCredito, setUsaCredito]                   = useState(false);
 
     const [metodoPago, setMetodoPago] = useState('tarjeta'); // 'tarjeta' | 'mp'
-    const [reservaId, setReservaId]   = useState(null);
 
     // Datos de tarjeta
     const [nroTarjeta, setNroTarjeta]   = useState('');
@@ -86,7 +90,7 @@ const ReservaIndividual = () => {
                     setPaso('tipo_pago');
                 }
             } catch (err) {
-                setMensaje(err.response?.data?.detail || 'Error al verificar disponibilidad.');
+                setMensaje(extraerMensajeError(err, 'Error al verificar disponibilidad.'));
                 setPaso('error');
             } finally {
                 setCargando(false);
@@ -124,15 +128,11 @@ const ReservaIndividual = () => {
 
         if (desdeListaEspera) {
 
-            // Si viene de lista de espera de membresía,
-            // siempre paga el 100%.
             if (tipoReservaListaEspera === "Membresia") {
-
                 setMonto(montoListaEspera);
                 return;
             }
 
-            // Si viene de lista de espera individual
             setMonto(
                 tipo === "sena"
                     ? montoListaEspera * 0.5
@@ -141,8 +141,6 @@ const ReservaIndividual = () => {
 
             return;
         }
-
-        // Reserva nueva normal
 
         setMonto(
             tipo === "sena"
@@ -161,7 +159,7 @@ const ReservaIndividual = () => {
             });
             setPaso('exito_espera');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'Error al agregar a lista de espera.');
+            setMensaje(extraerMensajeError(err, 'Error al agregar a lista de espera.'));
             setPaso('error');
         } finally {
             setCargando(false);
@@ -176,45 +174,44 @@ const ReservaIndividual = () => {
         }
     };
 
+    // 🌟 FIX: usa el endpoint atómico /pagar-directo, sin reserva
+    // previa. Antes intentaba crear con /cotizar (que ya no devuelve
+    // reserva_id) y pagar con reserva_id undefined.
     const handlePagarConCredito = async () => {
         setCargando(true);
         setMensaje('');
         try {
-            const resReserva = await api.post('/reservas/individual/crear', {
+            await api.post('/reservas/individual/pagar-directo', {
                 clase_id:    clase.id,
                 fecha_clase: fechaSeleccionada,
-                tipo_pago:   tipoPago
-            });
-
-            await api.post('/reservas/individual/pagar', {
-                reserva_id:          resReserva.data.reserva_id,
-                numero_tarjeta:      '0000000000000000',
-                titular:             'credito',
-                cvv:                 '000',
-                fecha_vencimiento:   '12/99',
-                acepta_lista_espera: false,
-                usa_credito:         true
+                tipo_pago:   tipoPago,
+                usa_credito: true
             });
 
             setPaso('exito');
         } catch (err) {
-            setMensaje(err.response?.data?.detail || 'No se pudo confirmar con créditos.');
+            setMensaje(extraerMensajeError(err, 'No se pudo confirmar con créditos.'));
             setPaso('error');
         } finally {
             setCargando(false);
         }
     };
 
-    const handleCrearReserva = async () => {
-        const res = await api.post('/reservas/individual/crear', {
+    // 🌟 FIX: solo cotiza (valida cupo/fecha/monto), ya no guarda
+    // ningún reservaId porque /cotizar no crea nada.
+    const handleCotizar = async () => {
+        const res = await api.post('/reservas/individual/cotizar', {
             clase_id:    clase.id,
             fecha_clase: fechaSeleccionada,
             tipo_pago:   tipoPago
         });
-        setReservaId(res.data.reserva_id);
-        return res.data.reserva_id;
+        return res.data;
     };
 
+    // 🌟 FIX: usa /pagar-directo para el flujo normal, sin reserva
+    // previa. El caso "desdeListaEspera" sigue usando el endpoint
+    // legado /individual/pagar con reservaIdExistente, porque ese sí
+    // tiene una reserva pendiente_pago real creada por /aceptar-cupo.
     const handlePagar = async () => {
 
         if (!nroTarjeta.trim() || !titular.trim() || !cvv.trim() || !vencimiento.trim()) {
@@ -228,45 +225,38 @@ const ReservaIndividual = () => {
 
         try {
 
-            let reservaId;
-
             if (desdeListaEspera) {
 
-                reservaId = reservaIdExistente;
+                await api.post('/reservas/individual/pagar', {
+                    reserva_id:          reservaIdExistente,
+                    numero_tarjeta:      nroTarjeta.replace(/\s/g, ''),
+                    titular,
+                    cvv,
+                    fecha_vencimiento: vencimiento,
+                    acepta_lista_espera: false,
+                    usa_credito: false
+                });
 
             } else {
 
-                const resReserva = await api.post(
-                    '/reservas/individual/crear',
-                    {
-                        clase_id: clase.id,
-                        fecha_clase: fechaSeleccionada,
-                        tipo_pago: tipoPago
-                    }
-                );
-
-                reservaId = resReserva.data.reserva_id;
+                await api.post('/reservas/individual/pagar-directo', {
+                    clase_id:    clase.id,
+                    fecha_clase: fechaSeleccionada,
+                    tipo_pago:   tipoPago,
+                    usa_credito: false,
+                    numero_tarjeta:    nroTarjeta.replace(/\s/g, ''),
+                    titular,
+                    cvv,
+                    fecha_vencimiento: vencimiento
+                });
             }
-  
-            const rid = reservaId || await handleCrearReserva();
-
-            await api.post('/reservas/individual/pagar', {
-                reserva_id:          rid,
-                numero_tarjeta:      nroTarjeta.replace(/\s/g, ''),
-                titular,
-                cvv,
-                fecha_vencimiento: vencimiento,
-                acepta_lista_espera: false,
-                usa_credito: false
-            });
 
             setPaso('exito');
 
         } catch (err) {
 
             setMensaje(
-                err.response?.data?.detail ||
-                'No se pudo procesar la reserva.'
+                extraerMensajeError(err, 'No se pudo procesar la reserva.')
             );
 
             setPaso('error');
@@ -277,19 +267,10 @@ const ReservaIndividual = () => {
         }
     };
 
+    // 🌟 FIX: ya no hace falta cancelar nada al volver — como no se
+    // crea ninguna reserva hasta confirmar el pago, no queda nada
+    // huérfano bloqueando el cupo.
     const handleVolver = async () => {
-        // 🌟 Si hay una reserva pendiente_pago creada (paso 'pago'), la cancelamos
-        // al volver atrás para no dejarla huérfana bloqueando el cupo.
-        if (paso === 'pago' && reservaId) {
-            try {
-                await api.delete(`/reservas/individual/cancelar/${reservaId}`);
-            } catch (e) {
-                // Si falla (ya cancelada, ya vencida por el job de limpieza, etc.)
-                // no bloqueamos la navegación del usuario.
-                console.warn('No se pudo cancelar la reserva pendiente:', e);
-            }
-            setReservaId(null);
-        }
 
         if (paso === 'creditos')  return setPaso('lista_espera');
         if (paso === 'tipo_pago') return setPaso(creditosDisponibles > 0 ? 'creditos' : 'lista_espera');
@@ -519,13 +500,10 @@ const ReservaIndividual = () => {
                                 onClick={async () => {
                                     setCargando(true);
                                     try {
-                                        // 🌟 SI YA EXISTE EL ID (porque fue para atrás), NO CREAMOS OTRA
-                                        if (!reservaId) {
-                                            await handleCrearReserva(); 
-                                        }
+                                        await handleCotizar();
                                         setPaso('pago');
                                     } catch(e) { 
-                                        setMensaje(e.response?.data?.detail || 'Error al crear reserva.'); 
+                                        setMensaje(extraerMensajeError(e, 'Error al cotizar la reserva.'));
                                     } finally {
                                         setCargando(false); 
                                     }
@@ -612,9 +590,17 @@ const ReservaIndividual = () => {
                                     </p>
                                     {mensaje && <p className="pago-error-msg">{mensaje}</p>}
                                     <PagarConMP
-                                        tipo="individual"
-                                        payload={{ reserva_id: reservaId }}
-                                        onError={setMensaje}
+                                        tipo="individual-directa"
+                                        payload={{
+                                            clase_id:    clase.id,
+                                            fecha_clase: fechaSeleccionada,
+                                            tipo_pago:   tipoPago
+                                        }}
+                                        onError={(err) => setMensaje(
+                                            typeof err === 'string'
+                                                ? err
+                                                : extraerMensajeError(err, 'Error al conectar con Mercado Pago')
+                                        )}
                                     />
                                     <p className="pago-seguro-txt">Ambiente de pruebas (sandbox)</p>
                                 </div>
@@ -627,8 +613,8 @@ const ReservaIndividual = () => {
                             <div className="pago-resultado-icon">✓</div>
                             <h3>¡Reserva confirmada!</h3>
                             <p>Tu clase fue reservada correctamente.</p>
-                            <button className="pago-btn-primary" onClick={() => navigate('/')}>
-                                Volver al inicio
+                            <button className="pago-btn-primary" onClick={() => navigate('/perfil')}>
+                                Ver mis reservas
                             </button>
                         </div>
                     )}

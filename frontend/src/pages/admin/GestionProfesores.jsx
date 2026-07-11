@@ -20,7 +20,7 @@ function GestionProfesores() {
 
     const [editMode, setEditMode] = useState(false);
     const [profesorEditando, setProfesorEditando] = useState(null);
-    const [errorEliminacion, setErrorEliminacion] = useState("");
+    const [errorEliminacion, setErrorEliminacion] = useState(null);
     
     const cargarProfesores = async () => {
         const res = await api.get("/socios/profesores");
@@ -171,29 +171,30 @@ function GestionProfesores() {
 
             // Caso: profesor con clases asignadas
             if (detalle?.clases) {
+
+                setMostrarConfirmacion(false);
+
                 setErrorEliminacion({
-                    mensaje: detalle.mensaje || "No se puede eliminar el profesor, cambie al profesor o elimine las siguientes clases:",
+                    nombre: detalle.nombre,
                     clases: detalle.clases
                 });
+
                 return;
             }
 
-            // Caso: error tipo string
-            if (typeof detalle === "string") {
-                setErrorEliminacion({
-                    mensaje: detalle,
-                    clases: []
-                });
-                return;
-            }
-
-            // Fallback
             setErrorEliminacion({
-                mensaje: "Error al eliminar profesor",
+                nombre: "",
                 clases: []
             });
         }
     };
+
+    const capitalize = (texto) =>
+        texto
+            ?.split(" ")
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+            .join(" ") || "";
+
     return (
         <AdminLayout>
 
@@ -319,8 +320,8 @@ function GestionProfesores() {
                                 <div className="profesor-body">
 
                                     <h4>
-                                        {profesor.nombre}{" "}
-                                        {profesor.apellido}
+                                        {capitalize(profesor.nombre)}{" "}
+                                        {capitalize(profesor.apellido)}
                                     </h4>
 
                                     <p>
@@ -483,7 +484,7 @@ function GestionProfesores() {
             {mostrarConfirmacion && (
                 <div className="modal-overlay">
                     <div className="modal-confirmacion">
-                        <h3>¿Seguro que querés eliminar a {profesorAEliminar?.nombre} {profesorAEliminar?.apellido}?</h3>
+                        <h3>¿Seguro que querés eliminar a {capitalize(profesorAEliminar?.nombre)} {capitalize(profesorAEliminar?.apellido)}?</h3>
                         <div className="modal-botones">
                             <button className="btn-cancelar" onClick={() => { setMostrarConfirmacion(false); setProfesorAEliminar(null); }}>
                                 Cancelar
@@ -500,21 +501,41 @@ function GestionProfesores() {
                 <div className="modal-overlay">
                     <div className="modal-confirmacion">
 
-                        <h3>{errorEliminacion.mensaje}</h3>
+                        <h3 className="titulo-advertencia">
+                            ⚠️ No se puede eliminar a{" "}
+                            <strong>
+                                {capitalize(errorEliminacion.nombre)}
+                            </strong>
+                        </h3>
 
-                        {errorEliminacion.clases.length > 0 && (
-                            <ul>
-                                {errorEliminacion.clases.map((c, i) => (
-                                    <li key={i}>{c}</li>
-                                ))}
-                            </ul>
-                        )}
+                        <p style={{ marginTop: "10px" }}>
+                            El profesor está asignado a las siguientes clases:
+                        </p>
+
+                        <ul className="lista-clases-profesor">
+                            {errorEliminacion.clases.map((c, i) => (
+                                <li key={i}>
+                                    <strong>{capitalize(c.dia)}</strong>
+                                    {" · "}
+                                    {c.horario} hs
+                                    {" · "}
+                                    {capitalize(c.actividad)}
+                                </li>
+                            ))}
+                        </ul>
+
+                        <p style={{ marginTop: "15px" }}>
+                            Primero debés asignar estas clases a otro profesor o eliminar las clases.
+                        </p>
 
                         <button
                             className="btn-cerrar"
-                            onClick={() => setErrorEliminacion(null)}
+                            onClick={() => {
+                                setErrorEliminacion(null);
+                                setProfesorAEliminar(null);
+                            }}
                         >
-                            Cerrar
+                            Entendido
                         </button>
 
                     </div>

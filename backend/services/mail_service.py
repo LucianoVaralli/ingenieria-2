@@ -165,7 +165,7 @@ async def enviar_mail_profesor(profesor, password_temporal):
     asunto = "Bienvenido al sistema - Credenciales de acceso"
 
     cuerpo = f"""
-Hola {profesor.nombre},
+Hola {profesor.nombre} {profesor.apellido},
 
 Se te ha creado una cuenta en el sistema.
 
@@ -213,6 +213,225 @@ Tenés un tiempo limitado para confirmar tu lugar.
 
     mensaje = MessageSchema(
         subject="¡Cupo disponible! - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+
+async def enviar_mail_nueva_clase(profesor, clase):
+    asunto = "Nueva clase asignada"
+
+    cuerpo = f"""
+Hola {profesor.nombre} {profesor.apellido},
+
+Se te asignó una nueva clase en el sistema.
+
+🏋️ Actividad: {clase.actividad.value}
+📅 Día: {clase.dia.value}
+⏰ Horario: {clase.horario.strftime('%H:%M')}
+⌛ Duración: {clase.duracion} minutos
+
+Podés consultar tu agenda desde la sección "Mi Perfil", donde encontrarás tanto las clases del día como las próximas.
+
+Saludos.
+"""
+
+    mensaje = MessageSchema(
+        subject=asunto,
+        recipients=[profesor.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+async def enviar_mail_clase_eliminada(profesor, clase):
+    asunto = "Clase eliminada"
+
+    cuerpo = f"""
+Hola {profesor.nombre} {profesor.apellido},
+
+La siguiente clase fue eliminada:
+
+🏋️ Actividad: {clase.actividad.value}
+📅 Día: {clase.dia.value}
+⏰ Horario: {clase.horario.strftime('%H:%M')}
+
+No olvides que podes consultar tu agenda de clases en el "Mi Perfil", donde vas a encontrar tus clases del día y las próximas.
+
+Si tenés dudas, comunicate con administración.
+
+Saludos.
+"""
+
+    mensaje = MessageSchema(
+        subject=asunto,
+        recipients=[profesor.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+
+async def enviar_mail_cambio_permanente(profesor, clase):
+    asunto = "Cambio permanente de profesor"
+
+    cuerpo = f"""
+Hola {profesor.nombre} {profesor.apellido},
+
+Te informamos que se te asignó de forma permanente la siguiente clase:
+
+🏋️ Actividad: {clase.actividad.value}
+📅 Día: {clase.dia.value}
+⏰ Horario: {clase.horario.strftime('%H:%M')}
+
+A partir de ahora, serás el profesor responsable de esta clase.
+
+No olvides que podes consultar tu agenda de clases en el "Mi Perfil", donde vas a encontrar tus clases del día y las próximas.
+
+Si tenés dudas, comunicate con administración.
+
+Saludos.
+"""
+
+    mensaje = MessageSchema(
+        subject=asunto,
+        recipients=[profesor.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+
+async def enviar_mail_cambio_temporal(profesor, clase, fecha):
+    asunto = "Cambio temporal de profesor"
+
+    cuerpo = f"""
+Hola {profesor.nombre} {profesor.apellido},
+
+Se te asignó de forma temporal la siguiente clase para el día {fecha.strftime("%d/%m/%Y")}:
+
+🏋️ Actividad: {clase.actividad.value}
+📅 Día habitual: {clase.dia.value}
+⏰ Horario: {clase.horario.strftime("%H:%M")}
+
+Ese día serás el profesor a cargo de la clase.
+
+No olvides que podés consultar tu agenda desde "Mi Perfil", donde vas a encontrar tus clases del día y las próximas.
+
+Si tenés alguna duda, comunicate con la administración.
+
+Saludos.
+"""
+
+    mensaje = MessageSchema(
+        subject=asunto,
+        recipients=[profesor.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+
+async def enviar_mail_cancelacion_individual(
+    socio: Socio,
+    clase: Clase,
+    reserva: Reserva,
+    monto_devolucion: float
+):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
+    cuerpo = f"""
+Tu reserva fue cancelada correctamente.
+
+Actividad: {actividad}
+Fecha: {reserva.fecha_clase}
+Horario: {horario}
+
+Como la cancelación se realizó con la anticipación requerida, corresponde la devolución del importe abonado de ${monto_devolucion:.2f}.
+
+Para gestionar la devolución del dinero, comunicate con el gimnasio.
+
+Gracias por utilizar Sportify.
+"""
+
+    mensaje = MessageSchema(
+        subject="Cancelación de reserva - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+
+async def enviar_mail_cancelacion_membresia(
+    socio: Socio,
+    clase: Clase,
+    reserva: Reserva
+):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
+    cuerpo = f"""
+Tu reserva fue cancelada correctamente.
+
+Actividad: {actividad}
+Fecha: {reserva.fecha_clase}
+Horario: {horario}
+
+Como la cancelación se realizó con 48 horas o más de anticipación, se acreditó 1 crédito para una clase individual en tu cuenta.
+
+Podrás utilizar ese crédito en una futura reserva.
+
+Gracias por utilizar Sportify.
+"""
+
+    mensaje = MessageSchema(
+        subject="Cancelación de reserva - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+async def enviar_mail_cancelacion_sin_beneficio(
+    socio: Socio,
+    clase: Clase,
+    reserva: Reserva
+):
+    actividad = clase.actividad.value
+    horario = str(clase.horario)[:5]
+
+    cuerpo = f"""
+Tu reserva fue cancelada correctamente.
+
+Actividad: {actividad}
+Fecha: {reserva.fecha_clase}
+Horario: {horario}
+
+Como la cancelación no se realizó con la anticipación requerida, no corresponde la devolución del importe abonado ni la acreditación de un crédito.
+
+Gracias por utilizar Sportify.
+"""
+
+    mensaje = MessageSchema(
+        subject="Cancelación de reserva - Sportify",
         recipients=[socio.email],
         body=cuerpo,
         subtype="plain"

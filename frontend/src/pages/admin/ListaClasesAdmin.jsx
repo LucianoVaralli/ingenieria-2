@@ -437,8 +437,9 @@ function ListaClasesAdmin() {
 
     const capitalize = (texto) =>
         texto
-            ? texto.charAt(0).toUpperCase() + texto.slice(1)
-            : "";
+            ?.split(" ")
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+            .join(" ") || "";
 
     const formatearFecha = (fecha) => {
         const [anio, mes, dia] = fecha.split("-");
@@ -609,7 +610,7 @@ function ListaClasesAdmin() {
                                                         </span>
 
                                                         <p className="clase-mini-prof">
-                                                            Prof. {clase.profesor_nombre}
+                                                            Prof. {capitalize(clase.profesor_nombre)} {capitalize(clase.profesor_apellido)}
                                                         </p>
 
                                                         <span className="clase-mini-badge">
@@ -672,18 +673,24 @@ function ListaClasesAdmin() {
                             ¿Seguro que querés eliminar esta clase?
                         </h3>
 
-                        {infoEliminacion?.alumnos_afectados > 0 && (
-                            <p className="modal-advertencia">
-                                Esta clase tiene{" "}
-                                <strong>
-                                    {infoEliminacion.alumnos_afectados} alumnos
-                                </strong>{" "}
-                                y{" "}
-                                <strong>
-                                    {infoEliminacion.reservas_afectadas} reservas
-                                </strong>
-                            </p>
-                        )}
+                        <div className="detalle-alumnos">
+                            <h3>
+                                <strong> {infoEliminacion.alumnos_afectados} </strong> alumnos que se veran afectados
+                            </h3>
+
+                            {infoEliminacion.socios_membresia > 0 && (
+                                <p>
+                                    👥 <strong>{infoEliminacion.socios_membresia}</strong> alumnos con membresía
+                                </p>
+                            )}
+
+                            {infoEliminacion.socios_individual > 0 && (
+                                <p>
+                                    👥 <strong>{infoEliminacion.socios_individual}</strong> alumnos con reserva individual
+                                </p>
+                            )}
+
+                        </div>
 
                         <div className="modal-botones">
                             <button
