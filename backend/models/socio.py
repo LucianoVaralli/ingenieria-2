@@ -23,6 +23,3 @@ class Socio(Base):
     fecha_membresia_inicio = Column(Date, nullable=True)
     fecha_membresia_vencimiento = Column(Date, nullable=True)
     primer_login = Column(Boolean, default=False) # Para saber si es el primer login del usuario y forzar el cambio de contraseña
-
-    # Guarda si el usuario aceptó la declaración jurada del apto médico
-    declaracion_medica_aceptada = Column(Boolean, nullable=False, default=False)

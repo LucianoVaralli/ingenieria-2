@@ -29,7 +29,6 @@ async def registrar_socio(
     telefono: Optional[str] = Form(None),
     password: Optional[str] = Form(None),
     confirmar_password: Optional[str] = Form(None),
-    declaracion_medica_aceptada: Optional[bool] = Form(None),  # 🆕 NUEVO: Recibimos el checkbox desde el Form
     db: Session = Depends(get_db),
 ):
     errores = {}
@@ -74,10 +73,6 @@ async def registrar_socio(
         elif apto_fisico.content_type != "application/pdf":
             errores["apto_fisico"] = "El archivo no es un PDF válido."
 
-    # NUEVO: Validación de la Declaración Jurada Médica
-    if not declaracion_medica_aceptada:
-        errores["declaracion_medica_aceptada"] = "Debe declarar bajo juramento que el archivo adjunto es un comprobante médico válido."
-
     # SI HAY ERRORES ACUMULADOS (DE CUALQUIER TIPO), SE MANDAN TODOS JUNTOS
     if errores:
         raise HTTPException(status_code=400, detail=errores)
@@ -102,7 +97,6 @@ async def registrar_socio(
         hashed_password=hashed_pass,
         apto_fisico_path=file_location,
         rol=Rol.Miembro.value,
-        declaracion_medica_aceptada=declaracion_medica_aceptada,  # NUEVO: Guardamos el booleano en la BD
     )
 
     db.add(nuevo_socio)

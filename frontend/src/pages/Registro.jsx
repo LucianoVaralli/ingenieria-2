@@ -18,7 +18,7 @@ const Registro = () => {
         confirmar_password: ''
     });
     const [file, setFile] = useState(null);
-    // 🆕 NUEVO: Estado para controlar el casillero de términos
+    // Estado para controlar el casillero de términos
     const [declaracionAceptada, setDeclaracionAceptada] = useState(false);
     const navigate = useNavigate();
     const [successMessage, setSuccessMessage] = useState('');
@@ -108,7 +108,7 @@ const Registro = () => {
             tempErrors.apto_fisico = "Debés subir un apto físico en PDF.";
         }
 
-        // 🆕 NUEVO: Validación local del casillero
+        // Validación local del casillero
         if (!declaracionAceptada) {
             tempErrors.declaracion_medica_aceptada = "Debés confirmar la declaración bajo juramento.";
         }
@@ -136,9 +136,6 @@ const Registro = () => {
         if (file) {
             data.append('apto_fisico', file);
         }
-
-        // 🆕 NUEVO: Se inyecta la aceptación de los términos para el backend
-        data.append('declaracion_medica_aceptada', declaracionAceptada);
 
         try {
             await api.post('/socios/registrar', data, {
@@ -172,7 +169,6 @@ const Registro = () => {
                         setErrors(prev => ({ ...prev, confirmar_password: detail }));
                     } else if (detail.includes("PDF") || detail.includes("archivo") || detail.includes("adjuntar")) {
                         setErrors(prev => ({ ...prev, apto_fisico: detail }));
-                        // 🆕 NUEVO: Atrapa respuestas del backend sobre la declaración médica
                     } else if (detail.includes("declarar") || detail.includes("juramento") || detail.includes("médica")) {
                         setErrors(prev => ({ ...prev, declaracion_medica_aceptada: detail }));
                     } else {
@@ -353,7 +349,7 @@ const Registro = () => {
                         {errors.apto_fisico && <span className="error-message">{errors.apto_fisico}</span>}
                     </div>
 
-                    {/* 🆕 NUEVO: Renderizado del Checkbox con la Declaración Jurada */}
+                    {/* Renderizado del Checkbox con la Declaración Jurada */}
                     <div className="registro-field" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '10px', marginBottom: '5px' }}>
                         <input
                             type="checkbox"
