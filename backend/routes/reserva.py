@@ -292,9 +292,45 @@ async def confirmar_pago_membresia(
     if datos.creditos_a_usar > 0:
         if socio.creditos_disponibles < datos.creditos_a_usar:
             raise HTTPException(status_code=400, detail="No tenés créditos suficientes.")
-        socio.creditos_disponibles -= datos.creditos_a_usar
 
-    if datos.monto_total > 0:
+    # ── FIX: nunca confiar en el monto que manda el cliente. Se recalcula
+    # server-side con la misma fórmula que crear_reserva_membresia (20%
+    # acumulativo del monto base por cada clase ya pasada), tomando como
+    # base las fechas que realmente se van a procesar en este pago.
+    # Esto evita que un bug o manipulación en el frontend termine cobrando
+    # de más (como pasaba en la renovación, que no calculaba el descuento
+    # y mandaba el precio pleno de todas las clases). ──
+    todas_las_fechas = list(datos.fechas_con_cupo) + list(datos.fechas_sin_cupo)
+    total_clases     = len(todas_las_fechas)
+    clases_perdidas  = _calcular_clases_perdidas(todas_las_fechas)
+
+    precio_por_clase = clase.precio_individual
+    monto_base_mes   = total_clases * precio_por_clase
+
+    descuento_por_clase_perdida = monto_base_mes * 0.20
+    descuento_total             = clases_perdidas * descuento_por_clase_perdida
+    monto_sin_creditos          = max(0, monto_base_mes - descuento_total)
+
+    clases_a_reservar = len(todas_las_fechas)
+    creditos_a_usar   = min(datos.creditos_a_usar, clases_a_reservar)
+
+    if clases_a_reservar > 0:
+        precio_efectivo_por_clase = monto_sin_creditos / clases_a_reservar
+        descuento_creditos        = creditos_a_usar * precio_efectivo_por_clase
+    else:
+        descuento_creditos = 0
+
+    monto_total_calculado = round(max(0, monto_sin_creditos - descuento_creditos), 2)
+
+    # Si el frontend mandó un monto que difiere del recalculado (más allá de
+    # un margen de redondeo), no confiamos en él: usamos el calculado por el
+    # servidor, que es la fuente de verdad.
+    monto_a_cobrar = monto_total_calculado
+
+    if datos.creditos_a_usar > 0:
+        socio.creditos_disponibles -= creditos_a_usar
+
+    if monto_a_cobrar > 0:
         if datos.numero_tarjeta:
             numero_limpio      = datos.numero_tarjeta.replace(" ", "")
             titular_normalized = " ".join(datos.titular.split())
@@ -310,10 +346,10 @@ async def confirmar_pago_membresia(
                 raise HTTPException(status_code=400, detail="Tarjeta inválida")
             if not tarjeta.conexion_exitosa:
                 raise HTTPException(status_code=400, detail="Hay inconvenientes con la conexión al banco")
-            if tarjeta.saldo < datos.monto_total:
+            if tarjeta.saldo < monto_a_cobrar:
                 raise HTTPException(status_code=400, detail="La cuenta no tiene saldo suficiente")
 
-            tarjeta.saldo -= datos.monto_total
+            tarjeta.saldo -= monto_a_cobrar
         elif not datos.pago_exitoso:
             raise HTTPException(status_code=402, detail="No se pudo procesar el pago.")
 
@@ -337,8 +373,8 @@ async def confirmar_pago_membresia(
 
             if reserva_existente:
                 reserva_existente.estado       = "confirmada"
-                reserva_existente.monto_total  = datos.monto_total
-                reserva_existente.monto_pagado = datos.monto_total
+                reserva_existente.monto_total  = monto_a_cobrar
+                reserva_existente.monto_pagado = monto_a_cobrar
                 reservas_creadas.append(reserva_existente)
             else:
                 r = Reserva(
@@ -347,8 +383,8 @@ async def confirmar_pago_membresia(
                     tipo          = TipoReserva.Membresia.value,
                     estado        = "confirmada",
                     fecha_clase   = fecha,
-                    monto_total   = datos.monto_total,
-                    monto_pagado  = datos.monto_total,
+                    monto_total   = monto_a_cobrar,
+                    monto_pagado  = monto_a_cobrar,
                     es_recurrente = True,
                 )
                 db.add(r)
@@ -433,7 +469,7 @@ async def confirmar_pago_membresia(
             clase=clase,
             fechas_confirmadas=datos.fechas_con_cupo,
             fechas_lista_espera=[],
-            monto_total=datos.monto_total
+            monto_total=monto_a_cobrar
         )
     except Exception as e:
         print(f" Mail no enviado: {e}")
@@ -441,7 +477,7 @@ async def confirmar_pago_membresia(
     return {
         "mensaje":              "Reserva procesada",
         "reservas_confirmadas": len(reservas_creadas),
-        "monto_pagado":         datos.monto_total,
+        "monto_pagado":         monto_a_cobrar,
     }
  
 # ──────────────────────────────────────────────────────────────
@@ -993,6 +1029,7 @@ def mis_reservas(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
                 "actividad": clase.actividad if clase else None,
                 "horario":   str(clase.horario) if clase else None,
                 "dia":       clase.dia if clase else None,
+                "duracion":  clase.duracion if clase else None,
             }
         })
     return resultado

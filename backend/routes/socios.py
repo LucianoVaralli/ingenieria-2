@@ -152,10 +152,8 @@ def obtener_profesores(db: Session = Depends(get_db)):
 def obtener_socios(
     db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
 ):
-    # CORREGIDO: Mismo orden de parámetros que en /me (token, db)
     usuario_peticion = obtener_usuario_actual(token, db)
 
-    # CORREGIDO: Se agregó .value para comparar correctamente con los strings/integers de la DB
     if usuario_peticion.rol not in [Rol.Admin.value, Rol.Profesor.value]:
         raise HTTPException(
             status_code=403, detail="No tienes permisos para ver esta lista"
@@ -244,7 +242,7 @@ async def crear_profesor(
         telefono=datos.telefono,
         hashed_password=get_password_hash(password_temporal),
         rol=Rol.Profesor.value,
-        primer_login=True  # El profesor deberá cambiar esta contraseña temporal en su primer login
+        primer_login=True
     )
 
     db.add(nuevo_profesor)

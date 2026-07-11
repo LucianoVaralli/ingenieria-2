@@ -38,6 +38,8 @@ const Pago = () => {
         reservaId = null,
         todasLasClases   = null,   // resumen de múltiples clases en renovación
         montoTotal       = null,   // total sumado de todas las clases
+        clasesPerdidas   = 0,
+        descuentoAplicado = 0,
     } = location.state || {};
 
     const montoMostrado = montoTotal ?? monto;
@@ -123,7 +125,15 @@ const Pago = () => {
                 sessionStorage.removeItem('renovaciones_pendientes');
 
                 for (const item of pendientes) {
-                    const subtotal = item.clase.precio_individual * item.fechas_mes.length;
+                    // item.monto_total ya viene calculado por el backend
+                    // (/membresia/cotizar-renovacion) con el 20% acumulativo
+                    // aplicado por cada clase perdida. No se debe recalcular
+                    // acá como precio_individual * cantidad de fechas, porque
+                    // eso ignora el descuento y cobra el precio pleno.
+                    // De todos modos, el backend de /reservas/membresia/pagar
+                    // vuelve a recalcular el monto server-side como
+                    // salvaguarda final, así que este valor es solo informativo.
+                    const subtotal = item.monto_total;
                     await api.post('/reservas/membresia/pagar', {
                         clase_id:            item.clase.id,
                         fechas_con_cupo:     item.fechas_mes,
@@ -184,6 +194,12 @@ const Pago = () => {
                                                 {c.dia} · {c.horario?.slice(0,5)} hs · {c.clases} clase{c.clases !== 1 ? 's' : ''}
                                             </span>
                                         </div>
+                                        {c.clasesPerdidas > 0 && (
+                                            <div className="pago-resumen-fila pago-resumen-fila--sub" style={{ color: '#4caf50' }}>
+                                                <span>Descuento ({c.clasesPerdidas} clase{c.clasesPerdidas > 1 ? 's' : ''} perdida{c.clasesPerdidas > 1 ? 's' : ''})</span>
+                                                <span>-${Number(c.descuento).toFixed(2)}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                                 <div className="pago-resumen-total">
@@ -205,9 +221,19 @@ const Pago = () => {
                                     </span>
                                 </div>
                                 <div className="pago-resumen-fila">
-                                    <span>Clases incluidas</span>
+                                    <span>Clases del mes</span>
                                     <span>{fechasConCupo.length}</span>
                                 </div>
+                                <div className="pago-resumen-fila">
+                                    <span>Clases a pagar</span>
+                                    <span>{fechasConCupo.length - (clasesPerdidas || 0)}</span>
+                                </div>
+                                {clasesPerdidas > 0 && (
+                                    <div className="pago-resumen-fila" style={{ color: '#4caf50' }}>
+                                        <span>Descuento ({clasesPerdidas} clase{clasesPerdidas > 1 ? 's' : ''} perdida{clasesPerdidas > 1 ? 's' : ''})</span>
+                                        <span>-${Number(descuentoAplicado).toFixed(2)}</span>
+                                    </div>
+                                )}
                                 {creditosUsados > 0 && (
                                     <div className="pago-resumen-fila" style={{ color: '#4caf50' }}>
                                         <span>🎟️ Créditos aplicados</span>

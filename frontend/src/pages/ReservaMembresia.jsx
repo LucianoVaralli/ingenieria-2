@@ -213,7 +213,7 @@ const ReservaMembresia = () => {
                             <span>${clase.precio_individual}</span>
                         </div>
                         <div className="reserva-desglose-fila">
-                            <span>Clases Activas</span>
+                            <span>Clases a pagar</span>
                             <span>{clasesFuturas}</span>
                         </div>
                         {clasesPerdidas > 0 && (

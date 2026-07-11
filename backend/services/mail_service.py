@@ -177,6 +177,7 @@ Se te ha creado una cuenta en el sistema.
 Saludos.
 """
 
+    # ✅ AHORA SÍ: Le pasamos el cuerpo y el subtype
     mensaje = MessageSchema(
         subject=asunto,
         recipients=[profesor.email],
@@ -187,7 +188,6 @@ Saludos.
     fm = FastMail(conf)
 
     await fm.send_message(mensaje)
-    
     
 async def enviar_mail_cupo_disponible(
     socio: Socio,

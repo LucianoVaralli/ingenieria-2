@@ -63,7 +63,7 @@ const CambiarPassword = () => {
 
         // Validación: Regla de negocio de complejidad
         if (passwordNueva.trim() && !passRegex.test(passwordNueva)) {
-            localErrors.passwordNueva = "Debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.";
+            localErrors.passwordNueva = "La contraseña debe tener entre 6 y 16 caracteres, incluir al menos una mayúscula y un carácter especial.";
             hasFailed = true;
         }
 
