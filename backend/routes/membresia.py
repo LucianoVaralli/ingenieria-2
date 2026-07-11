@@ -41,6 +41,35 @@ def _mes_siguiente(anio: int, mes: int) -> tuple[int, int]:
     return anio, mes + 1
 
 
+def _calcular_clases_perdidas(fechas: list[str]) -> int:
+    """Cuenta cuántas fechas de la lista ya pasaron respecto a hoy.
+    (Duplicado intencional de reserva.py: no se importa desde ahí para
+    evitar import circular, ya que reserva.py importa cosas de este módulo.)
+    """
+    hoy = date.today()
+    return sum(
+        1 for f in fechas
+        if datetime.strptime(f, "%Y-%m-%d").date() < hoy
+    )
+
+
+def _calcular_monto_membresia(total_clases: int, clases_perdidas: int, precio_por_clase: float) -> dict:
+    """Misma fórmula que crear_reserva_membresia en reserva.py:
+    20% del monto base del mes, acumulativo por cada clase perdida.
+    """
+    monto_base_mes = total_clases * precio_por_clase
+    descuento_por_clase_perdida = monto_base_mes * 0.20
+    descuento_total = clases_perdidas * descuento_por_clase_perdida
+    monto_total = max(0, monto_base_mes - descuento_total)
+
+    return {
+        "monto_base_mes":     round(monto_base_mes, 2),
+        "clases_perdidas":    clases_perdidas,
+        "descuento_aplicado": round(descuento_total, 2),
+        "monto_total":        round(monto_total, 2),
+    }
+
+
 def _actualizar_membresia_activa_hasta(socio_id: int, db: Session):
     ultima = (
         db.query(Reserva)
@@ -170,6 +199,18 @@ def obtener_membresias_renovables(
 
         fechas_mes_sig = _calcular_fechas_mes(anio_sig, mes_sig, weekday)
 
+        # ── Calcular el monto real con el mismo criterio que cotizar-renovacion:
+        # 20% acumulativo del monto base por cada clase del mes destino que
+        # ya haya pasado (puede pasar si el socio abre el modal después de
+        # que ya arrancó el mes que está renovando). Sin esto, la vista previa
+        # del modal mostraba precio_individual * total_clases sin descuento. ──
+        clases_perdidas_preview = _calcular_clases_perdidas(fechas_mes_sig)
+        calculo_preview = _calcular_monto_membresia(
+            total_clases     = len(fechas_mes_sig),
+            clases_perdidas  = clases_perdidas_preview,
+            precio_por_clase = clase.precio_individual,
+        )
+
         # ── LÍMITE EXPLÍCITO: máximo 1 mes de anticipación desde hoy ──
         # Aunque existan pendiente_pago para meses futuros (creados al pagar
         # el mes anterior con anticipo), no se permite renovar más de 1 mes adelante.
@@ -220,6 +261,10 @@ def obtener_membresias_renovables(
             "mes_dest":               mes_sig,
             "fechas_mes":             fechas_mes_sig,
             "total_clases":           len(fechas_mes_sig),
+            "clases_perdidas":        calculo_preview["clases_perdidas"],
+            "descuento_aplicado":     calculo_preview["descuento_aplicado"],
+            "monto_base_mes":         calculo_preview["monto_base_mes"],
+            "monto_total":            calculo_preview["monto_total"],
         })
 
     return resultado
@@ -326,6 +371,16 @@ def cotizar_renovacion(
                 detail=f"No se encontraron fechas para renovar la clase {clase.actividad}"
             )
 
+        # ── Calcular clases perdidas y monto con el mismo criterio que
+        # una membresía nueva (20% acumulativo del monto base por cada
+        # clase ya pasada dentro del mes que se está renovando) ──
+        clases_perdidas = _calcular_clases_perdidas(fechas_mes)
+        calculo = _calcular_monto_membresia(
+            total_clases     = len(fechas_mes),
+            clases_perdidas  = clases_perdidas,
+            precio_por_clase = clase.precio_individual,
+        )
+
         resultado.append({
             "clase_id":  clase.id,
             "clase": {
@@ -335,8 +390,12 @@ def cotizar_renovacion(
                 "horario":           str(clase.horario),
                 "precio_individual": clase.precio_individual,
             },
-            "fechas_mes": fechas_mes,
-            "mes_label":  f"{mes_sig:02d}/{anio_sig}",
+            "fechas_mes":         fechas_mes,
+            "mes_label":          f"{mes_sig:02d}/{anio_sig}",
+            "clases_perdidas":    calculo["clases_perdidas"],
+            "descuento_aplicado": calculo["descuento_aplicado"],
+            "monto_base_mes":     calculo["monto_base_mes"],
+            "monto_total":        calculo["monto_total"],
         })
 
     return resultado

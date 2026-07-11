@@ -534,7 +534,9 @@ const Perfil = ({ token, setToken }) => {
 
             if (res.data.length === 1) {
                 const item = res.data[0];
-                const monto = item.clase.precio_individual * item.fechas_mes.length;
+                // El backend ya calculó el monto aplicando el 20% acumulativo
+                // por cada clase perdida (no recalcular acá con precio pleno).
+                const monto = item.monto_total;
 
                 navigate('/pago', {
                     state: {
@@ -543,6 +545,8 @@ const Perfil = ({ token, setToken }) => {
                         fechasConCupo:      item.fechas_mes,
                         fechasSinCupo:      [],
                         monto:              monto,
+                        clasesPerdidas:     item.clases_perdidas,
+                        descuentoAplicado:  item.descuento_aplicado,
                         creditosUsados:     0,
                         esRenovacion:       true,
                         esPrimeraMembresia: false,
@@ -558,15 +562,19 @@ const Perfil = ({ token, setToken }) => {
                 sessionStorage.setItem('renovaciones_pendientes', JSON.stringify(resto));
             }
 
-            const monto = primera.clase.precio_individual * primera.fechas_mes.length;
+            const monto = primera.monto_total;
 
-            // Armar resumen completo de todas las clases para mostrar en /pago
+            // Armar resumen completo de todas las clases para mostrar en /pago.
+            // subtotal viene del backend (ya con el descuento por clase perdida
+            // aplicado), no se recalcula con precio_individual * cantidad.
             const todasLasClases = res.data.map(item => ({
-                actividad:   item.clase.actividad,
-                dia:         item.clase.dia,
-                horario:     item.clase.horario,
-                clases:      item.fechas_mes.length,
-                subtotal:    item.clase.precio_individual * item.fechas_mes.length,
+                actividad:        item.clase.actividad,
+                dia:              item.clase.dia,
+                horario:          item.clase.horario,
+                clases:           item.fechas_mes.length,
+                clasesPerdidas:   item.clases_perdidas,
+                descuento:        item.descuento_aplicado,
+                subtotal:         item.monto_total,
             }));
             const montoTotal = todasLasClases.reduce((acc, c) => acc + c.subtotal, 0);
 
@@ -1892,18 +1900,21 @@ const Perfil = ({ token, setToken }) => {
                                                     <span className="modal-renovar-mes">
                                                         📅 Para {m.mes_renovacion}
                                                     </span>
-                                                    {m.mes_renovacion && (
-                                                        <span className="modal-renovar-vence">
-                                                            ⚠️ Venció en {(() => {
-                                                                const [mes, anio] = m.mes_renovacion.split('/').map(Number);
-                                                                const fechaMesAnterior = new Date(anio, mes - 2); // mes anterior al de renovación
-                                                                return fechaMesAnterior.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-                                                            })()}
-                                                        </span>
-                                                    )}
                                                 </div>
-                                                <div className="modal-renovar-precio">
-                                                    ${(m.precio_individual * m.total_clases).toFixed(2)}
+                                                <div className="modal-renovar-precio-col">
+                                                    {m.clases_perdidas > 0 && (
+                                                        <div className="modal-renovar-precio-tachado">
+                                                            ${(m.precio_individual * m.total_clases).toFixed(2)}
+                                                        </div>
+                                                    )}
+                                                    <div className="modal-renovar-precio">
+                                                        ${Number(m.monto_total ?? m.precio_individual * m.total_clases).toFixed(2)}
+                                                    </div>
+                                                    {m.clases_perdidas > 0 && (
+                                                        <div className="modal-renovar-descuento">
+                                                            -${Number(m.descuento_aplicado).toFixed(2)} ({m.clases_perdidas} clase{m.clases_perdidas > 1 ? 's' : ''} perdida{m.clases_perdidas > 1 ? 's' : ''})
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
