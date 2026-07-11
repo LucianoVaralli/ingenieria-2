@@ -125,6 +125,11 @@ const CrearClase = () => {
         }
     };
 
+    const capitalize = (texto) =>
+    texto
+        ? texto.charAt(0).toUpperCase() + texto.slice(1)
+        : "";
+
     return (
         <AdminLayout>
             <div className="crear-clase-page">
@@ -173,7 +178,7 @@ const CrearClase = () => {
                                     <option value="">Seleccione profesor</option>
                                     {profesores.map(p => (
                                         <option key={p.id} value={p.id}>
-                                            {p.email} ({p.nombre} {p.apellido})
+                                            {p.email} ({capitalize(p.nombre + " " + p.apellido)})
                                         </option>
                                     ))}
                                 </select>

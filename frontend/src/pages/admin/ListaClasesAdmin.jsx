@@ -793,7 +793,7 @@ function ListaClasesAdmin() {
                                     setMostrarModalCancelarDia(false)
                                 }
                             >
-                                Volver
+                                Cancelar
                             </button>
 
                             <button
@@ -876,7 +876,7 @@ function ListaClasesAdmin() {
                                         <option value="">Seleccionar profesor</option>
                                         {profesores.map(p => (
                                             <option key={p.id} value={p.id}>
-                                                {p.email} ({p.nombre} {p.apellido})
+                                                {p.email} ({capitalize(p.nombre + " " + p.apellido)})
                                             </option>
                                         ))}
                                     </select>
@@ -934,7 +934,7 @@ function ListaClasesAdmin() {
                                         <option value="">Seleccionar profesor</option>
                                         {profesores.map(p => (
                                             <option key={p.id} value={p.id}>
-                                                {p.email} ({p.nombre} {p.apellido})
+                                                {p.email} ({capitalize(p.nombre + " " + p.apellido)})
                                             </option>
                                         ))}
                                     </select>

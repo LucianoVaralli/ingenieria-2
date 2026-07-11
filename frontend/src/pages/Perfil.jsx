@@ -382,7 +382,6 @@ const Perfil = ({ token, setToken }) => {
                         } else {
                             setQrGenerado({});
                         }
-                    
                         setClasesProfesor(resClases.data.clases);
                         setClasesTemporales(resClases.data.clases_temporales);
                     } catch (err) {
@@ -900,6 +899,10 @@ const Perfil = ({ token, setToken }) => {
 
     // Clases de hoy: todas las que se dictan hoy sin importar estado
     const clasesHoy = (clasesProfesor || []).filter(c => {
+        if (c.es_temporal) {
+            return c.fecha === new Date().toISOString().slice(0, 10);
+        }
+
         if (!c?.dia) return false;
         return quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
     });
@@ -907,10 +910,20 @@ const Perfil = ({ token, setToken }) => {
     // Próximas: otros días de la semana + las de hoy que ya finalizaron
     // (porque su próxima ocurrencia es la semana que viene)
     const clasesFuturas = (clasesProfesor || []).filter(c => {
+
+        // Las temporales nunca van en "Próximas".
+        // Las futuras ya vienen en clasesTemporales.
+        if (c.es_temporal) {
+            return false;
+        }
+
         if (!c?.dia) return false;
+
         const esHoy = quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
-        if (!esHoy) return true; // otros días siempre aparecen como próximas
-        return estadoClase(c) === "finalizada"; // las de hoy que ya pasaron también
+
+        if (!esHoy) return true;
+
+        return estadoClase(c) === "finalizada";
     });
 
     const esClaseHoy = (clase) => {

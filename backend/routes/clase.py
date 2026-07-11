@@ -841,7 +841,24 @@ def obtener_clases_profesor(
         if dias_hasta_proxima == 0:
             dias_hasta_proxima = 7
         proxima_fecha = hoy + timedelta(days=dias_hasta_proxima)
+        
+        # Inscriptos PRÓXIMA SEMANA ver si va o no
+        dias_hasta_proxima = (dia_clase - hoy.weekday()) % 7
+        if dias_hasta_proxima == 0:
+            dias_hasta_proxima = 7
 
+        proxima_fecha = hoy + timedelta(days=dias_hasta_proxima)
+
+        # NUEVO: si esa próxima ocurrencia tiene un reemplazo,
+        # no mostrarla como próxima del profesor titular.
+        hay_reemplazo = db.query(CambioProfesorTemporalDB).filter(
+            CambioProfesorTemporalDB.clase_id == c.id,
+            CambioProfesorTemporalDB.profesor_original_id == profesor.id,
+            CambioProfesorTemporalDB.fecha == proxima_fecha
+        ).first()
+
+        if hay_reemplazo:
+            continue
         cantidad_proxima = (
             db.query(Reserva.socio_id)
             .filter(
