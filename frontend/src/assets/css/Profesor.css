@@ -327,6 +327,23 @@
     font-weight: 700;
 }
 
+.cartel-reemplazo{
+    margin-top:12px;
+    padding:10px;
+    border-radius:10px;
+
+    background:#fff3cd;
+    border:1px solid #ffe08a;
+
+    color:#856404;
+    font-size:.95rem;
+}
+
+.motivo-reemplazo{
+    margin-top:6px;
+    font-size:.9rem;
+}
+
 /* =========================
    RESPONSIVE
 ========================= */

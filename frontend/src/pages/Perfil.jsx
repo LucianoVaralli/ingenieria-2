@@ -215,8 +215,9 @@ const Perfil = ({ token, setToken }) => {
 
     const capitalize = (texto) =>
         texto
-            ? texto.charAt(0).toUpperCase() + texto.slice(1)
-            : "";
+            ?.split(" ")
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+            .join(" ") || "";
 
     // Normaliza texto sacando tildes y pasando a minúsculas,
     // para poder comparar "Miércoles" (mapeoDias) con "Miercoles" (backend)
@@ -1381,7 +1382,7 @@ const Perfil = ({ token, setToken }) => {
                                     {user.nombre ? user.nombre.charAt(0).toUpperCase() : 'S'}
                                 </div>
                                 <div className="perfil-hero-info">
-                                    <h2 className="perfil-nombre">{user.nombre}</h2>
+                                    <h2 className="perfil-nombre">{capitalize(user.nombre)}</h2>
                                     <p className="perfil-id">ID Socio · #2026{user.id || '01'}</p>
                                 </div>
                             </div>
@@ -1743,8 +1744,21 @@ const Perfil = ({ token, setToken }) => {
                                                                 <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
 
                                                                 <p>👥 {clase.alumnos_proxima ?? 0} / {clase.cupo}</p>
+                                                                {clase.tiene_reemplazo && (
+                                                                    <div className="cartel-reemplazo">
+                                                                        🔄 Esta clase será dictada por{" "}
+                                                                        <strong>{capitalize(clase.profesor_reemplazo)}</strong>
+
+                                                                        {clase.motivo_reemplazo && (
+                                                                            <div className="motivo-reemplazo">
+                                                                                Motivo: {capitalize(clase.motivo_reemplazo)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
 
                                                                 <div className="mis-clase-footer">
+                                                                    {!clase.tiene_reemplazo && (
                                                                     <div className="mis-clase-botones">
                                                                         <button className="btn-ver-alumnos" onClick={() => verAlumnos(clase, false)}>
                                                                             Ver alumnos
@@ -1779,12 +1793,16 @@ const Perfil = ({ token, setToken }) => {
                                                                                     toast.error("El QR nunca se genero pero la clase ya finalizó, no se puede generar.");
                                                                                     return;
                                                                                 }
-                                                                                if (estado === "finalizada") {
-                                                                                    toast.error("El QR ya caducó porque la clase ya finalizó.");
+                                                                                if (!qrGenerado[clase.id] && (clase.alumnos_proxima ?? 0) > 0) {
+                                                                                    toast.error("Primero generá el QR");
                                                                                     return;
                                                                                 }
-                                                                                if (!qrGenerado[clase.id] ) {
-                                                                                    toast.error("Primero generá el QR");
+                                                                                if (!qrGenerado[clase.id] && (estado === "proxima" || estado === "en_curso")) {
+                                                                                    toast.error("Esta clase no tiene alumnos");
+                                                                                    return;
+                                                                                }
+                                                                                if (estado === "finalizada") {
+                                                                                    toast.error("El QR ya caducó porque la clase ya finalizó.");
                                                                                     return;
                                                                                 }
                                                                                 
@@ -1795,7 +1813,9 @@ const Perfil = ({ token, setToken }) => {
                                                                             Mostrar QR
                                                                         </button>
                                                                     </div>
+                                                                )}
                                                                 </div>
+                                                                        
                                                             </div>
                                                     )})}
                                                 </div>

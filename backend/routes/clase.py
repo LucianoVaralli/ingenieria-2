@@ -835,12 +835,6 @@ def obtener_clases_profesor(
             .distinct()
             .count()
         )
-
-        # Inscriptos PRÓXIMA SEMANA
-        dias_hasta_proxima = (dia_clase - hoy.weekday()) % 7
-        if dias_hasta_proxima == 0:
-            dias_hasta_proxima = 7
-        proxima_fecha = hoy + timedelta(days=dias_hasta_proxima)
         
         # Inscriptos PRÓXIMA SEMANA ver si va o no
         dias_hasta_proxima = (dia_clase - hoy.weekday()) % 7
@@ -870,6 +864,24 @@ def obtener_clases_profesor(
             .distinct()
             .count()
         )
+        reemplazo_hoy = db.query(CambioProfesorTemporalDB).filter(
+            CambioProfesorTemporalDB.clase_id == c.id,
+            CambioProfesorTemporalDB.profesor_original_id == profesor.id,
+            CambioProfesorTemporalDB.fecha == hoy
+        ).first()
+
+        nombre_reemplazo = None
+
+        if reemplazo_hoy:
+            profesor_reemplazo = db.query(Socio).filter(
+                Socio.id == reemplazo_hoy.profesor_reemplazo_id
+            ).first()
+
+            if profesor_reemplazo:
+                nombre_reemplazo = (
+                    f"{profesor_reemplazo.nombre} "
+                    f"{profesor_reemplazo.apellido}"
+                )
 
         resultado.append({
             "id": c.id,
@@ -883,7 +895,10 @@ def obtener_clases_profesor(
             "profesor_nombre": f"{profesor.nombre} {profesor.apellido}",
             "alumnos_inscriptos": cantidad_proxima,        # para clase de hoy
             "alumnos_proxima": cantidad_hoy,         # para clase futura
-            "codigo_qr": c.codigo_qr
+            "codigo_qr": c.codigo_qr,
+            "tiene_reemplazo": reemplazo_hoy is not None,
+            "profesor_reemplazo": nombre_reemplazo,
+            "motivo_reemplazo": reemplazo_hoy.motivo if reemplazo_hoy else None
         })
 
     clases_temporales = []
@@ -906,8 +921,9 @@ def obtener_clases_profesor(
             .distinct()
             .count()
         )
-
-        if cambio.fecha == date.today():
+        hoy = date.today()
+        if cambio.fecha == hoy:
+            
             resultado.append({
                 "id": clase.id,
                 "actividad": clase.actividad,
@@ -922,7 +938,7 @@ def obtener_clases_profesor(
                 "alumnos_proxima": 0,
                 "codigo_qr": clase.codigo_qr,
                 "es_temporal": True,
-                "fecha": cambio.fecha
+                "fecha": cambio.fecha,
             })
         else:
             clases_temporales.append({

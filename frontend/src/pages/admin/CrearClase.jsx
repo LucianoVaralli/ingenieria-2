@@ -126,9 +126,10 @@ const CrearClase = () => {
     };
 
     const capitalize = (texto) =>
-    texto
-        ? texto.charAt(0).toUpperCase() + texto.slice(1)
-        : "";
+        texto
+            ?.split(" ")
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+            .join(" ") || "";
 
     return (
         <AdminLayout>
