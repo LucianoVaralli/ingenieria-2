@@ -923,7 +923,7 @@ def obtener_clases_profesor(
         )
         hoy = date.today()
         if cambio.fecha == hoy:
-            
+
             resultado.append({
                 "id": clase.id,
                 "actividad": clase.actividad,
@@ -935,7 +935,7 @@ def obtener_clases_profesor(
                 "profesor_id": profesor.id,
                 "profesor_nombre": f"{profesor.nombre} {profesor.apellido}",
                 "alumnos_inscriptos": alumnos,
-                "alumnos_proxima": 0,
+                "alumnos_proxima": alumnos,
                 "codigo_qr": clase.codigo_qr,
                 "es_temporal": True,
                 "fecha": cambio.fecha,
@@ -1090,6 +1090,24 @@ async def cambiar_profesor_temporal(
             status_code=400,
             detail="No se puede asignar un reemplazo para una fecha pasada"
         )
+
+    if datos.fecha == date.today():
+
+        ahora = datetime.now()
+
+        inicio = datetime.combine(
+            datos.fecha,
+            clase.horario
+        )
+
+        # mínimo 5 minutos antes
+        limite = inicio - timedelta(minutes=5)
+
+        if ahora > limite:
+            raise HTTPException(
+                status_code=400,
+                detail="Los cambios temporales deben realizarse al menos 5 minutos antes del inicio de la clase."
+            )
 
     profesor = db.query(Socio).filter(
         Socio.id == datos.profesor_id,

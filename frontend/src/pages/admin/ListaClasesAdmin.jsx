@@ -202,6 +202,36 @@ function ListaClasesAdmin() {
 
         if (hayError) return;
 
+        const ahora = new Date();
+
+        if (fechaCambio) {
+            const [anio, mes, dia] = fechaCambio.split("-").map(Number);
+            const [hora, minuto] = claseCambioProfesor.horario.split(":").map(Number);
+
+            const inicioClase = new Date(
+                anio,
+                mes - 1,
+                dia,
+                hora,
+                minuto,
+                0,
+                0
+            );
+
+            inicioClase.setHours(Number(hora), Number(minuto), 0, 0);
+
+            const limite = new Date(inicioClase);
+            limite.setMinutes(limite.getMinutes() - 5); // o -10 si querés
+
+            if (ahora > limite) {
+                setErroresCambioProfesor(prev => ({
+                    ...prev,
+                    general: "Los cambios temporales deben realizarse al menos 5 minutos antes del inicio de la clase."
+                }));
+                return;
+            }
+        }
+
         try {
             await api.put(
                 `/clases/cambiar-profesor-temporal/${claseCambioProfesor.id}`,
@@ -301,6 +331,7 @@ function ListaClasesAdmin() {
 
         const targetDay = diasMap[diaSemana];
         const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0); // Ignorar la hora para comparar solo fechas
 
         const year = hoy.getFullYear();
         const month = hoy.getMonth();

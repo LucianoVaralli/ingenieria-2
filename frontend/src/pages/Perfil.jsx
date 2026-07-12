@@ -419,6 +419,7 @@ const Perfil = ({ token, setToken }) => {
                         }
                         setClasesProfesor(resClases.data.clases);
                         setClasesTemporales(resClases.data.clases_temporales);
+
                     } catch (err) {
                         console.error("Error cargando datos de profesor:", err);
                         toast.error("Error cargando clases del profesor");
@@ -1695,7 +1696,7 @@ const Perfil = ({ token, setToken }) => {
                                         </h3>
 
                                         <span className="perfil-reservas-count">
-                                            {clasesProfesor.length}
+                                            {clasesProfesor.length + clasesTemporales.length}
                                         </span>
 
                                     </div>
@@ -1705,7 +1706,7 @@ const Perfil = ({ token, setToken }) => {
                                         </p>
                                     )}
 
-                                    {clasesProfesor.length === 0 ? (
+                                    {clasesProfesor.length === 0 && clasesTemporales.length === 0 ? (
 
                                         <div className="reserva-empty">
 
