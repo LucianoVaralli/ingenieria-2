@@ -1460,12 +1460,11 @@ const Perfil = ({ token, setToken }) => {
                                                     onAsistenciaRegistrada={async (claseId) => {
 
                                                         const respuesta = await api.get(
-                                                            `/calificacion/${claseId}`
+                                                            `/calificaciones/calificacion/${claseId}`
                                                         );
 
                                                         if (!respuesta.data.calificada) {
                                                             setClaseParaCalificar(claseId);
-                                                            setMostrarCalificacion(true);
                                                         }
 
                                                     }}
@@ -1473,7 +1472,15 @@ const Perfil = ({ token, setToken }) => {
 
                                                 <button
                                                     className="btn-cerrar"
-                                                    onClick={() => setAbrirScanner(false)}
+                                                    onClick={() => {
+
+                                                                setAbrirScanner(false);
+
+                                                                if (claseParaCalificar) {
+                                                                    setMostrarCalificacion(true);
+                                                                }
+
+                                                            }}
                                                     style={{ marginTop: "15px" }}
                                                 >
                                                     Cerrar
