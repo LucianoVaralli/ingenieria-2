@@ -37,14 +37,19 @@ router = APIRouter(
     tags=["Clases"]
 )
 
-from sqlalchemy import distinct
+from collections import defaultdict
 
 from fastapi import BackgroundTasks
 from services.mail_service import (
     enviar_mail_nueva_clase,
     enviar_mail_clase_eliminada,
     enviar_mail_cambio_permanente,
-    enviar_mail_cambio_temporal
+    enviar_mail_cambio_temporal,
+    notificar_eliminar_clase_membresia,
+    notificar_eliminar_clase_individual,
+    notificar_cancelar_dia_membresia,
+    notificar_cancelar_dia_individual,
+
 )
 
 def validar_capacidad_horaria(
@@ -438,6 +443,10 @@ async def eliminar_clase(
  
     socios_afectados = set()  # ← NUEVO: para recalcular membresía al final
     
+    creditos_por_socio = defaultdict(int)
+    reembolsos_por_socio = defaultdict(float)
+    pendiente_pago = defaultdict(int)
+
     for reserva in reservas_futuras:
         estado_previo = reserva.estado
         reserva.estado             = "cancelada"
@@ -446,13 +455,7 @@ async def eliminar_clase(
  
         # Pendiente de pago → solo notificar, sin compensación económica
         if estado_previo == "pendiente_pago":
-            crear_notificacion(
-                db,
-                reserva.socio_id,
-                "Clase Eliminada",
-                f"La clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')} "
-                f"fue eliminada antes de tu pago."
-            )
+            pendiente_pago[reserva.socio_id] += 1
             reserva.mensaje_admin = "Cancelada sin impacto económico"
             socios_afectados.add(reserva.socio_id) 
             continue
@@ -462,13 +465,7 @@ async def eliminar_clase(
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
             if socio:
                 socio.creditos_disponibles += 1
-                crear_notificacion(
-                    db,
-                    socio.id,
-                    "Clase Eliminada",
-                    f"Se eliminó la clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')}. "
-                    f"Se te otorgó 1 crédito como compensación por cada clase faltante de mes."
-                )
+                creditos_por_socio[socio.id] += 1
             reserva.credito_generado = True
             reserva.mensaje_admin    = "Crédito otorgado por eliminación de clase"
             socios_afectados.add(reserva.socio_id)  # ← NUEVO
@@ -477,16 +474,61 @@ async def eliminar_clase(
         elif reserva.tipo == TipoReserva.Individual.value:
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
             if socio:
-                crear_notificacion(
-                    db,
-                    socio.id,
-                    "Clase Eliminada",
-                    f"Se eliminó la clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')}. "
-                    f"Se te devolvió el {reserva.porcentaje_pagado}% del pago."
-                )
+                reembolsos_por_socio[socio.id] = reserva.porcentaje_pagado
             reserva.reembolso_realizado = True
             reserva.mensaje_admin       = "Reembolso procesado"
- 
+    
+    for socio_id, creditos in creditos_por_socio.items():
+        socio = db.query(Socio).filter(
+            Socio.id == socio_id
+        ).first()
+
+        crear_notificacion(
+            db,
+            socio_id,
+            "Clase Eliminada",
+            f"Se eliminó la clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')}.\n\n "
+            f"Se te otorgó 1 crédito como compensación por cada clase faltante de mes. Total de creditos: {creditos}"
+        )
+
+        if socio:
+            background_tasks.add_task(
+                notificar_eliminar_clase_membresia,
+                socio,
+                clase,
+                creditos
+            )
+
+    for socio_id, seña in reembolsos_por_socio.items():
+        socio = db.query(Socio).filter(
+            Socio.id == socio_id
+        ).first()       
+
+        crear_notificacion(
+            db,
+            socio_id,
+            "Clase Eliminada",
+            f"Se eliminó la clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')}. "
+            f"Se te devolvió el {seña}% del pago."
+        )
+        if socio:
+            background_tasks.add_task(
+                notificar_eliminar_clase_individual,
+                socio,
+                clase,
+                seña
+            )
+
+    for socio_id, creditos in pendiente_pago.items():
+
+        crear_notificacion(
+            db,
+            socio_id,
+            "Clase Eliminada",
+            f"La clase de los {clase.dia.value} a las {clase.horario.strftime('%H:%M')} "
+            f"fue eliminada antes de tu pago."
+        )
+
     # Avisar lista de espera
     espera = db.query(ListaEspera).filter(
         ListaEspera.clase_id    == clase.id,
@@ -528,6 +570,7 @@ async def eliminar_clase(
 @router.put("/cancelar-dia/{clase_id}")
 async def cancelar_clase_dia(
     clase_id: int,
+    background_tasks: BackgroundTasks,
     datos: CancelarClaseDia,
     db: Session = Depends(get_db)
 ):
@@ -592,6 +635,10 @@ async def cancelar_clase_dia(
             status_code=400,
             detail="No existen reservas para cancelar en esa fecha"
         )
+    
+    creditos_por_socio = defaultdict(int)
+    reembolsos_por_socio = defaultdict(float)
+    pendientes_por_socio = defaultdict(int)
 
     # Procesar alumnos anotados para esa fecha
     for reserva in reservas:
@@ -604,13 +651,7 @@ async def cancelar_clase_dia(
         
         # Si estaba colgada sin pagar, solo la cancelamos sin otorgar beneficios
         if estado_previo == "pendiente_pago":
-            crear_notificacion(
-                db,
-                reserva.socio_id,
-                "Clase cancelada",
-                f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada."
-                f"Motivo: {datos.motivo.strip().capitalize()}. La actividad continúa normalmente en los próximos días."
-            )
+            pendientes_por_socio[reserva.socio.id] += 1
             reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada por el administrador antes de tu pago."
             continue
         
@@ -619,15 +660,7 @@ async def cancelar_clase_dia(
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
             if socio:
                 socio.creditos_disponibles += 1
-
-                crear_notificacion(
-                    db,
-                    socio.id,
-                    "Clase cancelada",
-                    f"Se canceló la clase del día {clase.dia.value.capitalize()} {datos.fecha_clase}. "
-                    f"Motivo: {datos.motivo.strip().capitalize()}. "
-                    f"Se te otorgó 1 crédito como compensación. La clase sigue activa en el resto del calendario."
-                )
+                creditos_por_socio[socio.id] +=1
 
             reserva.credito_generado = True
             reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. Tenés 1 crédito pendiente disponible."
@@ -636,19 +669,68 @@ async def cancelar_clase_dia(
             socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
 
             if socio:
-                crear_notificacion(
-                    db,
-                    socio.id,
-                    "Clase cancelada",
-                    f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. "
-                    f"Motivo: {datos.motivo.strip().capitalize()}. "
-                    f"Se devolvió el {reserva.porcentaje_pagado}% del pago. La actividad continúa normalmente."
-                )
+                reembolsos_por_socio[socio.id] = reserva.porcentaje_pagado
 
             reserva.reembolso_realizado = True
             reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. Se devolvió el pago del {reserva.porcentaje_pagado}%."
     
     # No alteramos 'gimnasio.capacidad_disponible' porque la clase base sigue activa en la grilla.
+    for socio_id, creditos in creditos_por_socio.items():
+        socio = db.query(Socio).filter(
+            Socio.id == socio_id
+        ).first()
+
+        crear_notificacion(
+            db,
+            socio_id,
+            "Clase cancelada",
+            f"Se canceló la clase del día {clase.dia.value.capitalize()} {datos.fecha_clase}. "
+            f"Motivo: {datos.motivo.strip().capitalize()}. "
+            f"Se te otorgó 1 crédito como compensación. Total de creditos: {creditos}. "
+            f"La clase sigue activa en el resto del calendario."
+        )
+
+        if socio:
+            background_tasks.add_task(
+                notificar_cancelar_dia_membresia,
+                socio,
+                clase,
+                datos.fecha_clase,
+                datos.motivo.strip().capitalize()
+            )
+
+    for socio_id, seña in reembolsos_por_socio.items():
+        socio = db.query(Socio).filter(
+            Socio.id == socio_id
+        ).first()       
+
+        crear_notificacion(
+            db,
+            socio_id,
+            "Clase cancelada",
+            f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. "
+            f"Motivo: {datos.motivo.strip().capitalize()}. "
+            f"Se devolvió el {seña}% del pago. La actividad continúa normalmente."
+        )
+        if socio:
+            background_tasks.add_task(
+                notificar_cancelar_dia_individual,
+                socio,
+                clase,
+                seña,
+                datos.fecha,
+                datos.motivo.strip().capitalize()
+            )
+
+    for socio_id, creditos in pendientes_por_socio.items():
+
+        crear_notificacion(
+            db,
+            socio_id,
+            "Clase cancelada",
+            f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada."
+            f"Motivo: {datos.motivo.strip().capitalize()}. La actividad continúa normalmente en los próximos días."
+        )
 
     db.commit()
     return {"mensaje": f"Clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} cancelada correctamente. Alumnos notificados y base de datos actualizada."}

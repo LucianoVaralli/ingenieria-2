@@ -25,6 +25,14 @@ conf = ConnectionConfig(
     USE_CREDENTIALS=os.getenv("USE_CREDENTIALS", "True") == "True"
 )
 
+def capitalizar(texto: str) -> str:
+    if not texto:
+        return ""
+    return " ".join(
+        palabra.capitalize()
+        for palabra in texto.split()
+    )
+
 async def send_email(email: str, asunto: str, cuerpo: str):
     mensaje = MessageSchema(
         subject=asunto,
@@ -46,13 +54,13 @@ async def enviar_mail_pago_exitoso(
 
     cuerpo = f"""
     Pago realizado correctamente.
-    Actividad: {actividad}
+    Actividad: {capitalizar(actividad)}
     Fecha: {reserva.fecha_clase}
     Horario: {horario}
 
     Monto pagado: ${reserva.monto_pagado}
 
-    Estado: {reserva.estado}
+    Estado: {capitalizar(reserva.estado)}
     """
 
     mensaje = MessageSchema(
@@ -76,7 +84,7 @@ async def enviar_mail_lista_espera(
     cuerpo = f"""
     Usted ingresó correctamente a la lista de espera.
 
-    Actividad: {actividad}
+    Actividad: {capitalizar(actividad)}
     Fecha: {fecha_clase}
     Horario: {horario}
     """
@@ -130,7 +138,7 @@ Pago realizado correctamente.
 
 Tipo de reserva: Membresía mensual
 
-Actividad: {actividad}
+Actividad: {capitalizar(actividad)}
 Horario: {horario}
 
 Fechas reservadas:
@@ -165,7 +173,7 @@ async def enviar_mail_profesor(profesor, password_temporal):
     asunto = "Bienvenido al sistema - Credenciales de acceso"
 
     cuerpo = f"""
-Hola {profesor.nombre} {profesor.apellido},
+Hola {capitalizar(profesor.nombre)} {capitalizar(profesor.apellido)},
 
 Se te ha creado una cuenta en el sistema.
 
@@ -174,10 +182,11 @@ Se te ha creado una cuenta en el sistema.
 
 ⚠️ Al iniciar sesión, deberás cambiar la contraseña obligatoriamente.
 
+Si tenés dudas, comunicate con administración.
+
 Saludos.
 """
-
-    # ✅ AHORA SÍ: Le pasamos el cuerpo y el subtype
+    
     mensaje = MessageSchema(
         subject=asunto,
         recipients=[profesor.email],
@@ -203,7 +212,7 @@ async def enviar_mail_cupo_disponible(
     cuerpo = f"""
 Se liberó un cupo en la clase que solicitaste.
 
-Actividad: {actividad}
+Actividad: {capitalizar(actividad)}
 Fecha: {fecha_clase}
 Horario: {horario}
 
@@ -226,16 +235,18 @@ async def enviar_mail_nueva_clase(profesor, clase):
     asunto = "Nueva clase asignada"
 
     cuerpo = f"""
-Hola {profesor.nombre} {profesor.apellido},
+Hola {capitalizar(profesor.nombre)} {capitalizar(profesor.apellido)},
 
 Se te asignó una nueva clase en el sistema.
 
-🏋️ Actividad: {clase.actividad.value}
-📅 Día: {clase.dia.value}
+🏋️ Actividad: {capitalizar(clase.actividad.value)}
+📅 Día: {capitalizar(clase.dia.value)}
 ⏰ Horario: {clase.horario.strftime('%H:%M')}
 ⌛ Duración: {clase.duracion} minutos
 
 Podés consultar tu agenda desde la sección "Mi Perfil", donde encontrarás tanto las clases del día como las próximas.
+
+Si tenés dudas, comunicate con administración.
 
 Saludos.
 """
@@ -254,12 +265,12 @@ async def enviar_mail_clase_eliminada(profesor, clase):
     asunto = "Clase eliminada"
 
     cuerpo = f"""
-Hola {profesor.nombre} {profesor.apellido},
+Hola {capitalizar(profesor.nombre)} {capitalizar(profesor.apellido)},
 
 La siguiente clase fue eliminada:
 
-🏋️ Actividad: {clase.actividad.value}
-📅 Día: {clase.dia.value}
+🏋️ Actividad: {capitalizar(clase.actividad.value)}
+📅 Día: {capitalizar(clase.dia.value)}
 ⏰ Horario: {clase.horario.strftime('%H:%M')}
 
 No olvides que podes consultar tu agenda de clases en el "Mi Perfil", donde vas a encontrar tus clases del día y las próximas.
@@ -284,12 +295,12 @@ async def enviar_mail_cambio_permanente(profesor, clase):
     asunto = "Cambio permanente de profesor"
 
     cuerpo = f"""
-Hola {profesor.nombre} {profesor.apellido},
+Hola {capitalizar(profesor.nombre)} {capitalizar(profesor.apellido)},
 
 Te informamos que se te asignó de forma permanente la siguiente clase:
 
-🏋️ Actividad: {clase.actividad.value}
-📅 Día: {clase.dia.value}
+🏋️ Actividad: {capitalizar(clase.actividad.value)}
+📅 Día: {capitalizar(clase.dia.value)}
 ⏰ Horario: {clase.horario.strftime('%H:%M')}
 
 A partir de ahora, serás el profesor responsable de esta clase.
@@ -316,12 +327,12 @@ async def enviar_mail_cambio_temporal(profesor, clase, fecha):
     asunto = "Cambio temporal de profesor"
 
     cuerpo = f"""
-Hola {profesor.nombre} {profesor.apellido},
+Hola {capitalizar(profesor.nombre)} {capitalizar(profesor.apellido)},
 
 Se te asignó de forma temporal la siguiente clase para el día {fecha.strftime("%d/%m/%Y")}:
 
-🏋️ Actividad: {clase.actividad.value}
-📅 Día habitual: {clase.dia.value}
+🏋️ Actividad: {capitalizar(clase.actividad.value)}
+📅 Día habitual: {capitalizar(clase.dia.value)}
 ⏰ Horario: {clase.horario.strftime("%H:%M")}
 
 Ese día serás el profesor a cargo de la clase.
@@ -356,7 +367,7 @@ async def enviar_mail_cancelacion_individual(
     cuerpo = f"""
 Tu reserva fue cancelada correctamente.
 
-Actividad: {actividad}
+Actividad: {capitalizar(actividad)}
 Fecha: {reserva.fecha_clase}
 Horario: {horario}
 
@@ -389,7 +400,7 @@ async def enviar_mail_cancelacion_membresia(
     cuerpo = f"""
 Tu reserva fue cancelada correctamente.
 
-Actividad: {actividad}
+Actividad: {capitalizar(actividad)}
 Fecha: {reserva.fecha_clase}
 Horario: {horario}
 
@@ -421,7 +432,7 @@ async def enviar_mail_cancelacion_sin_beneficio(
     cuerpo = f"""
 Tu reserva fue cancelada correctamente.
 
-Actividad: {actividad}
+Actividad: {capitalizar(actividad)}
 Fecha: {reserva.fecha_clase}
 Horario: {horario}
 
@@ -432,6 +443,132 @@ Gracias por utilizar Sportify.
 
     mensaje = MessageSchema(
         subject="Cancelación de reserva - Sportify",
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+async def notificar_eliminar_clase_membresia(socio, clase, creditos):
+    asunto = "Clase eliminada"
+
+    cuerpo = f"""
+Hola {capitalizar(socio.nombre)} {capitalizar(socio.apellido)},
+
+La siguiente clase fue eliminada:
+
+🏋️ Actividad: {capitalizar(clase.actividad.value)}
+📅 Día: {capitalizar(clase.dia.value)}
+⏰ Horario: {clase.horario.strftime('%H:%M')}
+
+Como compensación se acreditaron {creditos} créditos a tu cuenta. 
+
+Recuerda que esos creditos solo son validos durante este mes. 
+
+Si tenés dudas, comunicate con administración.
+
+Saludos.
+"""
+
+    mensaje = MessageSchema(
+        subject=asunto,
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+async def notificar_eliminar_clase_individual(socio, clase, seña):
+    asunto = "Clase eliminada"
+
+    cuerpo = f"""
+Hola {capitalizar(socio.nombre)} {capitalizar(socio.apellido)},
+
+La siguiente clase fue eliminada:
+
+🏋️ Actividad: {capitalizar(clase.actividad.value)}
+📅 Día: {capitalizar(clase.dia.value)}
+⏰ Horario: {clase.horario.strftime('%H:%M')}
+
+Como compensación se realizará el reintegro del {seña}% correspondiente al pago realizado.
+
+Podes acercarte a la entrada para la devolucion. 
+
+Si tenés dudas, comunicate con administración.
+
+Saludos.
+"""
+
+    mensaje = MessageSchema(
+        subject=asunto,
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+async def notificar_cancelar_dia_membresia(socio, clase,fecha, motivo):
+    asunto = "Clase cancelada"
+
+    cuerpo = f"""
+Hola {capitalizar(socio.nombre)} {capitalizar(socio.apellido)},
+
+Se te informa que la clase del día {fecha.strftime("%d/%m/%Y")} fue cancelada:
+
+🏋️ Actividad: {capitalizar(clase.actividad.value)}
+📅 Día habitual: {capitalizar(clase.dia.value)}
+⏰ Horario: {clase.horario.strftime("%H:%M")}
+
+Motivo: {motivo}
+
+Como compensacion se te otogara un credito para que puedas usar en lo que respecta al mes.
+
+Si tenés alguna duda, comunicate con la administración.
+
+Saludos.
+"""
+
+    mensaje = MessageSchema(
+        subject=asunto,
+        recipients=[socio.email],
+        body=cuerpo,
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(mensaje)
+
+async def notificar_cancelar_dia_individual(socio, clase,seña,fecha, motivo):
+    asunto = "Clase cancelada"
+
+    cuerpo = f"""
+Hola {capitalizar(socio.nombre)} {capitalizar(socio.apellido)},
+
+Se te informa que la clase del día {fecha.strftime("%d/%m/%Y")} fue cancelada:
+
+🏋️ Actividad: {capitalizar(clase.actividad.value)}
+📅 Día habitual: {capitalizar(clase.dia.value)}
+⏰ Horario: {clase.horario.strftime("%H:%M")}
+
+Motivo: {motivo}
+
+Como compensacion se realizara el reintegro de {seña}% por el pago realizado.
+
+Acercate a la entrada para su devolucion.
+
+Si tenés alguna duda, comunicate con la administración.
+
+Saludos.
+"""
+
+    mensaje = MessageSchema(
+        subject=asunto,
         recipients=[socio.email],
         body=cuerpo,
         subtype="plain"
