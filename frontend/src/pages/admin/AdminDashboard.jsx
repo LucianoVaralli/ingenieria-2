@@ -38,6 +38,12 @@ const OPCIONES = [
         icon: "📊",
         titulo: "Estadísticas",
         desc: "Aqui poner una descripcion"
+    },
+    {
+        to: "/admin/calificaciones",
+        icon: "⭐",
+        titulo: "Calificaciones",
+        desc: "Gestiona las calificaciones y comentarios de los usuarios."
     }
 ];
 

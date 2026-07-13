@@ -27,7 +27,10 @@ const calcularHoraFin = (hora, duracion) => {
     fecha.setMinutes(m + duracion);
     return fecha.toTimeString().slice(0, 5);
 };
-const capitalizar = (texto) => texto?.charAt(0).toUpperCase() + texto?.slice(1);
+const capitalizar = (texto) => texto
+            ?.split(" ")
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+            .join(" ") || "";
 
 const Clases = ({ token }) => {
     const navigate = useNavigate();
@@ -448,7 +451,7 @@ const Clases = ({ token }) => {
                                 onClick={() => handleElegirClase(clase)}
                             >
                                 <p className="clase-nombre">{capitalizar(clase.actividad)}</p>
-                                <p>Profesor: <strong>{clase.profesor_nombre && clase.profesor_nombre !== 'None None' ? clase.profesor_nombre : 'Sin asignar'}</strong></p>
+                                <p>Profesor: <strong>{capitalizar(clase.profesor_nombre)}</strong></p>
                                 <p>Comienza a las: <strong>{formatearHora(clase.horario)}</strong></p>
                                 <p>Duración: <strong>{clase.duracion} min</strong></p>
                                 <p>Finaliza a las: <strong>{calcularHoraFin(clase.horario, clase.duracion)}</strong></p>

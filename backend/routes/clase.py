@@ -1369,7 +1369,8 @@ def escanear_qr(
     return {
         "mensaje": "Asistencia registrada con éxito",
         "clase": clase.actividad,
-        "fecha": datos.fecha_clase
+        "fecha": datos.fecha_clase,
+        "clase_id": clase.id,
     }
 @router.get("/{clase_id}/mi-asistencia")
 def verificar_mi_asistencia(

@@ -9,6 +9,7 @@ import EscanearQR from "./EscanearQR";
 import QRCode from "qrcode";
 import { toast, Toaster } from "react-hot-toast";
 import PagarConMP from "../components/PagarConMP";
+import ModalCalificacion from '../components/ModalCalificacion.jsx';
 
 
 const Perfil = ({ token, setToken }) => {
@@ -60,6 +61,10 @@ const Perfil = ({ token, setToken }) => {
 
     const hoy = new Date();
     const dia = hoy.getDate();
+
+    //calificaciones
+    const [mostrarCalificacion, setMostrarCalificacion] = useState(false);
+    const [claseParaCalificar, setClaseParaCalificar] = useState(null);
 
     // ── Estado puntual de UNA reserva (a diferencia de estadoClase, que
     // calcula el estado de la clase recurrente del profesor para "esta
@@ -1431,6 +1436,14 @@ const Perfil = ({ token, setToken }) => {
                                         </button>
 
                                     </div>
+                                    <button
+                                        onClick={() => {
+                                            setClaseParaCalificar(1);
+                                            setMostrarCalificacion(true);
+                                        }}
+                                    >
+                                        Probar calificación
+                                    </button>
 
                                     {abrirScanner && (
                                         <div
@@ -1444,8 +1457,17 @@ const Perfil = ({ token, setToken }) => {
                                                 <h2>📷 Escanear QR</h2>
 
                                                 <EscanearQR
-                                                    onAsistenciaRegistrada={() => {
-                                                        setAsistenciaRegistrada(true);
+                                                    onAsistenciaRegistrada={async (claseId) => {
+
+                                                        const respuesta = await api.get(
+                                                            `/calificacion/${claseId}`
+                                                        );
+
+                                                        if (!respuesta.data.calificada) {
+                                                            setClaseParaCalificar(claseId);
+                                                            setMostrarCalificacion(true);
+                                                        }
+
                                                     }}
                                                 />
 
@@ -1460,6 +1482,12 @@ const Perfil = ({ token, setToken }) => {
                                         </div>
                                     )}
                                 </>
+                            )}
+                            {mostrarCalificacion && claseParaCalificar && (
+                                <ModalCalificacion
+                                    claseId={claseParaCalificar}
+                                    cerrar={() => setMostrarCalificacion(false)}
+                                />
                             )}
 
                             {user.rol !== 'profesor' && (

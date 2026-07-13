@@ -10,6 +10,7 @@ const NAV_ITEMS = [
     { to: "/admin/preguntas-frecuentes", label: "Preguntas Frecuentes", icon: "❓" },
     { to: "/admin/gestion-profesores", label: "Gestión de Profesores", icon: "👨‍🏫" },
     { to: "/admin/estadisticas", label: "Estadisticas", icon: "📊" },
+    { to: "/admin/calificaciones", label: "Calificaciones", icon: "⭐" }
 ];
 
 function AdminNavbar({ setToken, abierto, setAbierto }) {
