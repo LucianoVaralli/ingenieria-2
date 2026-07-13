@@ -1846,6 +1846,18 @@ console.log("clasesTemporales", clasesTemporales);
                                                             <p>🕒 {clase.horario?.slice(0, 5)} hs</p>
 
                                                             <p>👥 {clase.alumnos_inscriptos} / {clase.cupo}</p>
+                                                            {clase.tiene_reemplazo_proximo && (
+                                                                <div className="cartel-reemplazo">
+                                                                    🔄 El día {formatearFecha(clase.fecha_reemplazo)} esta clase será dictada por{" "}
+                                                                    <strong>{capitalize(clase.profesor_reemplazo_proximo)}</strong>
+
+                                                                    {clase.motivo_reemplazo_proximo && (
+                                                                        <div className="motivo-reemplazo">
+                                                                            Motivo: {capitalize(clase.motivo_reemplazo_proximo)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                             <div className="mis-clase-footer">
 
                                                                 <div className="mis-clase-botones">

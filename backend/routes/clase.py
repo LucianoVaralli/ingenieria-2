@@ -844,16 +844,25 @@ def obtener_clases_profesor(
 
         proxima_fecha = hoy + timedelta(days=dias_hasta_proxima)
 
-        # NUEVO: si esa próxima ocurrencia tiene un reemplazo,
-        # no mostrarla como próxima del profesor titular.
-        hay_reemplazo = db.query(CambioProfesorTemporalDB).filter(
+        reemplazo_proximo = db.query(CambioProfesorTemporalDB).filter(
             CambioProfesorTemporalDB.clase_id == c.id,
             CambioProfesorTemporalDB.profesor_original_id == profesor.id,
             CambioProfesorTemporalDB.fecha == proxima_fecha
         ).first()
 
-        if hay_reemplazo:
-            continue
+        nombre_reemplazo_proximo = None
+
+        if reemplazo_proximo:
+            profesor_reemplazo = db.query(Socio).filter(
+                Socio.id == reemplazo_proximo.profesor_reemplazo_id
+            ).first()
+
+            if profesor_reemplazo:
+                nombre_reemplazo_proximo = (
+                    f"{profesor_reemplazo.nombre} "
+                    f"{profesor_reemplazo.apellido}"
+                )
+
         cantidad_proxima = (
             db.query(Reserva.socio_id)
             .filter(
@@ -899,7 +908,20 @@ def obtener_clases_profesor(
             "codigo_qr": c.codigo_qr,
             "tiene_reemplazo": reemplazo_hoy is not None,
             "profesor_reemplazo": nombre_reemplazo,
-            "motivo_reemplazo": reemplazo_hoy.motivo if reemplazo_hoy else None
+            "motivo_reemplazo": reemplazo_hoy.motivo if reemplazo_hoy else None,
+            "tiene_reemplazo_proximo": reemplazo_proximo is not None,
+            "profesor_reemplazo_proximo": nombre_reemplazo_proximo,
+            "motivo_reemplazo_proximo": (
+                reemplazo_proximo.motivo
+                if reemplazo_proximo
+                else None
+            ),
+            "fecha_reemplazo": (
+                str(proxima_fecha)
+                if reemplazo_proximo
+                else None
+            ),
+
         })
 
     clases_temporales = []
