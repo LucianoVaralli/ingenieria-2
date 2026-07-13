@@ -57,7 +57,7 @@ export default function EscanearQR({ onAsistenciaRegistrada }){
             fecha_clase: fechaLocal,
           });
           setMensaje(res.data.mensaje);
-          if (onAsistenciaRegistrada) onAsistenciaRegistrada();
+          if (onAsistenciaRegistrada) onAsistenciaRegistrada(res.data.clase_id);
         } catch (err) {
           const detail = err.response?.data?.detail;
           const mensajeError = Array.isArray(detail)

@@ -16,6 +16,7 @@ from models.reserva_MIO import Reserva
 from models.lista_espera import ListaEspera
 from models.password_recovery import PasswordRecovery
 from models.tarjeta_simulada import TarjetaSimulada
+from models.calificacion import CalificacionDB
 
 # Importar Servicios y Routers
 from services.scheduler import scheduler
@@ -31,6 +32,7 @@ from routes.pregunta_frecuente import router as pregunta_frecuente_router
 from routes.membresia import router as membresia_router
 from routes.estadisticas import router as estadisticas_router
 from fastapi.staticfiles import StaticFiles
+from routes.calificacion import router as calificacion_router
 
 from routes.mercadopago import router as mp_router
 
@@ -136,6 +138,7 @@ app.include_router(pregunta_frecuente_router)
 app.include_router(membresia_router)
 app.include_router(mp_router)
 app.include_router(estadisticas_router)
+app.include_router(calificacion_router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
