@@ -947,14 +947,17 @@ const Perfil = ({ token, setToken }) => {
         if (ahora > finEstaSemana) return "finalizada";
         return "proxima";
     };
-
+console.log(
+    clasesProfesor.map(c => ({
+        id: c.id,
+        horario: c.horario,
+        estado: estadoClase(c)
+    }))
+);
     // Clases de hoy: todas las que se dictan hoy sin importar estado
     const clasesHoy = (clasesProfesor || []).filter(c => {
-        if (c.es_temporal) {
-            return c.fecha === new Date().toISOString().slice(0, 10);
-        }
-
         if (!c?.dia) return false;
+
         return quitarTildes(c.dia.toLowerCase()) === diaHoyTexto;
     });
 
@@ -992,6 +995,10 @@ const Perfil = ({ token, setToken }) => {
 
         return dias[quitarTildes(clase.dia)] === hoy;
     };
+        console.log("clasesProfesor", clasesProfesor);
+console.log("clasesHoy", clasesHoy);
+console.log("clasesFuturas", clasesFuturas);
+console.log("clasesTemporales", clasesTemporales);
 
     const verAlumnos = async (clase, esFutura = false) => {
         try {

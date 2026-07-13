@@ -796,6 +796,7 @@ def obtener_clases_profesor(
         Socio.id == usuario.id,
         Socio.rol == Rol.Profesor.value
     ).first()
+    
 
     if not profesor:
         raise HTTPException(
