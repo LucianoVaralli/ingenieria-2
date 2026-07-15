@@ -246,29 +246,27 @@
 }
 
 .modal-actions button {
-    border: none;
-    padding: 10px 14px;
+    height: 36px;
+    padding: 0 14px;
     border-radius: 8px;
     cursor: pointer;
+    font-size: 14px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.modal-actions button:first-child {
-    background: #22c55e;
+.btn-cambio {
+    background-color: #5ab847;
     color: white;
-}
-
-.modal-actions button:first-child:hover {
-    background: #16a34a;
+    border: none;
 }
 
 .btn-cerrar {
-    background: #374151 !important;
-    color: white !important;
-}
-
-.btn-cerrar:hover {
-    background: #4b5563 !important;
+    background-color: #4a5568;
+    color: white;
+    border: none;
 }
 
 .admin-page {

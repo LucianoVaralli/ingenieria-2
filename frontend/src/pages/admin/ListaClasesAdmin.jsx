@@ -3,6 +3,8 @@ import api from "../../api/api";
 import "../../assets/css/ListaClasesAdmin.css";
 import AdminLayout from "../../layouts/AdminLayout";
 import QRProfesor from "../profesor/QRProfesor";
+import toast from "react-hot-toast";
+
 function ListaClasesAdmin() {
     const [clases, setClases] = useState([]);
 
@@ -244,11 +246,7 @@ function ListaClasesAdmin() {
 
             await cargarClases();
             setMostrarModalCambioProfesor(false);
-            setMensajeExito("Cambio temporal de profesor exitoso.");
-
-            setTimeout(() => {
-                setMensajeExito("");
-            }, 3000);
+            toast.success("Cambio temporal de profesor exitoso.");
 
         } catch (err) {
             setErroresCambioProfesor(prev => ({
@@ -292,11 +290,8 @@ function ListaClasesAdmin() {
 
             await cargarClases();
             setMostrarModalCambioProfesor(false);
-            setMensajeExito("Cambio permanente de profesor exitoso.");
 
-            setTimeout(() => {
-                setMensajeExito("");
-            }, 3000);
+            toast.success("Cambio permanente de profesor exitoso.");
 
         } catch (err) {
             setErroresCambioProfesor(prev => ({
@@ -387,18 +382,14 @@ function ListaClasesAdmin() {
 
             await cargarClases();
 
-            setMensajeExito("Eliminación completada");
-
-            setTimeout(() => {
-                setMensajeExito("");
-            }, 3000);
+            toast.success("Eliminación completada");
 
             setMostrarConfirmacion(false);
             setClaseAEliminar(null);
             setInfoEliminacion(null);
 
         } catch (error) {
-            setErrorBackend(
+            toast.error(
                 error.response?.data?.detail ||
                 "Error eliminando clase"
             );
@@ -451,18 +442,19 @@ function ListaClasesAdmin() {
             await cargarClases();
 
             setMostrarModalCancelarDia(false);
-            setMensajeExito("Clase cancelada correctamente");
 
-            setTimeout(() => {
-                setMensajeExito("");
-            }, 3000);
+            toast.success("Clase cancelada correctamente");
 
         } catch (error) {
             setErrorCancelarDia(prev => ({
                 ...prev,
-                general: error.response?.data?.detail ||
-                "Error cancelando clase"
+                general: error.response?.data?.detail || "Error cancelando clase"
             }));
+
+            toast.error(
+                error.response?.data?.detail ||
+                "Error cancelando clase"
+            );
         }
     };
 

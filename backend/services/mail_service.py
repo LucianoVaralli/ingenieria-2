@@ -5,6 +5,7 @@ import os
 from models.socio import Socio
 from models.clase import Clase
 from models.reserva_MIO import Reserva
+from datetime import datetime
 
 load_dotenv(dotenv_path=".env")
 
@@ -515,6 +516,8 @@ Saludos.
 
 async def notificar_cancelar_dia_membresia(socio, clase,fecha, motivo):
     asunto = "Clase cancelada"
+    if isinstance(fecha, str):
+        fecha = datetime.strptime(fecha, "%Y-%m-%d").date()
 
     cuerpo = f"""
 Hola {capitalizar(socio.nombre)} {capitalizar(socio.apellido)},
@@ -546,7 +549,8 @@ Saludos.
 
 async def notificar_cancelar_dia_individual(socio, clase,seña,fecha, motivo):
     asunto = "Clase cancelada"
-
+    if isinstance(fecha, str):
+            fecha = datetime.strptime(fecha, "%Y-%m-%d").date()
     cuerpo = f"""
 Hola {capitalizar(socio.nombre)} {capitalizar(socio.apellido)},
 

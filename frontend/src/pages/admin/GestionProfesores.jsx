@@ -50,6 +50,18 @@ function GestionProfesores() {
         });
     };
 
+    const limpiarFormulario = () => {
+        setForm({
+            nombre: "",
+            apellido: "",
+            dni: "",
+            email: "",
+            telefono: ""
+        });
+
+        setErrors({});
+    };
+
     const editarProfesor = (profesor) => {
         setProfesorEditando(profesor);
 
@@ -80,15 +92,7 @@ function GestionProfesores() {
                 "Profesor creado correctamente. Se enviaron las credenciales al email."
             );
 
-            setForm({
-                nombre: "",
-                apellido: "",
-                dni: "",
-                email: "",
-                telefono: ""
-            });
-
-            setErrors({});
+            limpiarFormulario();
 
         } catch (err) {
 
@@ -124,16 +128,7 @@ function GestionProfesores() {
 
             setEditMode(false);
             setProfesorEditando(null);
-
-            setForm({
-                nombre: "",
-                apellido: "",
-                dni: "",
-                email: "",
-                telefono: ""
-            });
-
-            setErrors({});
+            limpiarFormulario();
 
             await cargarProfesores();
 
@@ -455,17 +450,17 @@ function GestionProfesores() {
 
                             <div className="modal-actions">
 
-                                <button type="submit">
+                                <button
+                                className="btn-cambio">
                                     Guardar cambios
                                 </button>
 
                                 <button
-                                    type="button"
                                     className="btn-cerrar"
                                     onClick={() => {
                                         setEditMode(false);
                                         setProfesorEditando(null);
-                                        setErrors({});
+                                        limpiarFormulario();
                                     }}
                                 >
                                     Cancelar

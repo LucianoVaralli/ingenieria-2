@@ -24,6 +24,8 @@ import CambiarPasswordInicial from './pages/CambiarPasswordInicial';
 import GestionProfesores from './pages/admin/GestionProfesores';
 import PagoResultado from './pages/PagoResultado'
 import Estadisticas from "./pages/admin/Estadisticas";
+
+import { Toaster } from "react-hot-toast";
 // 🌟 1. Creamos un sub-componente para poder usar useLocation
 function AppContent({ token, setToken }) {
   const location = useLocation();
@@ -87,7 +89,15 @@ function App() {
 
   return (
     <Router>
-      <AppContent token={token} setToken={setToken} />
+      <>
+        <Toaster
+            position="top-right"
+            toastOptions={{
+                duration: 4000
+            }}
+        />
+          <AppContent token={token} setToken={setToken} />
+      </>
     </Router>
   );
 }

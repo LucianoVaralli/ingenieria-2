@@ -623,6 +623,19 @@ async def cancelar_clase_dia(
         detail="No se puede cancelar una clase de una fecha pasada"
     )
 
+    ya_cancelada = db.query(Reserva).filter(
+        Reserva.clase_id == clase.id,
+        Reserva.fecha_clase == datos.fecha_clase,
+        Reserva.estado == "cancelada",
+        Reserva.tipo_cancelacion == "cancelacion_dia"
+    ).first()
+
+    if ya_cancelada:
+        raise HTTPException(
+            status_code=400,
+            detail="Esa clase ya fue cancelada anteriormente."
+        )
+
     # Buscar reservas tanto "confirmada" como "pendiente_pago" para ESE día puntual
     reservas = db.query(Reserva).filter(
         Reserva.clase_id == clase.id,
@@ -718,7 +731,7 @@ async def cancelar_clase_dia(
                 socio,
                 clase,
                 seña,
-                datos.fecha,
+                datos.fecha_clase,
                 datos.motivo.strip().capitalize()
             )
 
@@ -1228,7 +1241,7 @@ async def cambiar_profesor_temporal(
     if datos.profesor_id == clase.profesor_id:
         raise HTTPException(
             status_code=400,
-            detail="La clase ya tiene asignado ese profesor"
+            detail="La clase ya tiene asignado ese profesor como titular"
         )
 
     if len(datos.motivo.strip()) < 5:
@@ -1245,29 +1258,46 @@ async def cambiar_profesor_temporal(
     ).first()
 
     if cambio_existente:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe un cambio temporal para esa fecha"
+
+        if cambio_existente.profesor_reemplazo_id == datos.profesor_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Ese profesor ya está asignado para esa fecha"
+            )
+
+        validar_superposicion_profesor(
+            db=db,
+            profesor_id=datos.profesor_id,
+            dia=clase.dia,
+            horario=clase.horario,
+            duracion=clase.duracion,
+            fecha=datos.fecha
         )
 
-    validar_superposicion_profesor(
-        db=db,
-        profesor_id=datos.profesor_id,
-        dia=clase.dia,
-        horario=clase.horario,
-        duracion=clase.duracion,
-        fecha=datos.fecha
-    )
+        cambio_existente.profesor_reemplazo_id = datos.profesor_id
+        cambio_existente.motivo = datos.motivo.strip()
 
-    nuevo_cambio = CambioProfesorTemporalDB(
-        clase_id=clase.id,
-        profesor_original_id=clase.profesor_id,
-        profesor_reemplazo_id=datos.profesor_id,
-        fecha=datos.fecha,
-        motivo=datos.motivo.strip()
-    )
+    else:
 
-    db.add(nuevo_cambio)
+        validar_superposicion_profesor(
+            db=db,
+            profesor_id=datos.profesor_id,
+            dia=clase.dia,
+            horario=clase.horario,
+            duracion=clase.duracion,
+            fecha=datos.fecha
+        )
+
+        nuevo_cambio = CambioProfesorTemporalDB(
+            clase_id=clase.id,
+            profesor_original_id=clase.profesor_id,
+            profesor_reemplazo_id=datos.profesor_id,
+            fecha=datos.fecha,
+            motivo=datos.motivo.strip()
+        )
+
+        db.add(nuevo_cambio)
+
     db.commit()
 
     reservas = db.query(Reserva).filter(
@@ -1331,7 +1361,7 @@ async def cambiar_profesor_permanente(
     if datos.profesor_id == clase.profesor_id:
         raise HTTPException(
             status_code=400,
-            detail="La clase ya tiene asignado ese profesor"
+            detail="La clase ya tiene asignado ese profesor como titular"
         )
 
     if len(datos.motivo.strip()) < 5:
