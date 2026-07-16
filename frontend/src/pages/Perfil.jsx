@@ -7,7 +7,7 @@ import ModalResultado from '../components/ModalResultado.jsx';
 import { useRef } from "react";
 import EscanearQR from "./EscanearQR";
 import QRCode from "qrcode";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import PagarConMP from "../components/PagarConMP";
 
 
@@ -1054,8 +1054,8 @@ console.log("clasesTemporales", clasesTemporales);
     };
 
     return (
-        <>  {/*esto y el toaster esta demas */}
-        <Toaster />
+        <>  
+        
             <div className="perfil-container">
                 
                 <ModalConfirmacion
@@ -1740,12 +1740,14 @@ console.log("clasesTemporales", clasesTemporales);
                                                         return (
                                                             <div key={clase.id} className="mis-clase-card">
 
-                                                                <h3>{capitalize(clase.actividad)}</h3>
-                                                                <span className={`estado-clase ${estado}`}>
-                                                                    {estado === "proxima" && "🟡 Próxima"}
-                                                                    {estado === "en_curso" && "🟢 En curso"}
-                                                                    {estado === "finalizada" && "⚫ Finalizada"}
-                                                                </span>
+                                                                <div className="mis-clase-card-header">
+                                                                    <h3>{capitalize(clase.actividad)}</h3>
+                                                                    <span className={`estado-clase ${estado}`}>
+                                                                        {estado === "proxima" && "🟡 Próxima"}
+                                                                        {estado === "en_curso" && "🟢 En curso"}
+                                                                        {estado === "finalizada" && "⚫ Finalizada"}
+                                                                    </span>
+                                                                </div>
 
                                                                 <p>📅 {capitalize(clase.dia)}</p>
 
@@ -1793,27 +1795,29 @@ console.log("clasesTemporales", clasesTemporales);
                                                                         </button>
 
                                                                         {/* Botón Mostrar QR — si no fue generado muestra mensaje */}
+
                                                                         <button
                                                                             className="btn-ver-qr"
                                                                             onClick={() => {
                                                                                 const estado = estadoClase(clase);
-                                                                                if (!qrGenerado[clase.id] && estado === "finalizada") {
-                                                                                    toast.error("El QR nunca se genero pero la clase ya finalizó, no se puede generar.");
-                                                                                    return;
-                                                                                }
-                                                                                if (!qrGenerado[clase.id] && (clase.alumnos_proxima ?? 0) > 0) {
-                                                                                    toast.error("Primero generá el QR");
-                                                                                    return;
-                                                                                }
-                                                                                if (!qrGenerado[clase.id] && (estado === "proxima" || estado === "en_curso")) {
-                                                                                    toast.error("Esta clase no tiene alumnos");
-                                                                                    return;
-                                                                                }
+                                                                                                                                                        
                                                                                 if (estado === "finalizada") {
                                                                                     toast.error("El QR ya caducó porque la clase ya finalizó.");
                                                                                     return;
                                                                                 }
-                                                                                
+                                                                                if (estado === "proxima") {
+                                                                                    toast.error("Esta clase todavía no comenzó.");
+                                                                                    return;
+                                                                                }
+                                                                                if (!qrGenerado[clase.id] && (clase.alumnos_proxima ?? 0) > 0) {
+                                                                                    toast.error("Primero generá el QR.");
+                                                                                    return;
+                                                                                }
+                                                                                if (!qrGenerado[clase.id]) {
+                                                                                    toast.error("Esta clase no tiene alumnos");
+                                                                                    return;
+                                                                                }
+                                                                            
                                                                                 setQrSeleccionado(qrGenerado[clase.id]);
                                                                                 setMostrarQR(true);
                                                                             }}
@@ -2007,13 +2011,12 @@ console.log("clasesTemporales", clasesTemporales);
                             className="modal-box"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <h2>📱 Código QR</h2>
+                            <h2>Código QR</h2>
 
                             <img
                                 src={qrSeleccionado}
                                 alt="QR"
                                 width={280}
-                                style={{ margin: "20px 0" }}
                             />
 
                             <p>

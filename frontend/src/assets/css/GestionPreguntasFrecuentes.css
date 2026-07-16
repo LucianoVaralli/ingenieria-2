@@ -1,0 +1,324 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ── PÁGINA ── */
+.admin-page {
+    font-family: 'Lora', serif;
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px 48px 80px;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.admin-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: #5CB84D;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.admin-section-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin: 5px 0 32px;
+    letter-spacing: -0.3px;
+}
+
+.admin-section-title-block {
+    margin-bottom: 18px;
+}
+
+.admin-subtitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+}
+
+.admin-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 40px 0;
+    border: none;
+}
+
+/* ══════════════════════════════
+   FORMULARIO
+══════════════════════════════ */
+.admin-form {
+    background: #0d0d0d;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-form label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+.admin-form label:first-of-type {
+    margin-top: 0;
+}
+
+.admin-form input,
+.admin-form textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 9px;
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.admin-form input::placeholder,
+.admin-form textarea::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.admin-form input:focus,
+.admin-form textarea:focus {
+    border-color: rgba(92, 184, 77, 0.5);
+    background: #171717;
+}
+
+.admin-form-botones {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.admin-form button {
+    align-self: flex-start;
+    background: rgba(92, 184, 77, 0.14);
+    border: 1px solid rgba(92, 184, 77, 0.4);
+    color: #5CB84D;
+    padding: 12px 26px;
+    border-radius: 9px;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.admin-form button:hover {
+    background: rgba(92, 184, 77, 0.24);
+    border-color: #5CB84D;
+}
+
+.btn-cancelar-edicion {
+    align-self: flex-start;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 12px 22px;
+    border-radius: 9px;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancelar-edicion:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-form--editando {
+    border-color: rgba(92, 184, 77, 0.4);
+    box-shadow: 0 0 0 1px rgba(92, 184, 77, 0.15);
+}
+
+.faq-admin-card--editando {
+    border-color: rgba(92, 184, 77, 0.5);
+    box-shadow: 0 0 0 1px rgba(92, 184, 77, 0.2);
+}
+
+/* ══════════════════════════════
+   LISTA DE PREGUNTAS
+══════════════════════════════ */
+.admin-opciones {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.faq-admin-card {
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.faq-admin-card:hover {
+    border-color: rgba(92, 184, 77, 0.3);
+    transform: translateY(-2px);
+}
+
+.faq-admin-card h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.faq-admin-card p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0;
+    line-height: 1.5;
+    flex: 1;
+}
+
+.faq-admin-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.btn-editar {
+    flex: 1;
+    background: transparent;
+    color: #5CB84D;
+    border: 1px solid rgba(92, 184, 77, 0.4);
+    padding: 9px;
+    border-radius: 8px;
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-editar:hover {
+    background: rgba(92, 184, 77, 0.1);
+    border-color: #5CB84D;
+}
+
+.btn-eliminar {
+    flex: 1;
+    background: transparent;
+    color: #ff5555;
+    border: 1px solid rgba(255, 85, 85, 0.4);
+    padding: 9px;
+    border-radius: 8px;
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-eliminar:hover {
+    background: rgba(255, 85, 85, 0.1);
+    border-color: #ff5555;
+}
+
+/* ══════════════════════════════
+   MODAL DE ELIMINACIÓN
+══════════════════════════════ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal-content {
+    background: #0f0f0f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 32px;
+    border-radius: 16px;
+    width: 400px;
+    max-width: 90vw;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    color: #fff;
+    font-family: 'Lora', serif;
+}
+
+.modal-content h3 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.modal-content p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.btn-cancelar {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.btn-cancelar:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* Dentro del modal, los botones no deben estirarse a flex:1 como en las cards */
+.modal-actions .btn-eliminar {
+    flex: none;
+    padding: 10px 20px;
+    background: rgba(255, 85, 85, 0.12);
+}
+
+.modal-actions .btn-eliminar:hover {
+    background: rgba(255, 85, 85, 0.22);
+}
