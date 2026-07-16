@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "../../api/api";
 import AdminLayout from "../../layouts/AdminLayout";
-import "../../assets/css/Admin.css";
+import "../../assets/css/GestionPreguntasFrecuentes.css";
 
 function GestionPreguntasFrecuentes() {
 
@@ -9,9 +9,9 @@ function GestionPreguntasFrecuentes() {
 
     const [titulo, setTitulo] = useState("");
     const [respuesta, setRespuesta] = useState("");
-
+    
     const [editandoId, setEditandoId] = useState(null);
-
+    const formRef = useRef(null);
     const [mostrarModal, setMostrarModal] = useState(false);
     const [preguntaAEliminar, setPreguntaAEliminar] = useState(null);
 
@@ -68,6 +68,13 @@ function GestionPreguntasFrecuentes() {
         setTitulo(pregunta.titulo);
         setRespuesta(pregunta.respuesta);
         setEditandoId(pregunta.id);
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    const cancelarEdicion = () => {
+        setTitulo("");
+        setRespuesta("");
+        setEditandoId(null);
     };
 
     const abrirModalEliminar = (id) => {
@@ -105,12 +112,15 @@ function GestionPreguntasFrecuentes() {
                 </h1>
 
                 <div className="admin-section-title-block">
-                    <h2 className="admin-subtitle">Crear pregunta</h2>
+                    <h2 className="admin-subtitle">
+                        {editandoId ? "Editando pregunta" : "Crear pregunta"}
+                    </h2>
                 </div>
 
                 <form
+                    ref={formRef}
                     onSubmit={guardarPregunta}
-                    className="admin-form"
+                    className={`admin-form ${editandoId ? "admin-form--editando" : ""}`}
                 >
 
                     <label>Título</label>
@@ -131,11 +141,23 @@ function GestionPreguntasFrecuentes() {
                         required
                     />
 
-                    <button type="submit">
-                        {editandoId
-                            ? "Guardar cambios"
-                            : "Agregar pregunta"}
-                    </button>
+                    <div className="admin-form-botones">
+                        <button type="submit">
+                            {editandoId
+                                ? "Guardar cambios"
+                                : "Agregar pregunta"}
+                        </button>
+
+                        {editandoId && (
+                            <button
+                                type="button"
+                                className="btn-cancelar-edicion"
+                                onClick={cancelarEdicion}
+                            >
+                                Cancelar edición
+                            </button>
+                        )}
+                    </div>
 
                 </form>
 
@@ -151,7 +173,7 @@ function GestionPreguntasFrecuentes() {
 
                             <div
                                 key={pregunta.id}
-                                className="faq-admin-card"
+                                className={`faq-admin-card ${editandoId === pregunta.id ? "faq-admin-card--editando" : ""}`}
                             >
 
                                 <h3>{pregunta.titulo}</h3>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import api from "../../api/api";
 import AdminLayout from "../../layouts/AdminLayout";
-import "../../assets/css/Admin.css";
+import "../../assets/css/Estadisticas.css";
 import {
     BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer

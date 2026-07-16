@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime, time as time_type
 from typing import Optional
 from collections import defaultdict
- 
+from sqlalchemy.orm import joinedload
+
 from dependencies.database import get_db
 from models.reserva_MIO import Reserva
 from models.clase import Clase
@@ -55,90 +56,98 @@ def _parsear_dias(dias: Optional[str]) -> list:
 def reservas_por_actividad(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
-    hora_desde: Optional[str] = Query(None),   # "08:00"
-    hora_hasta: Optional[str] = Query(None),   # "20:00"
-    dias: Optional[str] = Query(None),         # "lunes,miercoles"
+    hora_desde: Optional[str] = Query(None),
+    hora_hasta: Optional[str] = Query(None),
+    dias: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     dias_filtro = _parsear_dias(dias)
- 
+
     query = db.query(Reserva).filter(
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
     )
     query = _filtrar_por_rango(query, fecha_desde, fecha_hasta)
- 
+
     reservas = query.all()
- 
+
+    # ── Traemos TODAS las clases involucradas en una sola query (evita N+1) ──
+    clase_ids = {r.clase_id for r in reservas}
+    clases_map = {
+        c.id: c for c in db.query(Clase).filter(Clase.id.in_(clase_ids)).all()
+    } if clase_ids else {}
+
     conteo = defaultdict(int)
- 
+
     for r in reservas:
-        # Filtro por día de la semana, calculado sobre la fecha real de la clase reservada
         if dias_filtro:
             dia_reserva = _dia_semana_de_fecha(r.fecha_clase)
             if dia_reserva not in dias_filtro:
                 continue
- 
-        clase = db.query(Clase).filter(Clase.id == r.clase_id).first()
+
+        clase = clases_map.get(r.clase_id)
         if not clase:
             continue
- 
+
         if hora_desde and hora_hasta:
             h_inicio = time_type.fromisoformat(hora_desde)
             h_fin = time_type.fromisoformat(hora_hasta)
             if not (h_inicio <= clase.horario <= h_fin):
                 continue
- 
+
         conteo[clase.actividad.value if hasattr(clase.actividad, "value") else clase.actividad] += 1
- 
+
     resultado = [{"actividad": k, "cantidad": v} for k, v in conteo.items()]
     resultado.sort(key=lambda x: x["cantidad"], reverse=True)
- 
     return resultado
- 
- 
+
+
 @router.get("/ingresos-por-actividad")
 def ingresos_por_actividad(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
     hora_desde: Optional[str] = Query(None),
     hora_hasta: Optional[str] = Query(None),
-    dias: Optional[str] = Query(None),         # "lunes,miercoles"
+    dias: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     dias_filtro = _parsear_dias(dias)
- 
+
     query = db.query(Reserva).filter(
         Reserva.estado.in_(["confirmada", "vencida"]),
         Reserva.monto_pagado > 0
     )
     query = _filtrar_por_rango(query, fecha_desde, fecha_hasta)
- 
+
     reservas = query.all()
- 
+
+    clase_ids = {r.clase_id for r in reservas}
+    clases_map = {
+        c.id: c for c in db.query(Clase).filter(Clase.id.in_(clase_ids)).all()
+    } if clase_ids else {}
+
     ingresos = defaultdict(float)
- 
+
     for r in reservas:
         if dias_filtro:
             dia_reserva = _dia_semana_de_fecha(r.fecha_clase)
             if dia_reserva not in dias_filtro:
                 continue
- 
-        clase = db.query(Clase).filter(Clase.id == r.clase_id).first()
+
+        clase = clases_map.get(r.clase_id)
         if not clase:
             continue
- 
+
         if hora_desde and hora_hasta:
             h_inicio = time_type.fromisoformat(hora_desde)
             h_fin = time_type.fromisoformat(hora_hasta)
             if not (h_inicio <= clase.horario <= h_fin):
                 continue
- 
+
         actividad_key = clase.actividad.value if hasattr(clase.actividad, "value") else clase.actividad
         ingresos[actividad_key] += r.monto_pagado
- 
+
     resultado = [{"actividad": k, "monto": round(v, 2)} for k, v in ingresos.items()]
     resultado.sort(key=lambda x: x["monto"], reverse=True)
- 
     return resultado
  
  

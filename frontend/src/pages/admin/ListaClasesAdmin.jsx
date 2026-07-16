@@ -697,24 +697,30 @@ function ListaClasesAdmin() {
                         </h3>
 
                         <div className="detalle-alumnos">
-                            <h3>
-                                <strong> {infoEliminacion.alumnos_afectados} </strong> alumnos que se veran afectados
-                            </h3>
-
-                            {infoEliminacion.socios_membresia > 0 && (
-                                <p>
-                                    👥 <strong>{infoEliminacion.socios_membresia}</strong> alumnos con membresía
-                                </p>
-                            )}
-
-                            {infoEliminacion.socios_individual > 0 && (
-                                <p>
-                                    👥 <strong>{infoEliminacion.socios_individual}</strong> alumnos con reserva individual
-                                </p>
-                            )}
-
+                            <p className="detalle-total">
+                                <strong>{infoEliminacion.alumnos_afectados}</strong> alumno{infoEliminacion.alumnos_afectados !== 1 ? 's' : ''} se verá{infoEliminacion.alumnos_afectados !== 1 ? 'n' : ''} afectado{infoEliminacion.alumnos_afectados !== 1 ? 's' : ''}
+                            </p>
+                                    
+                            <div className="detalle-alumnos-grupos">
+                                {infoEliminacion.socios_membresia > 0 && (
+                                    <div className="detalle-grupo detalle-grupo--membresia">
+                                        <span className="detalle-grupo-icon">🟢</span>
+                                        <span className="detalle-grupo-texto">
+                                            <strong>{infoEliminacion.socios_membresia}</strong> con membresía
+                                        </span>
+                                    </div>
+                                )}
+                        
+                                {infoEliminacion.socios_individual > 0 && (
+                                    <div className="detalle-grupo detalle-grupo--individual">
+                                        <span className="detalle-grupo-icon">🟠</span>
+                                        <span className="detalle-grupo-texto">
+                                            <strong>{infoEliminacion.socios_individual}</strong> con reserva individual
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-
                         <div className="modal-botones">
                             <button
                                 className="btn-cancelar"

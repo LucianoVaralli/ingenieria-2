@@ -1,0 +1,396 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ── PÁGINA ── */
+.admin-page {
+    font-family: 'Lora', serif;
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px 48px 80px;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.admin-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: #5CB84D;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.admin-section-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin: 5px 0 32px;
+    letter-spacing: -0.3px;
+}
+
+.admin-subtitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0 18px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+}
+
+/* ══════════════════════════════
+   FORMULARIO CREAR PROFESOR
+══════════════════════════════ */
+.form-profesor-card {
+    background: #0d0d0d;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 40px;
+}
+
+.form-profesor {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 18px;
+    align-items: start;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 9px;
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    box-sizing: border-box;
+}
+
+.input-group input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.input-group input:focus {
+    border-color: rgba(92, 184, 77, 0.5);
+    background: #171717;
+}
+
+.error-message {
+    font-size: 11px;
+    font-style: italic;
+    color: rgba(255, 100, 100, 0.85);
+}
+
+.btn-crear-profesor {
+    grid-column: 1 / -1;
+    justify-self: start;
+    background: rgba(92, 184, 77, 0.14);
+    border: 1px solid rgba(92, 184, 77, 0.4);
+    color: #5CB84D;
+    padding: 12px 26px;
+    border-radius: 9px;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 4px;
+}
+
+.btn-crear-profesor:hover {
+    background: rgba(92, 184, 77, 0.24);
+    border-color: #5CB84D;
+}
+
+/* ══════════════════════════════
+   LISTA DE PROFESORES
+══════════════════════════════ */
+.contenido-profesor {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.profesores-vacio-txt {
+    font-size: 14px;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.25);
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px 0;
+}
+
+.profesor-card {
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.profesor-card:hover {
+    border-color: rgba(92, 184, 77, 0.3);
+    transform: translateY(-2px);
+}
+
+.profesor-body h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 8px;
+    text-transform: capitalize;
+}
+
+.profesor-body p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0 0 4px;
+}
+
+.profesor-footer {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-editar-profesor {
+    flex: 1;
+    background: transparent;
+    color: #5CB84D;
+    border: 1px solid rgba(92, 184, 77, 0.4);
+    padding: 9px;
+    border-radius: 8px;
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-editar-profesor:hover {
+    background: rgba(92, 184, 77, 0.1);
+    border-color: #5CB84D;
+}
+
+.btn-eliminar-profesor {
+    flex: 1;
+    background: transparent;
+    color: #ff5555;
+    border: 1px solid rgba(255, 85, 85, 0.4);
+    padding: 9px;
+    border-radius: 8px;
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-eliminar-profesor:hover {
+    background: rgba(255, 85, 85, 0.1);
+    border-color: #ff5555;
+}
+
+/* ══════════════════════════════
+   MODALES
+══════════════════════════════ */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal-profesor {
+    background: #0f0f0f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 32px;
+    width: 460px;
+    max-width: 90vw;
+    max-height: 88vh;
+    overflow-y: auto;
+    color: #fff;
+    font-family: 'Lora', serif;
+}
+
+.modal-profesor h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 22px;
+    color: #fff;
+}
+
+.modal-profesor .form-profesor {
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.btn-cambio {
+    flex: 1;
+    background: rgba(92, 184, 77, 0.14);
+    border: 1px solid rgba(92, 184, 77, 0.4);
+    color: #5CB84D;
+    padding: 11px;
+    border-radius: 8px;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cambio:hover {
+    background: rgba(92, 184, 77, 0.24);
+    border-color: #5CB84D;
+}
+
+.btn-cerrar {
+    flex: 1;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 11px;
+    border-radius: 8px;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cerrar:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Confirmación eliminar ── */
+.modal-confirmacion {
+    background: #0f0f0f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 32px;
+    border-radius: 16px;
+    width: 400px;
+    max-width: 90vw;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    color: #fff;
+    font-family: 'Lora', serif;
+}
+
+.modal-confirmacion h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.modal-confirmacion p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+    text-align: left;
+}
+
+.modal-botones {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.btn-cancelar {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.btn-cancelar:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.btn-eliminar {
+    background: rgba(255, 85, 85, 0.12);
+    border: 1px solid rgba(255, 85, 85, 0.4);
+    color: #ff5555;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-family: 'Lora', serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-eliminar:hover {
+    background: rgba(255, 85, 85, 0.22);
+    border-color: #ff5555;
+}
+
+/* ── Advertencia: profesor con clases asignadas ── */
+.titulo-advertencia {
+    color: rgb(252, 153, 4) !important;
+    text-align: left;
+}
+
+.lista-clases-profesor {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.lista-clases-profesor li {
+    background: rgba(252, 153, 4, 0.08);
+    border: 1px solid rgba(252, 153, 4, 0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    text-align: left;
+}
+
+.lista-clases-profesor li strong {
+    color: rgb(252, 153, 4);
+}
