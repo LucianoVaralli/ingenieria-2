@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import api from '../api/api.js';
-import { toast, Toaster } from 'react-hot-toast'; // Importamos Toaster para capturar el éxito
+import { toast } from 'react-hot-toast'; // Importamos Toaster para capturar el éxito
 import { useNavigate } from 'react-router-dom';
 import '../assets/css/ForgotPassword.css';
 
@@ -63,7 +63,6 @@ const ForgotPassword = () => {
     return (
         <div className="forgot-container">
             {/* Montamos el contenedor de Toasters para la alerta verde de éxito */}
-            <Toaster />
 
             <div className="forgot-card">
 

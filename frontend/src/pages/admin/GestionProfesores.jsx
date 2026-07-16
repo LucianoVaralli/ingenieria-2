@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import api from "../../api/api";
 import AdminLayout from "../../layouts/AdminLayout";
-import { toast, Toaster } from "react-hot-toast";
-import "../../assets/css/Profesor.css";
+import { toast } from "react-hot-toast";
+
+import "../../assets/css/GestionProfesores.css";
 
 function GestionProfesores() {
 
@@ -193,7 +194,6 @@ function GestionProfesores() {
     return (
         <AdminLayout>
 
-            <Toaster />
             <div className="admin-page">
                 <div className="admin-section-label">
                     Gestión

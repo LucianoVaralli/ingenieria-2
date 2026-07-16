@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import api from "../api/api";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "../assets/css/CambiarPassword.css";
@@ -139,7 +139,6 @@ const CambiarPassword = () => {
 
     return (
         <div className="reset-container">
-            <Toaster />
 
             <div className="reset-card">
                 <button

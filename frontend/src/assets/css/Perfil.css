@@ -7,6 +7,7 @@ body,
     padding: 0;
     min-height: 100vh;
     background: #000;
+    overflow-x: hidden;
 }
 
 /* ── BASE ── */
@@ -20,7 +21,6 @@ body,
     flex-direction: column;
     gap: 26px;
     max-width: 100%;
-    /* ← cambiá 1000px por 100% */
     margin: 0;
     min-height: 100vh;
 }
@@ -29,7 +29,6 @@ body,
     display: grid;
     grid-template-columns: 1fr;
     gap: 28px;
-
     max-width: 1000px;
     margin: 0 auto;
 }
@@ -92,7 +91,6 @@ body,
     gap: 20px;
     width: 100%;
     max-width: 1200px;
-    /* Evita que los datos se estiren infinitamente en pantallas anchas */
     margin: 0 auto;
 }
 
@@ -148,12 +146,10 @@ body,
     align-items: center;
     flex-wrap: wrap;
     gap: 24px;
-
     background: #0d0d0d;
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 16px;
     padding: 20px 36px;
-
     max-width: 2000px;
     margin: 0 auto;
 }
@@ -192,9 +188,7 @@ body,
     display: none;
 }
 
-/* ya no lo usamos */
-
-/* 🌟 BOTÓN MODIFICADO: CAMBIAR CONTRASEÑA PREMIUM 🌟 */
+/* 🌟 BOTÓN: CAMBIAR CONTRASEÑA */
 .btn-cambiar-pass {
     background: transparent;
     color: #fff;
@@ -518,98 +512,7 @@ body,
     font-style: italic;
 }
 
-.perfil-agenda-container {
-    display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    padding-bottom: 12px;
-    margin-top: 20px;
-    width: 100%;
-}
-
-.agenda-columna {
-    flex: 1;
-    min-width: 200px;
-    background: #141414;
-    border-radius: 10px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #222;
-}
-
-.agenda-columna-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #292929;
-    padding-bottom: 8px;
-    margin-bottom: 12px;
-}
-
-.agenda-badge {
-    background: #222;
-    color: #888;
-    font-size: 12px;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    font-weight: bold;
-}
-
-.agenda-badge.active {
-    background: #00ff1e;
-    color: black;
-}
-
-.agenda-columna-vacio {
-    color: #555;
-    font-style: italic;
-    font-size: 13px;
-    text-align: center;
-    margin: auto 0;
-    padding: 15px 0;
-}
-
-.reserva-card-mini {
-    background: #1c1c1c;
-    border-radius: 8px;
-    padding: 10px;
-    border-left: 4px solid #00ff1e;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.reserva-mini-fecha {
-    font-size: 11px;
-    font-weight: bold;
-    color: #00ff1e;
-}
-
-.reserva-mini-horario {
-    font-size: 13px;
-    color: #bbb;
-}
-
-.reserva-mini-tipo {
-    font-size: 11px;
-    color: #777;
-}
-
-.reserva-mini-espera {
-    background: #ffcc00;
-    color: #000;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: bold;
-    width: fit-content;
-}
-
+/* ── AGENDA ── */
 .perfil-agenda-container {
     display: flex;
     gap: 16px;
@@ -619,16 +522,13 @@ body,
     margin-top: 20px;
     width: 100%;
     scrollbar-width: thin;
-    /* Barra sutil en navegadores modernos */
 }
 
-/* Estilo para cada columna de día */
 .agenda-columna {
     flex: 1;
     min-width: 200px;
     /* Evita que las columnas colapsen en pantallas chicas */
     background: #141414;
-    /* Tono oscuro integrado al dashboard */
     border-radius: 10px;
     padding: 12px;
     display: flex;
@@ -636,7 +536,6 @@ body,
     border: 1px solid #222;
 }
 
-/* Cabecera del día (Nombre + Círculo con contador) */
 .agenda-columna-header {
     display: flex;
     justify-content: space-between;
@@ -653,7 +552,6 @@ body,
     font-weight: 600;
 }
 
-/* Círculo indicador de cantidad de reservas */
 .agenda-badge {
     background: #222;
     color: #888;
@@ -669,11 +567,9 @@ body,
 
 .agenda-badge.active {
     background: #00ff1e;
-    /* El verde Sportify que venís usando */
     color: #000;
 }
 
-/* Espacio interno donde se apilan las reservas */
 .agenda-columna-body {
     display: flex;
     flex-direction: column;
@@ -681,7 +577,6 @@ body,
     flex-grow: 1;
 }
 
-/* Estado de "Sin clases" opaco */
 .agenda-columna-vacio {
     color: #555;
     font-style: italic;
@@ -691,13 +586,12 @@ body,
     padding: 20px 0;
 }
 
-/* Diseño compacto y optimizado de la Card del socio */
+/* Card compacta del socio dentro de la agenda */
 .reserva-card-mini {
     background: #1c1c1c;
     border-radius: 8px;
     padding: 10px;
     border-left: 4px solid #00ff1e;
-    /* Línea de acento verde */
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -733,7 +627,6 @@ body,
     margin-top: 2px;
 }
 
-/* Etiqueta de la lista de espera adaptada al tamaño mini */
 .reserva-mini-espera {
     background: #ffcc00;
     color: #000;
@@ -768,29 +661,21 @@ body,
 .mensaje-exito {
     background-color: #d1e7dd;
     color: #0f5132;
-
     border: 1px solid #badbcc;
     border-radius: 10px;
-
     padding: 12px;
     margin-bottom: 15px;
-
     font-weight: 600;
 }
-
 
 .btn-salir-espera {
     margin-top: 8px;
     padding: 6px 10px;
-
     background-color: #dc3545;
     color: white;
-
     border: none;
     border-radius: 8px;
-
     cursor: pointer;
-
     font-size: 12px;
     font-weight: 600;
 }
@@ -799,11 +684,10 @@ body,
     background-color: #bb2d3b;
 }
 
-
 /* ═══════════════════════════════════════════════════
    CHIP DE VENCIMIENTO en las cards de reserva
 ═══════════════════════════════════════════════════ */
- 
+
 .reserva-mini-vencimiento {
     display: inline-block;
     margin-top: 4px;
@@ -816,33 +700,38 @@ body,
     border: 1px solid rgba(230, 81, 0, 0.25);
     white-space: nowrap;
 }
- 
+
 /* ═══════════════════════════════════════════════════
-   OVERLAY del modal
+   OVERLAY del modal (compartido por todos los modales)
 ═══════════════════════════════════════════════════ */
- 
+
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(3px);
-    z-index: 1000;
+    width: 100vw;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 999;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 16px;
     animation: fadeIn 0.18s ease;
 }
- 
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
 }
- 
+
 /* ═══════════════════════════════════════════════════
-   CARD del modal
+   CARD del modal de renovación
 ═══════════════════════════════════════════════════ */
- 
+
 .modal-renovar {
     background: #111;
     border: 1px solid rgba(92, 184, 77, 0.2);
@@ -856,12 +745,12 @@ body,
     display: flex;
     flex-direction: column;
 }
- 
+
 @keyframes slideUp {
     from { transform: translateY(24px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
 }
- 
+
 .modal-renovar-header {
     display: flex;
     align-items: center;
@@ -869,14 +758,14 @@ body,
     padding: 20px 22px 12px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
- 
+
 .modal-renovar-header h3 {
     margin: 0;
     font-size: 1.05rem;
     font-weight: 700;
     color: #fff;
 }
- 
+
 .modal-cerrar {
     background: none;
     border: none;
@@ -887,23 +776,23 @@ body,
     border-radius: 6px;
     transition: background 0.15s, color 0.15s;
 }
- 
+
 .modal-cerrar:hover {
     background: rgba(255,255,255,0.06);
     color: #ccc;
 }
- 
+
 .modal-renovar-desc {
     padding: 10px 22px 4px;
     font-size: 0.85rem;
     color: rgba(255,255,255,0.4);
     margin: 0;
 }
- 
+
 /* ═══════════════════════════════════════════════════
-   ITEMS de la lista
+   ITEMS de la lista de renovación
 ═══════════════════════════════════════════════════ */
- 
+
 .modal-renovar-lista {
     padding: 12px 16px;
     display: flex;
@@ -912,7 +801,7 @@ body,
     flex: 1;
     overflow-y: auto;
 }
- 
+
 .modal-renovar-item {
     display: flex;
     align-items: flex-start;
@@ -924,17 +813,17 @@ body,
     transition: border-color 0.15s, background 0.15s;
     background: #1a1a1a;
 }
- 
+
 .modal-renovar-item:hover {
     border-color: rgba(255,255,255,0.15);
     background: #1f1f1f;
 }
- 
+
 .modal-renovar-item.selected {
     border-color: #5CB84D;
     background: rgba(92, 184, 77, 0.07);
 }
- 
+
 .modal-renovar-item-check {
     width: 22px;
     height: 22px;
@@ -950,41 +839,41 @@ body,
     margin-top: 2px;
     transition: border-color 0.15s;
 }
- 
+
 .modal-renovar-item.selected .modal-renovar-item-check {
     border-color: #5CB84D;
 }
- 
+
 .modal-renovar-item-info {
     display: flex;
     flex-direction: column;
     gap: 3px;
     flex: 1;
 }
- 
+
 .modal-renovar-actividad {
     font-weight: 700;
     font-size: 0.95rem;
     color: #fff;
 }
- 
+
 .modal-renovar-detalle {
     font-size: 0.82rem;
     color: rgba(255,255,255,0.4);
 }
- 
+
 .modal-renovar-mes {
     font-size: 0.82rem;
     color: #5CB84D;
     font-weight: 600;
 }
- 
+
 .modal-renovar-vence {
     font-size: 0.78rem;
     color: #e65100;
     font-weight: 600;
 }
- 
+
 .modal-renovar-precio {
     font-weight: 700;
     font-size: 0.95rem;
@@ -1018,11 +907,11 @@ body,
     font-weight: 600;
     white-space: nowrap;
 }
- 
+
 /* ═══════════════════════════════════════════════════
-   FOOTER del modal
+   FOOTER del modal de renovación
 ═══════════════════════════════════════════════════ */
- 
+
 .modal-renovar-footer {
     display: flex;
     align-items: center;
@@ -1031,19 +920,18 @@ body,
     border-top: 1px solid rgba(255,255,255,0.06);
     gap: 12px;
 }
- 
+
 .modal-renovar-selec {
     font-size: 0.85rem;
     color: rgba(255,255,255,0.35);
 }
- 
-/* Adaptar .boton-accion deshabilitado dentro del modal */
+
 .modal-renovar-footer .boton-accion:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
- 
-/* Chip "Podés renovar para julio" — aparece cuando ya pasó la última clase */
+
+/* Chip "Podés renovar para julio" */
 .reserva-mini-renovar {
     display: inline-block;
     margin-top: 4px;
@@ -1056,7 +944,6 @@ body,
     border: 1px solid rgba(92, 184, 77, 0.3);
     white-space: nowrap;
 }
- 
 
 /* ── BOTONES DE ACCIONES EN RESERVAS ── */
 .btn-cancelar-reserva,
@@ -1092,15 +979,6 @@ body,
     background-color: #4a9940;
 }
 
-.btn-salir-espera {
-    background-color: #dc3545;
-    color: white;
-}
-
-.btn-salir-espera:hover {
-    background-color: #bb2d3b;
-}
-
 /* ── ESTADO NOTIFICADO ── */
 .reserva-mini-notificado {
     background: #5CB84D;
@@ -1112,7 +990,6 @@ body,
     width: fit-content;
     margin-top: 4px;
 }
-
 
 .btn-rechazar-cupo {
     margin-top: 8px;
@@ -1142,80 +1019,48 @@ body,
     color: white;
     border-radius: 16px;
     width: min(650px, 95vw);
-
     max-height: 90vh;
     overflow-y: auto;
-
     padding: 28px;
     position: relative;
 }
 
-.modal-pago-cupo { width: 1200px; max-width: 95vw; max-height: 92vh; overflow-y: auto; }
-
-.modal-content.modal-pago-cupo{
+.modal-content.modal-pago-cupo {
     width: 1300px;
     max-width: 95vw;
     max-height: 92vh;
     overflow-y: auto;
 }
+
 .mis-clase-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
+    margin-top: auto;   
+    padding-top: 12px;
 }
 
 .clases-row {
     display: grid;
     gap: 16px;
-    flex-wrap: wrap;   /* clave para que baje en pantallas chicas */
+    flex-wrap: wrap;   
     align-items: stretch;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-
 }
 
 .dia-titulo {
-    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 24px;
+    padding-bottom: 14px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    border-bottom: 1px solid rgba(92, 184, 77, 0.18);
 }
-
 
 .qr-mini {
     display: flex;
     flex-direction: column;
     align-items: center;
-}
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 999;
-}
-
-.modal-box {
-    background: rgb(88, 86, 86);
-    width: 420px;
-    max-height: 80vh;
-    overflow-y: auto;
-    border-radius: 12px;
-    padding: 20px;
-}
-
-.alumnos-lista {
-    margin-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.alumno-card {
-    padding: 8px;
-    border-bottom: 1px solid #4e4646e5;
-    display: flex;
-    flex-direction: column;
 }
 
 .btn-cerrar {
@@ -1237,7 +1082,7 @@ body,
 }
 
 .btn-ver-alumnos {
-    background-color:rgb(3, 126, 226);
+    background-color: rgb(3, 126, 226);
     border: none;
     color: white;
     padding: 8px 16px;
@@ -1253,7 +1098,7 @@ body,
 }
 
 .btn-generar-qr {
-    background-color:rgb(59, 228, 26);
+    background-color: rgb(59, 228, 26);
     border: none;
     color: white;
     padding: 8px 16px;
@@ -1269,7 +1114,7 @@ body,
 }
 
 .btn-ver-qr {
-    background-color:rgb(226, 185, 3);
+    background-color: rgb(226, 185, 3);
     border: none;
     color: white;
     padding: 8px 16px;
@@ -1284,8 +1129,8 @@ body,
     color: white;
 }
 
-.btn-cerrar{
-    background-color:rgba(85, 84, 71, 0.87);
+.habilitar-camara {
+    background-color: rgb(64, 219, 3);
     border: none;
     color: white;
     padding: 8px 16px;
@@ -1294,10 +1139,33 @@ body,
     transition: background 0.2s, color 0.2s;
 }
 
-.btn-cerrar :hover {
+.habilitar-camara:hover {
     transform: translateY(-3px);
-    background-color: #706c5f;
+    background-color: #6ad63f;
     color: white;
+}
+
+.presente {
+    background: rgba(92, 184, 77, 0.12);
+    color: #5CB84D;
+    border: 1px solid rgba(92, 184, 77, 0.35);
+}
+
+.ausente {
+    background: rgba(255, 68, 68, 0.12);
+    color: #ff5555;
+    border: 1px solid rgba(255, 68, 68, 0.45);
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.15);
+}
+
+.presente,
+.ausente {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
 }
 
 .btn-escanear-qr {
@@ -1325,39 +1193,228 @@ body,
     box-shadow: 0 0 12px rgba(92, 184, 77, 0.15);
 }
 
-.habilitar-camara {
-    background-color:rgb(64, 219, 3);
-    border: none;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+/* ═══════════════════════════════════════════════════
+   MODAL BOX (QR y Lista de alumnos)
+═══════════════════════════════════════════════════ */
+
+.modal-box {
+    background: #0d0d0d;
+    border: 1px solid rgba(92, 184, 77, 0.2);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(92, 184, 77, 0.05);
+    width: 420px;
+    max-width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    padding: 24px;
+    margin: 0 auto;
+    color: #fff;
+    font-family: 'Lora', serif;
+    animation: slideUp 0.22s ease;
 }
 
-.habilitar-camara:hover {
-    transform: translateY(-3px);
-    background-color: #6ad63f;
-    color: white;
+.modal-box h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+}
+
+.modal-box img[alt="QR"] {
+    display: block;
+    margin: 20px auto;
+    border-radius: 10px;
+    box-shadow: 0 0 0 4px rgba(92, 184, 77, 0.12);
+}
+
+.modal-box p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.5;
+}
+
+/* ── Lista de alumnos ── */
+.alumnos-lista {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
 }
 
 .alumno-card {
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     gap: 15px;
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: border-color 0.2s;
+}
+
+.alumno-card:hover {
+    border-color: rgba(92, 184, 77, 0.25);
 }
 
 .alumno-card strong {
     flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
 }
 
-.presente {
-    color: #3bb54a;
-    font-weight: bold;
+/* ── Botón cerrar (una sola definición, sin duplicados) ── */
+.btn-cerrar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 18px;
+    padding: 10px 18px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Lora', serif;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.ausente {
-    color: #e53935;
-    font-weight: bold;
+.btn-cerrar:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════
+   MIS CLASES (vista profesor)
+═══════════════════════════════════════════════════ */
+
+.mis-clases-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mis-clases-error {
+    color: #ff5555;
+    background: rgba(255, 68, 68, 0.08);
+    border: 1px solid rgba(255, 68, 68, 0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+}
+
+.mis-clase-card {
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-left: 4px solid #5CB84D;
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 280px;   
+    min-width: 260px;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.mis-clase-card:hover {
+    border-color: rgba(92, 184, 77, 0.4);
+    transform: translateY(-3px);
+}
+
+.mis-clase-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+
+.mis-clase-card h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    text-align: left;
+}
+
+.mis-clase-card p {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-align: left;
+}
+
+/* ── Badge de estado ── */
+.estado-clase {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+}
+
+.estado-clase.proxima {
+    background: rgba(255, 193, 7, 0.12);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.estado-clase.en_curso {
+    background: rgba(92, 184, 77, 0.14);
+    color: #5CB84D;
+    border: 1px solid rgba(92, 184, 77, 0.35);
+}
+
+.estado-clase.finalizada {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ── Cartel de reemplazo ── */
+.cartel-reemplazo {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: rgba(3, 126, 226, 0.08);
+    border: 1px solid rgba(3, 126, 226, 0.25);
+    border-radius: 10px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.5;
+}
+
+.motivo-reemplazo {
+    margin-top: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+}
+
+/* Ajuste responsive para las cards de profesor */
+@media (max-width: 700px) {
+    .mis-clase-card {
+        padding: 16px;
+    }
 }

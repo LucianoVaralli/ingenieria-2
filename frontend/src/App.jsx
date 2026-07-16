@@ -90,12 +90,40 @@ function App() {
   return (
     <Router>
       <>
-        <Toaster
-            position="top-right"
-            toastOptions={{
-                duration: 4000
-            }}
-        />
+          <Toaster
+              toastOptions={{
+                  duration: 6000,
+                  style: {
+                      background: '#141414',
+                      color: '#fff',
+                      border: '1px solid rgba(92, 184, 77, 0.25)',
+                      borderRadius: '12px',
+                      fontFamily: "'Lora', serif",
+                      fontSize: '15px',        // antes 13px
+                      padding: '16px 20px',     // antes 12px 16px
+                      minWidth: '320px',        // nuevo — evita que se vea angosto
+                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.4)',
+                  },
+                  success: {
+                      iconTheme: {
+                          primary: '#5CB84D',
+                          secondary: '#141414',
+                      },
+                      style: {
+                          border: '1px solid rgba(92, 184, 77, 0.35)',
+                      },
+                  },
+                  error: {
+                      iconTheme: {
+                          primary: '#ff5555',
+                          secondary: '#141414',
+                      },
+                      style: {
+                          border: '1px solid rgba(255, 68, 68, 0.35)',
+                      },
+                  },
+              }}
+          />
           <AppContent token={token} setToken={setToken} />
       </>
     </Router>
