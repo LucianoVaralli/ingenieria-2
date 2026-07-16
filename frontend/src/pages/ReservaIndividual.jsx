@@ -270,11 +270,21 @@ const ReservaIndividual = () => {
     // 🌟 FIX: ya no hace falta cancelar nada al volver — como no se
     // crea ninguna reserva hasta confirmar el pago, no queda nada
     // huérfano bloqueando el cupo.
-    const handleVolver = async () => {
-
-        if (paso === 'creditos')  return setPaso('lista_espera');
-        if (paso === 'tipo_pago') return setPaso(creditosDisponibles > 0 ? 'creditos' : 'lista_espera');
-        if (paso === 'pago')      return setPaso('tipo_pago');
+    const handleVolver = () => {
+        if (paso === 'creditos') {
+            // En lugar de 'cargando', volvemos a la pantalla anterior del sitio
+            navigate(-1); 
+            return;
+        }
+        if (paso === 'pago') {
+            if (creditos > 0) {
+                return setPaso('creditos');
+            } else {
+                // Si no hay créditos que mostrar atrás, sale de la reserva
+                navigate(-1); 
+                return;
+            }
+        }
         navigate(-1);
     };
 
