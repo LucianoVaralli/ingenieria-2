@@ -1038,7 +1038,6 @@ def obtener_clases_profesor(
                 Reserva.clase_id == c.id,
                 Reserva.estado == "confirmada",
                 Reserva.fecha_clase == str(proxima_fecha),
-                Reserva.tipo == TipoReserva.Membresia.value
             )
             .distinct()
             .count()
@@ -1183,11 +1182,6 @@ def obtener_alumnos_de_clase(
         Reserva.estado == "confirmada",
         Reserva.fecha_clase == fecha
     )
-
-    if fecha > hoy:
-        reservas_query = reservas_query.filter(
-            Reserva.tipo == TipoReserva.Membresia.value
-        )
 
     reservas_fecha = reservas_query.all()
 
