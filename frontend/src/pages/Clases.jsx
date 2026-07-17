@@ -75,6 +75,7 @@ const Clases = ({ token }) => {
     const [filtroProfesor, setFiltroProfesor]   = useState('');
     const [filtroHorario, setFiltroHorario]     = useState([]);
     const [profesores, setProfesores]           = useState([]);
+    const [diasCancelados, setDiasCancelados] = useState(new Set());
 
     useEffect(() => {
         const fetchData = async () => {
@@ -89,6 +90,13 @@ const Clases = ({ token }) => {
                 setProfesores(resProfs.data);
             } catch (err) {
                 console.error('Error cargando profesores', err);
+            }
+            try {
+                const resCancel = await api.get('/clases/dias-cancelados');
+                const set = new Set(resCancel.data.map(d => `${d.clase_id}_${d.fecha}`));
+                setDiasCancelados(set);
+            } catch (err) {
+                console.error('Error cargando días cancelados', err);
             }
         };
         fetchData();
@@ -157,10 +165,16 @@ const Clases = ({ token }) => {
             'mié': 'miercoles', 'jue': 'jueves', 'vie': 'viernes', 'sáb': 'sabado'
         };
         const diaDB = mapaNombre[nombreDia] ?? nombreDia;
+
+        const mm = String(mes + 1).padStart(2, '0');
+        const dd = String(diaSelec).padStart(2, '0');
+        const fechaDia = `${anio}-${mm}-${dd}`;      
+
         const clasesDia = todasClases.filter(c =>
             (c.dia || '').toLowerCase()
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, '') === diaDB
+            && !diasCancelados.has(`${c.id}_${fechaDia}`)
         );
         return aplicarFiltros(clasesDia);
     })();
