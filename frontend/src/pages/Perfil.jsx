@@ -1487,15 +1487,27 @@ console.log("clasesTemporales", clasesTemporales);
 
                             {/* MEMBRESÍA */}
                             {rol === 'miembro' && (
-                                <div className="perfil-membresia">
-                                    {membresiaActiva && fechaVencimiento ? (
-                                        <p>🟢 Membresía activa hasta: <strong>{fechaVencimiento}</strong></p>
-                                    ) : (
-                                        <p>🔴 No tenés membresía activa</p>
-                                    )}
+                                <div className="perfil-membresia-card">
+                                    <div className="membresia-info">
+                                        {membresiaActiva && fechaVencimiento ? (
+                                            <>
+                                                <span className="membresia-estado activa">🟢 Membresía activa</span>
+                                                <span className="membresia-fecha-txt">
+                                                    Vence el <strong>{formatearFecha(fechaVencimiento)}</strong>
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="membresia-estado vencida">🔴 Sin membresía activa</span>
+                                                <span className="membresia-fecha-txt">Renová para volver a reservar tus clases</span>
+                                            </>
+                                        )}
+
+                                    </div>
+                                    
                                     {membresíasRenovables.length > 0 && (
                                         <button
-                                            className="boton-accion"
+                                            className="btn-renovar-membresia"
                                             onClick={() => { setModalAbierto(true); setSeleccionadas([]); setErrorRenovar(''); }}
                                         >
                                             Renovar membresías
