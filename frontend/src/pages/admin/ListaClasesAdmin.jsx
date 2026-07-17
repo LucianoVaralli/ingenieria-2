@@ -765,7 +765,7 @@ function ListaClasesAdmin() {
                                 onChange={(e) => {
                                     setFechaCancelar(e.target.value);
                                 }}
-                                className={`cancelar-dia-select ${errorCancelarDia ? "error" : ""}`}
+                                className="cancelar-dia-select"
                             >
                                 <option value="">Seleccionar fecha</option>
                                 {fechasDisponibles.map((fecha) => (
@@ -784,14 +784,9 @@ function ListaClasesAdmin() {
                                 onChange={(e) => {
                                     setMotivoCancelar(e.target.value);
                                 }}
-                                className={`cancelar-dia-textarea ${errorCancelarDia ? "error" : ""}`}
+                                className="cancelar-dia-textarea"
                             />
                         </div>
-                        {errorCancelarDia.general && (
-                            <p className="cancelar-dia-error-field">
-                                {errorCancelarDia.general}
-                            </p>
-                        )}
 
                         <div className="modal-botones">
                             <button
