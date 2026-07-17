@@ -1418,3 +1418,91 @@ body,
         padding: 16px;
     }
 }
+
+/* ── MEMBRESÍA ── */
+.perfil-membresia-card {
+    background: #0d0d0d;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.membresia-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.membresia-estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    width: fit-content;
+    padding: 4px 12px;
+    border-radius: 999px;
+}
+
+.membresia-estado.activa {
+    background: rgba(92, 184, 77, 0.1);
+    color: #5CB84D;
+    border: 1px solid rgba(92, 184, 77, 0.3);
+}
+
+.membresia-estado.vencida {
+    background: rgba(255, 68, 68, 0.08);
+    color: #ff5555;
+    border: 1px solid rgba(255, 68, 68, 0.28);
+}
+
+.membresia-fecha-txt {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.membresia-fecha-txt strong {
+    color: #fff;
+}
+
+.membresia-hint {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    margin-top: 2px;
+}
+
+.btn-renovar-membresia {
+    background: linear-gradient(135deg, #5CB84D, #4a9940);
+    color: #06170a;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    font-family: 'Lora', serif;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 4px 14px rgba(92, 184, 77, 0.25);
+}
+
+.btn-renovar-membresia:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(92, 184, 77, 0.35);
+}
+
+.btn-renovar-membresia:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}

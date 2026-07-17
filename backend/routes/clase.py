@@ -18,7 +18,7 @@ from schemas.clase import (
     EscanearQRRequest 
 )
 from routes.membresia import _actualizar_membresia_activa_hasta
-
+from sqlalchemy import func 
 
 from dependencies.database import get_db
 from services.notificaciones import crear_notificacion
@@ -767,6 +767,21 @@ def obtener_clases(db: Session = Depends(get_db)):
             Reserva.fecha_clase >= hoy_str
         ).distinct().count()
 
+        # 🌟 Desglose por tipo (membresía vs individual)
+        alumnos_membresia = db.query(Reserva.socio_id).filter(
+            Reserva.clase_id == c.id,
+            Reserva.estado.in_(["confirmada", "pendiente_pago"]),
+            Reserva.fecha_clase >= hoy_str,
+            func.lower(Reserva.tipo) == "membresia"
+        ).distinct().count()
+
+        alumnos_individual = db.query(Reserva.socio_id).filter(
+            Reserva.clase_id == c.id,
+            Reserva.estado.in_(["confirmada", "pendiente_pago"]),
+            Reserva.fecha_clase >= hoy_str,
+            func.lower(Reserva.tipo) != "membresia"
+        ).distinct().count()
+
         profesor = db.query(Socio).filter(
             Socio.id == c.profesor_id
         ).first()
@@ -781,7 +796,9 @@ def obtener_clases(db: Session = Depends(get_db)):
             "duracion": c.duracion,
             "profesor_id": c.profesor_id,
             "profesor_nombre": f"{profesor.nombre} {profesor.apellido}" if profesor else "Sin asignar",
-            "alumnos_inscriptos": cantidad_alumnos
+            "alumnos_inscriptos": cantidad_alumnos,
+            "alumnos_membresia": alumnos_membresia,
+            "alumnos_individual": alumnos_individual
         })
 
     return resultado
@@ -1072,6 +1089,20 @@ def obtener_clases_profesor(
     return {
         "clases": resultado, 
         "clases_temporales": clases_temporales}
+
+@router.get("/dias-cancelados")
+def obtener_dias_cancelados(db: Session = Depends(get_db)):
+    resultados = db.query(
+        Reserva.clase_id, Reserva.fecha_clase
+    ).filter(
+        Reserva.estado == "cancelada",
+        Reserva.tipo_cancelacion == "cancelacion_dia"
+    ).distinct().all()
+
+    return [
+        {"clase_id": r[0], "fecha": str(r[1])}
+        for r in resultados
+    ]
 
 @router.get("/{clase_id}/alumnos")
 def obtener_alumnos_de_clase(

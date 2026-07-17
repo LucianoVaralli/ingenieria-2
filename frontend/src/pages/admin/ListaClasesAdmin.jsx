@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import api from "../../api/api";
 import "../../assets/css/ListaClasesAdmin.css";
 import AdminLayout from "../../layouts/AdminLayout";
@@ -66,6 +66,30 @@ function ListaClasesAdmin() {
     const [filtroHorario, setFiltroHorario] = useState([]);
     const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
     const [filtroDisc, setFiltroDisc] = useState([]);
+
+    // ── NUEVO: refs y estado para la barra de scroll de arriba ──
+    const contenedorRef = useRef(null);
+    const scrollTopRef = useRef(null);
+    const sincronizandoRef = useRef(false);
+    const [anchoScroll, setAnchoScroll] = useState(0);
+
+    const sincronizarDesdeArriba = () => {
+        if (sincronizandoRef.current) return;
+        if (contenedorRef.current && scrollTopRef.current) {
+            sincronizandoRef.current = true;
+            contenedorRef.current.scrollLeft = scrollTopRef.current.scrollLeft;
+            sincronizandoRef.current = false;
+        }
+    };
+
+    const sincronizarDesdeAbajo = () => {
+        if (sincronizandoRef.current) return;
+        if (contenedorRef.current && scrollTopRef.current) {
+            sincronizandoRef.current = true;
+            scrollTopRef.current.scrollLeft = contenedorRef.current.scrollLeft;
+            sincronizandoRef.current = false;
+        }
+    };
 
     const toggleChip = (valor, lista, setLista) => {
         setLista(prev =>
@@ -142,6 +166,21 @@ function ListaClasesAdmin() {
 
         cargarProfes();
     }, []);
+
+    // ── NUEVO: recalcular el ancho de la barra falsa cuando cambian las clases/filtros
+    // o cuando cambia el tamaño de la ventana ──
+    useEffect(() => {
+        const actualizarAncho = () => {
+            if (contenedorRef.current) {
+                setAnchoScroll(contenedorRef.current.scrollWidth);
+            }
+        };
+
+        actualizarAncho();
+
+        window.addEventListener("resize", actualizarAncho);
+        return () => window.removeEventListener("resize", actualizarAncho);
+    }, [clases, filtroProfesor, filtroDisc, filtroHorario]);
 
     const abrirCambioProfesor = (clase) => {
         setClaseCambioProfesor(clase);
@@ -582,108 +621,137 @@ function ListaClasesAdmin() {
                         </p>
                     </div>
                 ) : (
-                    <div className="columnas-semana-container">
-                        {diasSemana.map((dia) => {
-                            const clasesDelDia = clasesFiltradas
-                                .filter(
-                                    (c) =>
-                                        normalizarTexto(c.dia) ===
-                                        normalizarTexto(dia)
-                                )
-                                .sort((a, b) =>
-                                    (a.horario || "").localeCompare(
-                                        b.horario || ""
+                    <>
+                        {/* ── NUEVO: barra de scroll falsa, arriba del tablero ── */}
+                        <div
+                            className="scroll-top-fake"
+                            ref={scrollTopRef}
+                            onScroll={sincronizarDesdeArriba}
+                        >
+                            <div
+                                className="scroll-top-fake-inner"
+                                style={{ width: anchoScroll ? `${anchoScroll}px` : "100%" }}
+                            />
+                        </div>
+
+                        <div
+                            className="columnas-semana-container"
+                            ref={contenedorRef}
+                            onScroll={sincronizarDesdeAbajo}
+                        >
+                            {diasSemana.map((dia) => {
+                                const clasesDelDia = clasesFiltradas
+                                    .filter(
+                                        (c) =>
+                                            normalizarTexto(c.dia) ===
+                                            normalizarTexto(dia)
                                     )
+                                    .sort((a, b) =>
+                                        (a.horario || "").localeCompare(
+                                            b.horario || ""
+                                        )
+                                    );
+
+                                return (
+                                    <div
+                                        key={dia}
+                                        className="columna-dia"
+                                    >
+                                        <div className="columna-dia-header">
+                                            <h3>{capitalize(dia)}</h3>
+                                            <span className="columna-contador">
+                                                {clasesDelDia.length}
+                                            </span>
+                                        </div>
+
+                                        <div className="columna-dia-contenido">
+
+                                            {clasesDelDia.length === 0 ? (
+                                                <p className="clase-vacia-txt">
+                                                    Sin clases
+                                                </p>
+                                            ) : (
+                                                clasesDelDia.map((clase) => (
+                                                    <div
+                                                        key={clase.id}
+                                                        className="clase-admin-card-mini"
+                                                    >
+                                                        <div className="clase-mini-info">
+                                                            <h4>
+                                                                {clase.actividad
+                                                                    .charAt(0)
+                                                                    .toUpperCase() +
+                                                                    clase.actividad.slice(1)}
+                                                            </h4>
+
+                                                            <span className="clase-mini-horario">
+                                                                {clase.horario?.slice(0, 5)} hs
+                                                            </span>
+
+                                                            <p className="clase-mini-prof">
+                                                                Prof. {capitalize(clase.profesor_nombre)} {capitalize(clase.profesor_apellido)}
+                                                            </p>
+
+                                                            <span className="clase-mini-badge">
+                                                                Cupo: {clase.cupo}
+                                                            </span>
+
+                                                            {(clase.alumnos_membresia !== undefined || clase.alumnos_individual !== undefined) ? (
+                                                                <div className="clase-mini-alumnos-desglose">
+                                                                    <span className="clase-mini-alumnos-fila membresia">
+                                                                        🟢 <strong>{clase.alumnos_membresia ?? 0}</strong> con membresía
+                                                                    </span>
+                                                                    <span className="clase-mini-alumnos-fila individual">
+                                                                        🟠 <strong>{clase.alumnos_individual ?? 0}</strong> individual
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="clase-mini-alumnos">
+                                                                    👥 {clase.alumnos_inscriptos || 0} alumnos
+                                                                </p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="acciones-clase">
+                                                            <button
+                                                                className="btn-cancelar-dia"
+                                                                onClick={() =>
+                                                                    abrirModalCancelacion(clase)
+                                                                }
+                                                            >
+                                                                Cancelar día
+                                                            </button>
+
+                                                            <button
+                                                                className="btn-eliminar-mini"
+                                                                onClick={() =>
+                                                                    abrirConfirmacionEliminar(
+                                                                        clase.id
+                                                                    )
+                                                                }
+                                                            >
+                                                                Eliminar
+                                                            </button>
+
+                                                            <button
+                                                                className="btn-cambiar-profesor"
+                                                                onClick={() => abrirCambioProfesor(clase)}
+                                                            >
+                                                                Cambiar profesor
+                                                            </button>
+                                                        </div>
+                                                        
+                                                    </div>
+                                                ))
+                                            )}
+
+                                        </div>
+                                    </div>
                                 );
+                            })}
 
-                            return (
-                                <div
-                                    key={dia}
-                                    className="columna-dia"
-                                >
-                                    <div className="columna-dia-header">
-                                        <h3>{capitalize(dia)}</h3>
-                                        <span className="columna-contador">
-                                            {clasesDelDia.length}
-                                        </span>
-                                    </div>
-
-                                    <div className="columna-dia-contenido">
-
-                                        {clasesDelDia.length === 0 ? (
-                                            <p className="clase-vacia-txt">
-                                                Sin clases
-                                            </p>
-                                        ) : (
-                                            clasesDelDia.map((clase) => (
-                                                <div
-                                                    key={clase.id}
-                                                    className="clase-admin-card-mini"
-                                                >
-                                                    <div className="clase-mini-info">
-                                                        <h4>
-                                                            {clase.actividad
-                                                                .charAt(0)
-                                                                .toUpperCase() +
-                                                                clase.actividad.slice(1)}
-                                                        </h4>
-
-                                                        <span className="clase-mini-horario">
-                                                            {clase.horario?.slice(0, 5)} hs
-                                                        </span>
-
-                                                        <p className="clase-mini-prof">
-                                                            Prof. {capitalize(clase.profesor_nombre)} {capitalize(clase.profesor_apellido)}
-                                                        </p>
-
-                                                        <span className="clase-mini-badge">
-                                                            Cupo: {clase.cupo}
-                                                        </span>
-
-                                                        <p className="clase-mini-alumnos">
-                                                            👥 {clase.alumnos_inscriptos || 0} alumnos
-                                                        </p>
-                                                    </div>
-
-                                                    <div className="acciones-clase">
-                                                        <button
-                                                            className="btn-cancelar-dia"
-                                                            onClick={() =>
-                                                                abrirModalCancelacion(clase)
-                                                            }
-                                                        >
-                                                            Cancelar día
-                                                        </button>
-
-                                                        <button
-                                                            className="btn-eliminar-mini"
-                                                            onClick={() =>
-                                                                abrirConfirmacionEliminar(
-                                                                    clase.id
-                                                                )
-                                                            }
-                                                        >
-                                                            Eliminar
-                                                        </button>
-
-                                                        <button
-                                                            className="btn-cambiar-profesor"
-                                                            onClick={() => abrirCambioProfesor(clase)}
-                                                        >
-                                                            Cambiar profesor
-                                                        </button>
-                                                    </div>
-                                                    
-                                                </div>
-                                            ))
-                                        )}
-
-                                    </div>
-                                </div>
-                            );
-                        })}
-
-                    </div>
+                        </div>
+                    </>
                 )}
             </div>
 

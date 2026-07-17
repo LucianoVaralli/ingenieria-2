@@ -738,3 +738,69 @@
     background: #1a1a1a;
     color: #fff;
 }
+
+/* ══════════════════════════════
+   BARRA DE SCROLL FALSA (ARRIBA)
+══════════════════════════════ */
+.scroll-top-fake {
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 16px;
+    margin-bottom: 4px;
+}
+
+.scroll-top-fake-inner {
+    height: 1px;
+}
+
+/* Estilizado opcional de la barrita para que se vea prolija en Chrome/Edge */
+.scroll-top-fake::-webkit-scrollbar {
+    height: 8px;
+}
+
+.scroll-top-fake::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 999px;
+}
+
+.scroll-top-fake::-webkit-scrollbar-thumb {
+    background: rgba(92, 184, 77, 0.35);
+    border-radius: 999px;
+}
+
+.scroll-top-fake::-webkit-scrollbar-thumb:hover {
+    background: rgba(92, 184, 77, 0.55);
+}
+
+/* Card un poco más grande para que entre el desglose */
+.clase-admin-card-mini {
+    padding: 18px;
+    gap: 14px;
+}
+
+.clase-mini-alumnos-desglose {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.clase-mini-alumnos-fila {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.clase-mini-alumnos-fila strong {
+    font-weight: 700;
+}
+
+.clase-mini-alumnos-fila.membresia {
+    color: #5CB84D;
+}
+
+.clase-mini-alumnos-fila.individual {
+    color: rgb(252, 153, 4);
+}
