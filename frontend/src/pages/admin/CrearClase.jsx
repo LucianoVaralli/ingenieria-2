@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../../api/api";
 import "../../assets/css/CrearClase.css";
 import AdminLayout from "../../layouts/AdminLayout";
+import toast from "react-hot-toast";
 
 const actividades = [
     { label: "Yoga",      value: "yoga"      },
@@ -90,8 +91,7 @@ const CrearClase = () => {
 
         try {
             await api.post("/clases/crear", formData);
-            setMensajeExito("Clase creada exitosamente");
-            setTimeout(() => setMensajeExito(""), 3000);
+            toast.success("Clase creada exitosamente");
             setFormData({ actividad: "", dia: "", horario: "", profesor_id: "", cupo: "", duracion: "", precio_individual: "" });
         } catch (error) {
             const data   = error.response?.data;
@@ -141,7 +141,6 @@ const CrearClase = () => {
                 </div>
 
                 <div className="crear-clase-card">
-                    {mensajeExito && <p className="crear-clase-mensaje-exito">{mensajeExito}</p>}
                     {errorBackend && <p className="crear-clase-error-backend">{errorBackend}</p>}
 
                     <form onSubmit={handleSubmit} noValidate>

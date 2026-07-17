@@ -19,6 +19,8 @@ from schemas.clase import (
 )
 from routes.membresia import _actualizar_membresia_activa_hasta
 
+from calendar import monthrange
+from datetime import date, timedelta
 
 from dependencies.database import get_db
 from services.notificaciones import crear_notificacion
@@ -566,6 +568,61 @@ async def eliminar_clase(
 
     return {"mensaje": "Clase dada de baja correctamente con notificaciones y compensaciones"}
 
+@router.get("/cancelar-dia/{clase_id}/fechas")
+async def obtener_fechas_cancelables(
+    clase_id: int,
+    db: Session = Depends(get_db)
+):
+    clase = db.query(Clase).filter(
+        Clase.id == clase_id,
+        Clase.activa == True
+    ).first()
+
+    if not clase:
+        raise HTTPException(
+            status_code=404,
+            detail="Clase no encontrada"
+        )
+
+    dias_map = {
+        "lunes": 0,
+        "martes": 1,
+        "miercoles": 2,
+        "jueves": 3,
+        "viernes": 4,
+        "sabado": 5,
+        "domingo": 6
+    }
+
+    hoy = date.today()
+
+    # Último día del mes actual
+    ultimo_dia = monthrange(hoy.year, hoy.month)[1]
+
+    fechas_disponibles = []
+
+    for dia in range(hoy.day, ultimo_dia + 1):
+        fecha = date(hoy.year, hoy.month, dia)
+
+        if fecha.weekday() != dias_map[clase.dia.value]:
+            continue
+
+        # Verificar si esa fecha ya fue cancelada
+        ya_cancelada = db.query(Reserva).filter(
+            Reserva.clase_id == clase.id,
+            Reserva.fecha_clase == fecha.strftime("%Y-%m-%d"),
+            Reserva.estado == "cancelada",
+            Reserva.tipo_cancelacion == "cancelacion_dia"
+        ).first()
+
+        if ya_cancelada:
+            continue
+
+        fechas_disponibles.append(
+            fecha.strftime("%Y-%m-%d")
+        )
+
+    return fechas_disponibles
 
 @router.put("/cancelar-dia/{clase_id}")
 async def cancelar_clase_dia(
@@ -1140,6 +1197,7 @@ def obtener_alumnos_de_clase(
         "actividad": clase.actividad,
         "alumnos": alumnos
     }
+
 @router.get("/{clase_id}/cupo-disponible")
 def cupo_disponible(
     clase_id: int,
