@@ -155,6 +155,7 @@ const Clases = ({ token }) => {
         setDiaSelec(numDia);
         setClaseElegida(null);
         setModoReserva(null);
+        cargarCupos(numDia);
     };
 
     const clasesDelDiaFiltradas = (() => {
@@ -187,30 +188,41 @@ const Clases = ({ token }) => {
         setModoReserva(null);
     };
 
-    useEffect(() => {
-        if (!diaSelec || clasesDelDiaFiltradas.length === 0) return;
-
+    const cargarCupos = async (diaNum) => {
         const mm = String(mes + 1).padStart(2, '0');
-        const dd = String(diaSelec).padStart(2, '0');
+        const dd = String(diaNum).padStart(2, '0');
         const fechaDia = `${anio}-${mm}-${dd}`;
 
-        setCuposReales({});
+        const nombreDia = DIAS_SEMANA[new Date(anio, mes, diaNum).getDay()].toLowerCase();
+        const mapaNombre = {
+            'dom': 'domingo', 'lun': 'lunes', 'mar': 'martes',
+            'mié': 'miercoles', 'jue': 'jueves', 'vie': 'viernes', 'sáb': 'sabado'
+        };
+        const diaDB = mapaNombre[nombreDia] ?? nombreDia;
 
-        clasesDelDiaFiltradas.forEach(async (clase) => {
+        const clasesDia = aplicarFiltros(
+            todasClases.filter(c =>
+                (c.dia || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, '') === diaDB
+                && !diasCancelados.has(`${c.id}_${fechaDia}`)
+            )
+        );
+
+        setCuposReales({}); // limpia lo anterior para que no se vea el dato viejo
+
+        clasesDia.forEach(async (clase) => {
             try {
                 const res = await api.get(`/clases/${clase.id}/cupo-disponible?fecha=${fechaDia}`);
                 setCuposReales(prev => ({ ...prev, [clase.id]: res.data }));
             } catch (err) {
                 console.error('Error obteniendo cupos para clase', clase.id, err);
             }
-            // Cargar QR automáticamente solo para miembros (no profesores)
-            // ✅ Si el profesor ya generó el QR antes, cargarlo para el miembro
+
             const qrGuardado = localStorage.getItem(`qr_clase_${clase.id}`);
             if (qrGuardado) {
                 setQrUrls(prev => ({ ...prev, [clase.id]: qrGuardado }));
             }
         });
-    }, [diaSelec, anio, mes]);
+    };
 
     const handleReservar = () => {
         if (!claseElegida || !modoReserva) return;
