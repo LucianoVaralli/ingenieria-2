@@ -42,7 +42,8 @@ function ListaClasesAdmin() {
 
     const [fechasCambio, setFechasCambio] = useState([]);
 
-
+    const [mostrarConfirmacionCancelacion, setMostrarConfirmacionCancelacion] = useState(false);
+    const [infoCancelacion, setInfoCancelacion] = useState(null);
     //Filtros
 
     const DISCIPLINAS  = ['Yoga', 'Pilates', 'Funcional'];
@@ -399,6 +400,34 @@ function ListaClasesAdmin() {
         }
     };
 
+    const ejecutarCancelacion = async () => {
+
+        try {
+
+            await api.put(
+                `/clases/cancelar-dia/${claseCancelarDia.id}`,
+                {
+                    fecha_clase: fechaCancelar,
+                    motivo: motivoCancelar
+                }
+            );
+
+            await cargarClases();
+
+            setMostrarModalCancelarDia(false);
+            setMostrarConfirmacionCancelacion(false);
+
+            toast.success("Clase cancelada correctamente");
+
+        } catch(error){
+
+            toast.error(
+                error.response?.data?.detail ||
+                "Error cancelando clase"
+            );
+        }
+    };
+
     const cancelarDiaClase = async () => {
         if (!fechaCancelar) {
             toast.error("Debe seleccionar una fecha");
@@ -411,25 +440,21 @@ function ListaClasesAdmin() {
         }
 
         try {
-            await api.put(
-                `/clases/cancelar-dia/${claseCancelarDia.id}`,
-                {
-                    fecha_clase: fechaCancelar,
-                    motivo: motivoCancelar
-                }
+
+            const info = await api.get(
+                `/clases/cancelar-dia/${claseCancelarDia.id}/info/${fechaCancelar}`
             );
-            await cargarClases();
 
-            setMostrarModalCancelarDia(false);
+            if (info.data.total > 0) {
+                setInfoCancelacion(info.data);
+                setMostrarConfirmacionCancelacion(true);
+                return;
+            }
 
-            toast.success("Clase cancelada correctamente");
+            ejecutarCancelacion();
 
-        } catch (error) {
-
-            toast.error(
-                error.response?.data?.detail ||
-                "Error cancelando clase"
-            );
+        } catch(error){
+            toast.error("Error verificando reservas");
         }
     };
 
@@ -807,6 +832,75 @@ function ListaClasesAdmin() {
                         </div>
 
                     </div>
+                </div>
+            )}
+            {mostrarConfirmacionCancelacion && (
+                <div className="modal-overlay">
+
+                    <div className="modal-confirmacion">
+
+                        <h3>
+                            ¿Confirmar cancelación?
+                        </h3>
+
+                        <p>
+                            Vas a cancelar la clase del día:
+                        </p>
+
+                        <strong>
+                            {formatearFecha(fechaCancelar)}
+                        </strong>
+
+                        <div className="detalle-alumnos">
+
+                            <p>
+                                <strong>
+                                   👥 Alumnos afectados: {infoCancelacion.total}
+                                </strong>
+                            </p>
+
+                            <p>
+                                <strong>
+                                    🟢 Membresía: {infoCancelacion.membresia}
+                                </strong>
+                            </p>
+
+                            <p>
+                                <strong>
+                                    🟠 Individual: {infoCancelacion.individuales}
+                                </strong>
+                            </p>
+
+                        </div>
+
+
+                        <div className="modal-botones">
+
+                            <button
+                                className="btn-cancelar"
+                                onClick={() => {
+                                    setMostrarConfirmacionCancelacion(false);
+                                    setMostrarModalCancelarDia(false);
+                                    setInfoCancelacion(null);
+                                    setFechaCancelar("");
+                                    setMotivoCancelar("");
+                                }}
+                            >
+                                Volver
+                            </button>
+
+
+                            <button
+                                className="btn-eliminar"
+                                onClick={ejecutarCancelacion}
+                            >
+                                Confirmar cancelación
+                            </button>
+
+                        </div>
+
+                    </div>
+
                 </div>
             )}
 

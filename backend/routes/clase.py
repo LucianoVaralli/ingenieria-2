@@ -27,6 +27,7 @@ from services.notificaciones import crear_notificacion
 
 from models.cambioTemporal import CambioProfesorTemporal as CambioProfesorTemporalDB
 from models.cambioPermanente import CambioProfesorPermanente as CambioProfesorPermanenteDB
+from models.cancelacion_clase import CancelacionClaseDia
 
 from services.auth import (
     obtener_usuario_actual,
@@ -680,11 +681,9 @@ async def cancelar_clase_dia(
         detail="No se puede cancelar una clase de una fecha pasada"
     )
 
-    ya_cancelada = db.query(Reserva).filter(
-        Reserva.clase_id == clase.id,
-        Reserva.fecha_clase == datos.fecha_clase,
-        Reserva.estado == "cancelada",
-        Reserva.tipo_cancelacion == "cancelacion_dia"
+    ya_cancelada = db.query(CancelacionClaseDia).filter(
+        CancelacionClaseDia.clase_id == clase.id,
+        CancelacionClaseDia.fecha_clase == fecha
     ).first()
 
     if ya_cancelada:
@@ -700,50 +699,53 @@ async def cancelar_clase_dia(
         Reserva.estado.in_(["confirmada", "pendiente_pago"])
     ).all()
 
-    if not reservas:
-        raise HTTPException(
-            status_code=400,
-            detail="No existen reservas para cancelar en esa fecha"
-        )
-    
+    cancelacion = CancelacionClaseDia(
+        clase_id=clase.id,
+        fecha_clase=fecha,
+        motivo=datos.motivo.strip()
+    )
+
+    db.add(cancelacion)
+
     creditos_por_socio = defaultdict(int)
     reembolsos_por_socio = defaultdict(float)
     pendientes_por_socio = defaultdict(int)
 
-    # Procesar alumnos anotados para esa fecha
-    for reserva in reservas:
-        estado_previo = reserva.estado
-        
-        reserva.estado = "cancelada"
-        reserva.tipo_cancelacion = "cancelacion_dia"
-        reserva.motivo_cancelacion = datos.motivo
-        
-        
-        # Si estaba colgada sin pagar, solo la cancelamos sin otorgar beneficios
-        if estado_previo == "pendiente_pago":
-            pendientes_por_socio[reserva.socio.id] += 1
-            reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada por el administrador antes de tu pago."
-            continue
-        
-        # Si estaba CONFIRMADA, aplicamos devoluciones según tipo de usuario
-        if reserva.tipo == TipoReserva.Membresia.value:
-            socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
-            if socio:
-                socio.creditos_disponibles += 1
-                creditos_por_socio[socio.id] +=1
-
-            reserva.credito_generado = True
-            reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. Tenés 1 crédito pendiente disponible."
+    if reservas:
+        # Procesar alumnos anotados para esa fecha
+        for reserva in reservas:
+            estado_previo = reserva.estado
             
-        elif reserva.tipo == TipoReserva.Individual.value:
-            socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
+            reserva.estado = "cancelada"
+            reserva.tipo_cancelacion = "cancelacion_dia"
+            reserva.motivo_cancelacion = datos.motivo
+            
+            
+            # Si estaba colgada sin pagar, solo la cancelamos sin otorgar beneficios
+            if estado_previo == "pendiente_pago":
+                pendientes_por_socio[reserva.socio.id] += 1
+                reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada por el administrador antes de tu pago."
+                continue
+            
+            # Si estaba CONFIRMADA, aplicamos devoluciones según tipo de usuario
+            if reserva.tipo == TipoReserva.Membresia.value:
+                socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
+                if socio:
+                    socio.creditos_disponibles += 1
+                    creditos_por_socio[socio.id] +=1
 
-            if socio:
-                reembolsos_por_socio[socio.id] = reserva.porcentaje_pagado
+                reserva.credito_generado = True
+                reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. Tenés 1 crédito pendiente disponible."
+                
+            elif reserva.tipo == TipoReserva.Individual.value:
+                socio = db.query(Socio).filter(Socio.id == reserva.socio_id).first()
 
-            reserva.reembolso_realizado = True
-            reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. Se devolvió el pago del {reserva.porcentaje_pagado}%."
-    
+                if socio:
+                    reembolsos_por_socio[socio.id] = reserva.porcentaje_pagado
+
+                reserva.reembolso_realizado = True
+                reserva.mensaje_admin = f"La clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} fue cancelada. Se devolvió el pago del {reserva.porcentaje_pagado}%."
+        
     # No alteramos 'gimnasio.capacidad_disponible' porque la clase base sigue activa en la grilla.
     for socio_id, creditos in creditos_por_socio.items():
         socio = db.query(Socio).filter(
@@ -803,8 +805,34 @@ async def cancelar_clase_dia(
         )
 
     db.commit()
-    return {"mensaje": f"Clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} cancelada correctamente. Alumnos notificados y base de datos actualizada."}
+    return {"mensaje": f"Clase del día {clase.dia.value.capitalize()} {datos.fecha_clase} cancelada correctamente. Alumnos notificados."}
 
+@router.get("/cancelar-dia/{clase_id}/info/{fecha}")
+def info_cancelacion_dia(
+    clase_id: int,
+    fecha: str,
+    db: Session = Depends(get_db)
+):
+    reservas = db.query(Reserva).filter(
+        Reserva.clase_id == clase_id,
+        Reserva.fecha_clase == fecha,
+        Reserva.estado.in_(["confirmada", "pendiente_pago"])
+    ).all()
+
+    membresia = 0
+    individuales = 0
+
+    for reserva in reservas:
+        if reserva.tipo == TipoReserva.Membresia.value:
+            membresia += 1
+        elif reserva.tipo == TipoReserva.Individual.value:
+            individuales += 1
+
+    return {
+        "total": len(reservas),
+        "membresia": membresia,
+        "individuales": individuales
+    }
 
 @router.get("/")
 def obtener_clases(db: Session = Depends(get_db)):

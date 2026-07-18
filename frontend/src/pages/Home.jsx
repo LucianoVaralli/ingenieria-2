@@ -90,6 +90,8 @@ const Home = ({ token }) => {
     const [faqAbierto, setFaqAbierto] = useState(null);
     const [filtroClase, setFiltroClase] = useState('Todas');
     const [faqs, setFaqs] = useState([]);
+    const [clases, setClases] = useState([]);
+    const [actividadAbierta, setActividadAbierta] = useState(null);
 
     // Slideshow automático: cambia cada 5 segundos
     useEffect(() => {
@@ -105,11 +107,21 @@ const Home = ({ token }) => {
 
     useEffect(() => {
         obtenerPreguntas();
+        obtenerClases();
     }, []);
 
     const obtenerPreguntas = async () => {
         const res = await api.get("/preguntas-frecuentes/listar_preguntas");
         setFaqs(res.data);
+    };
+
+    const obtenerClases = async () => {
+        try {
+            const res = await api.get("/clases/");
+            setClases(res.data);
+        } catch (err) {
+            console.error("ERROR CLASES", err);
+        }
     };
 
     const irASlide = (i) => {
@@ -126,6 +138,46 @@ const Home = ({ token }) => {
         : clasesEjemplo.filter(c => c.nombre === filtroClase);
 
     const slide = slides[actual];
+
+    const ordenDias = {
+        lunes: 1,
+        martes: 2,
+        miercoles: 3,
+        jueves: 4,
+        viernes: 5,
+        sabado: 6,
+        domingo: 7
+    };
+
+    const capitalize = (texto) =>
+    texto
+        ?.split(" ")
+        .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+        .join(" ") || "";
+
+    const horariosPorActividad = {
+        yoga: [],
+        pilates: [],
+        funcional: []
+    };
+
+    clases.forEach(clase => {
+        if (horariosPorActividad[clase.actividad.toLowerCase()]) {
+            horariosPorActividad[clase.actividad.toLowerCase()].push(clase);
+        }
+    });
+
+    Object.values(horariosPorActividad).forEach(lista => {
+        lista.sort((a, b) => {
+            const diaA = ordenDias[a.dia.toLowerCase()];
+            const diaB = ordenDias[b.dia.toLowerCase()];
+
+            if (diaA !== diaB)
+                return diaA - diaB;
+
+            return a.horario.localeCompare(b.horario);
+        });
+    });
 
     return (
         <div className="home-container">
@@ -167,6 +219,66 @@ const Home = ({ token }) => {
                 <div className="hero-progress">
                     <div key={actual} className="hero-progress-bar" />
                 </div>
+            </section>
+
+            <section className="home-section">
+
+                <div className="home-section-label">
+                    Horarios
+                </div>
+
+                <h2 className="home-section-title">
+                    ¿Cuándo entrenamos?
+                </h2>
+
+                <div className="home-horarios">
+                    {Object.entries(horariosPorActividad).map(([actividad, lista]) => (
+                        <div className="home-horario-card" key={actividad}>
+                        
+                            <div
+                                className="home-horario-header"
+                                onClick={() =>
+                                    setActividadAbierta(prev =>
+                                        prev === actividad ? null : actividad
+                                    )
+                                }
+                            >
+                                <h3 className="home-horario-titulo">
+                                    <span>{capitalize(actividad)}</span>
+
+                                    <span className="cantidad-clases">
+                                        ({lista.length} {lista.length === 1 ? "clase" : "clases"})
+                                    </span>
+                                </h3>
+
+                                <span>
+                                    {actividadAbierta === actividad ? "▲" : "▼"}
+                                </span>
+                            </div>
+
+                            {actividadAbierta === actividad && (
+                                <div className="home-horario-lista">
+
+                                    {lista.length === 0 ? (
+                                        <p className="sin-horarios">
+                                            No hay clases disponibles por el momento.
+                                        </p>
+                                    ) : (
+                                        lista.map(clase => (
+                                            <div className="home-horario-item" key={clase.id}>
+                                                <span>{capitalize(clase.dia)}</span>
+                                                <strong>{clase.horario.slice(0,5)}</strong>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+
+                        </div>
+                    ))}
+
+                </div>
+
             </section>
 
             {/* ════════════════════════════════════════

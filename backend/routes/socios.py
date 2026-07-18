@@ -12,7 +12,7 @@ from schemas.socio import ProfesorUpdate, ProfesorCreate, CambiarPasswordRequest
 from services.auth import get_password_hash, oauth2_scheme, obtener_usuario_actual, verificar_password
 import secrets
 from fastapi import BackgroundTasks
-
+from models.cambioTemporal import CambioProfesorTemporal
 router = APIRouter(prefix="/socios", tags=["Socios"])
 
 from services.mail_service import (
@@ -381,23 +381,35 @@ async def eliminar_profesor(
 ):
     from models.clase import Clase
     
-    clase = db.query(Clase).filter(
-        Clase.profesor_id == profesor_id
-    ).first()
-
-    profesor = db.query(Socio).filter(Socio.id == profesor_id).first()
-
-    if not clase:
-        db.query(Socio).filter(Socio.id == profesor_id).delete()
-        db.commit()
-        return {"mensaje": "Profesor eliminado correctamente"}
-
     clases = db.query(Clase).filter(
         Clase.profesor_id == profesor_id
     ).all()
 
+    reemplazos = db.query(CambioProfesorTemporal).filter(
+        CambioProfesorTemporal.profesor_reemplazo_id == profesor_id
+    ).all()
+
+
+    profesor = db.query(Socio).filter(
+        Socio.id == profesor_id
+    ).first()
+
+
+    if not clases and not reemplazos:
+        db.query(Socio).filter(
+            Socio.id == profesor_id
+        ).delete()
+
+        db.commit()
+
+        return {
+            "mensaje": "Profesor eliminado correctamente"
+        }
+    
+    
     clases_info = [
         {
+            "tipo": "Titular",
             "actividad": c.actividad.value,
             "dia": c.dia.value,
             "horario": c.horario.strftime("%H:%M")
@@ -405,10 +417,29 @@ async def eliminar_profesor(
         for c in clases
     ]
 
+
+    reemplazos_info = []
+
+    for r in reemplazos:
+        clase = db.query(Clase).filter(
+            Clase.id == r.clase_id
+        ).first()
+
+        if clase:
+            reemplazos_info.append({
+                "tipo": "Reemplazo temporal",
+                "actividad": clase.actividad.value,
+                "dia": clase.dia.value,
+                "horario": clase.horario.strftime("%H:%M"),
+                "fecha": r.fecha.strftime("%d/%m/%Y")
+            })
+
+
     raise HTTPException(
         status_code=409,
         detail={
             "nombre": f"{profesor.nombre} {profesor.apellido}",
-            "clases": clases_info
+            "clases": clases_info,
+            "reemplazos": reemplazos_info
         }
     )

@@ -16,6 +16,7 @@ from models.reserva_MIO import Reserva
 from models.lista_espera import ListaEspera
 from models.password_recovery import PasswordRecovery
 from models.tarjeta_simulada import TarjetaSimulada
+from models.cancelacion_clase import CancelacionClaseDia
 
 # Importar Servicios y Routers
 from services.scheduler import scheduler

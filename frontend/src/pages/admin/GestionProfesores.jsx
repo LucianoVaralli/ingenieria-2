@@ -28,6 +28,7 @@ function GestionProfesores() {
         setProfesores(res.data);
     };
 
+    const [tipoProfesorEliminar, setTipoProfesorEliminar] = useState(null);
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
     const [profesorAEliminar, setProfesorAEliminar] = useState(null);
     useEffect(() => {
@@ -163,16 +164,22 @@ function GestionProfesores() {
             setProfesorAEliminar(null);
 
         } catch (err) {
+            console.log("ERROR ELIMINAR:", err.response?.data);
             const detalle = err.response?.data?.detail;
 
             // Caso: profesor con clases asignadas
-            if (detalle?.clases) {
+            if (detalle?.clases || detalle?.reemplazos) {
 
                 setMostrarConfirmacion(false);
 
+                const clasesAfectadas = [
+                    ...(detalle.clases || []),
+                    ...(detalle.reemplazos || [])
+                ];
+
                 setErrorEliminacion({
                     nombre: detalle.nombre,
-                    clases: detalle.clases
+                    clases: clasesAfectadas
                 });
 
                 return;
@@ -510,11 +517,31 @@ function GestionProfesores() {
                         <ul className="lista-clases-profesor">
                             {errorEliminacion.clases.map((c, i) => (
                                 <li key={i}>
-                                    <strong>{capitalize(c.dia)}</strong>
-                                    {" · "}
-                                    {c.horario} hs
-                                    {" · "}
-                                    {capitalize(c.actividad)}
+
+                                    {c.tipo === "Titular" ? (
+                                        <>
+                                            🟢 <strong>Titular</strong>
+                                            {" · "}
+                                            {capitalize(c.dia)}
+                                            {" · "}
+                                            {c.horario} hs
+                                            {" · "}
+                                            {capitalize(c.actividad)}
+                                        </>
+                                    ) : (
+                                        <>
+                                            🔄 <strong>Reemplazo temporal</strong>
+                                            {" · "}
+                                            {capitalize(c.dia)}
+                                            {" · "}
+                                            {c.horario} hs
+                                            {" · "}
+                                            {capitalize(c.actividad)}
+                                            {" · "}
+                                            Fecha: {c.fecha}
+                                        </>
+                                    )}
+
                                 </li>
                             ))}
                         </ul>
