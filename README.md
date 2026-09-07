@@ -212,6 +212,61 @@ VITE_API_URL=http://localhost:8000
 
 ---
 
+## Configuración de MercadoPago (desarrollo local)
+
+Para probar el flujo de pagos en entorno local se necesita exponer el backend a internet para que MercadoPago pueda enviar los webhooks. Se utiliza **ngrok**.
+
+1. **Instalar el SDK de MercadoPago** (si no está en `requirements.txt`):
+
+```bash
+cd backend
+pip install mercadopago
+```
+
+2. **Configurar credenciales en el servicio**  
+   Editar `backend/services/mercadopago_service.py` y completar las constantes con **placeholders** (nunca tokens reales):
+
+```python
+# backend/services/mercadopago_service.py
+ACCESS_TOKEN = "APP_USR-xxxxxxxxxxxxxxxxxxxxxxxx"   # Access token de prueba
+FRONTEND_URL = "http://localhost:5173"             # URL del frontend local
+BACKEND_URL  = "https://<TU_SUBDOMINIO>.ngrok-free.app"  # URL pública que dará ngrok
+WEBHOOK_URL  = f"{BACKEND_URL}/mercadopago/webhook"
+```
+
+3. **Instalar y autenticar ngrok** (Windows con winget):
+
+```bash
+winget install Ngrok.Ngrok
+ngrok config add-authtoken <TU_AUTHTOKEN_NGROK>
+```
+
+   *Obtené tu authtoken en https://dashboard.ngrok.com/get-started/your-authtoken*.
+
+4. **Levantar las 3 terminales simultáneas**:
+
+| Terminal | Comando |
+|----------|---------|
+| 1 – Backend | `cd backend && venv\Scripts\activate && uvicorn main:app --reload` |
+| 2 – Frontend | `cd frontend && npm run dev` |
+| 3 – ngrok | `ngrok http 8000` |
+
+5. **Actualizar `BACKEND_URL` y `WEBHOOK_URL`**  
+   Cada vez que ngrok se reinicia genera una URL distinta (p. ej. `https://a1b2c3d4.ngrok-free.app`). Copiá esa URL y actualizá las constantes en `mercadopago_service.py`, luego guardá el archivo (el backend recargará automáticamente gracias a `--reload`).
+
+6. **Probar el pago**  
+   - Abrí una **ventana incógnita** del navegador.  
+   - Iniciá sesión con un usuario de prueba de MercadoPago.  
+   - Realizá una reserva y elegí “Pagar con MercadoPago”.  
+   - Completá el checkout con una tarjeta de prueba (ver `GET /mercadopago/tarjetas-test`).
+
+> **Notas importantes**
+> - **ngrok entrega una URL nueva en cada inicio**; hay que actualizar `BACKEND_URL` / `WEBHOOK_URL` y guardar el archivo.
+> - **No cerrar la terminal de ngrok** mientras se prueba; si se cierra, los webhooks dejarán de llegar.
+> - Podés monitorear las peticiones que recibe el tunnel en **http://127.0.0.1:4040** (interfaz de inspección de ngrok).
+
+---
+
 ## Uso
 
 ### Desarrollo - Levantar ambos servidores
